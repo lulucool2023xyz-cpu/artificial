@@ -30,12 +30,8 @@ app.get("/api/health", (req, res) => {
 
 // Catch all handler: send back React's index.html file for SPA routing
 // Must be last - catches all routes that don't match above
-// Using app.use with no path to catch all unmatched routes
-app.use((req, res, next) => {
-  // Skip if request is for static assets (already handled by express.static)
-  if (req.path.startsWith("/assets/") || req.path.includes(".")) {
-    return next();
-  }
+// Using app.use with no path to avoid path-to-regexp parsing issues with Express 5
+app.use((req, res) => {
   res.sendFile(path.join(spaPath, "index.html"));
 });
 
