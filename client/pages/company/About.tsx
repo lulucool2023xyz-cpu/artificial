@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Brain, Code, Zap, Globe, Users, Target, Heart, Github, Twitter, Linkedin, Mail } from "lucide-react";
+import { Brain, Code, Zap, Globe, Users, Target, Heart, Github, Twitter, Linkedin, Mail, Sparkles } from "lucide-react";
 import { NavigationBar } from "@/components/landing/NavigationBar";
 import { Footer } from "@/components/landing/Footer";
 import { BackToTop } from "@/components/landing/BackToTop";
@@ -173,49 +173,190 @@ const About = memo(function About() {
                           </p>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="text-center p-4 border border-border rounded-lg hover:bg-primary/5 transition-colors">
-                            <Users className="w-12 h-12 mx-auto mb-4 text-indonesian-gold" />
-                            <h4 className="font-bold text-foreground mb-2">Arief Fajar</h4>
-                            <p className="text-sm text-muted-foreground mb-3">Application Development</p>
-                            <div className="space-y-1 text-xs text-muted-foreground">
-                              <p>Front End Developer</p>
-                              <p>Back End Developer</p>
-                              <p>AI/ML Engineer</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                          {/* Arief Fajar - Solo Leveling Theme */}
+                          <ScrollReveal delay={0.6} duration={0.7} distance={30}>
+                            <div className="group relative overflow-hidden border border-indonesian-gold/30 rounded-2xl bg-gradient-to-br from-black via-gray-900 to-black hover:border-indonesian-gold/60 transition-all duration-500 hover:shadow-2xl hover:shadow-indonesian-gold/20">
+                              {/* Anime Background Image */}
+                              <div 
+                                className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity duration-500 bg-cover bg-center bg-no-repeat"
+                                style={{
+                                  backgroundImage: "url('https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=80')",
+                                  filter: 'brightness(0.5) contrast(1.2)',
+                                }}
+                              />
+                              {/* Gradient Overlay */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                              
+                              <div className="relative z-10 p-6 sm:p-8 text-center">
+                                {/* Character Image Placeholder - Solo Leveling style */}
+                                <div className="relative w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden border-4 border-indonesian-gold/50 group-hover:border-indonesian-gold transition-all duration-500 shadow-2xl shadow-indonesian-gold/30">
+                                  <div 
+                                    className="w-full h-full bg-cover bg-center"
+                                    style={{
+                                      backgroundImage: "url('https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&h=400&fit=crop&q=80')",
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-indonesian-gold/20 to-transparent" />
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-24 h-24 rounded-full bg-indonesian-gold/10 backdrop-blur-sm border-2 border-indonesian-gold/30" />
+                                  </div>
+                                </div>
+                                
+                                <h4 className="text-2xl sm:text-3xl font-bold text-foreground mb-2 group-hover:text-indonesian-gold transition-colors">
+                                  Arief Fajar
+                                </h4>
+                                <div className="inline-block px-4 py-1 mb-4 bg-indonesian-gold/20 border border-indonesian-gold/40 rounded-full">
+                                  <p className="text-sm font-semibold text-indonesian-gold">Application Development</p>
+                                </div>
+                                
+                                <div className="space-y-2 mb-6 text-sm">
+                                  <div className="flex items-center justify-center gap-2 text-foreground/80">
+                                    <Code className="w-4 h-4 text-indonesian-gold" />
+                                    <span>Front End Developer</span>
+                                  </div>
+                                  <div className="flex items-center justify-center gap-2 text-foreground/80">
+                                    <Code className="w-4 h-4 text-indonesian-gold" />
+                                    <span>Back End Developer</span>
+                                  </div>
+                                  <div className="flex items-center justify-center gap-2 text-foreground/80">
+                                    <Brain className="w-4 h-4 text-indonesian-gold" />
+                                    <span>AI/ML Engineer</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="pt-4 border-t border-indonesian-gold/20">
+                                  <p className="text-xs text-muted-foreground mb-1">Class 11 PPLG 3</p>
+                                  <p className="text-xs text-muted-foreground">Software & Game Development</p>
+                                </div>
+                                
+                                {/* Glow effect on hover */}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indonesian-gold/10 to-transparent animate-pulse" />
+                                </div>
+                              </div>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-border">
-                              <p className="text-xs text-muted-foreground">Class 11 PPLG 3</p>
-                              <p className="text-xs text-muted-foreground">Software & Game Development</p>
-                            </div>
-                          </div>
+                          </ScrollReveal>
 
-                          <div className="text-center p-4 border border-border rounded-lg hover:bg-primary/5 transition-colors">
-                            <Users className="w-12 h-12 mx-auto mb-4 text-indonesian-gold" />
-                            <h4 className="font-bold text-foreground mb-2">Alif Ikhwan</h4>
-                            <p className="text-sm text-muted-foreground mb-3">Website Development</p>
-                            <div className="space-y-1 text-xs text-muted-foreground">
-                              <p>UI/UX Designer</p>
-                              <p>Plan Manager</p>
+                          {/* Alif Ikhwan - Sword Art Online Theme */}
+                          <ScrollReveal delay={0.7} duration={0.7} distance={30}>
+                            <div className="group relative overflow-hidden border border-blue-500/30 rounded-2xl bg-gradient-to-br from-black via-blue-900/20 to-black hover:border-blue-500/60 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20">
+                              {/* Anime Background Image */}
+                              <div 
+                                className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity duration-500 bg-cover bg-center bg-no-repeat"
+                                style={{
+                                  backgroundImage: "url('https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&q=80')",
+                                  filter: 'brightness(0.5) contrast(1.2)',
+                                }}
+                              />
+                              {/* Gradient Overlay */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                              
+                              <div className="relative z-10 p-6 sm:p-8 text-center">
+                                {/* Character Image Placeholder - SAO style */}
+                                <div className="relative w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden border-4 border-blue-500/50 group-hover:border-blue-400 transition-all duration-500 shadow-2xl shadow-blue-500/30">
+                                  <div 
+                                    className="w-full h-full bg-cover bg-center"
+                                    style={{
+                                      backgroundImage: "url('https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=400&fit=crop&q=80')",
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-blue-500/20 to-transparent" />
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-24 h-24 rounded-full bg-blue-500/10 backdrop-blur-sm border-2 border-blue-500/30" />
+                                  </div>
+                                </div>
+                                
+                                <h4 className="text-2xl sm:text-3xl font-bold text-foreground mb-2 group-hover:text-blue-400 transition-colors">
+                                  Alif Ikhwan
+                                </h4>
+                                <div className="inline-block px-4 py-1 mb-4 bg-blue-500/20 border border-blue-500/40 rounded-full">
+                                  <p className="text-sm font-semibold text-blue-400">Website Development</p>
+                                </div>
+                                
+                                <div className="space-y-2 mb-6 text-sm">
+                                  <div className="flex items-center justify-center gap-2 text-foreground/80">
+                                    <Sparkles className="w-4 h-4 text-blue-400" />
+                                    <span>UI/UX Designer</span>
+                                  </div>
+                                  <div className="flex items-center justify-center gap-2 text-foreground/80">
+                                    <Target className="w-4 h-4 text-blue-400" />
+                                    <span>Plan Manager</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="pt-4 border-t border-blue-500/20">
+                                  <p className="text-xs text-muted-foreground mb-1">Class 11 PPLG 2</p>
+                                  <p className="text-xs text-muted-foreground">Software & Game Development</p>
+                                </div>
+                                
+                                {/* Glow effect on hover */}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent animate-pulse" />
+                                </div>
+                              </div>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-border">
-                              <p className="text-xs text-muted-foreground">Class 11 PPLG 2</p>
-                              <p className="text-xs text-muted-foreground">Software & Game Development</p>
-                            </div>
-                          </div>
+                          </ScrollReveal>
 
-                          <div className="text-center p-4 border border-border rounded-lg hover:bg-primary/5 transition-colors">
-                            <Users className="w-12 h-12 mx-auto mb-4 text-indonesian-gold" />
-                            <h4 className="font-bold text-foreground mb-2">Reza Arrofi</h4>
-                            <p className="text-sm text-muted-foreground mb-3">Digital Marketing</p>
-                            <div className="space-y-1 text-xs text-muted-foreground">
-                              <p>Concept Design Manager</p>
-                              <p>Creative Leader</p>
+                          {/* Reza Arrofi - Demon Slayer Theme */}
+                          <ScrollReveal delay={0.8} duration={0.7} distance={30}>
+                            <div className="group relative overflow-hidden border border-red-500/30 rounded-2xl bg-gradient-to-br from-black via-red-900/20 to-black hover:border-red-500/60 transition-all duration-500 hover:shadow-2xl hover:shadow-red-500/20">
+                              {/* Anime Background Image */}
+                              <div 
+                                className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity duration-500 bg-cover bg-center bg-no-repeat"
+                                style={{
+                                  backgroundImage: "url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=80')",
+                                  filter: 'brightness(0.5) contrast(1.2)',
+                                }}
+                              />
+                              {/* Gradient Overlay */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                              
+                              <div className="relative z-10 p-6 sm:p-8 text-center">
+                                {/* Character Image Placeholder - Demon Slayer style */}
+                                <div className="relative w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden border-4 border-red-500/50 group-hover:border-red-400 transition-all duration-500 shadow-2xl shadow-red-500/30">
+                                  <div 
+                                    className="w-full h-full bg-cover bg-center"
+                                    style={{
+                                      backgroundImage: "url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400&h=400&fit=crop&q=80')",
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-red-500/20 to-transparent" />
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-24 h-24 rounded-full bg-red-500/10 backdrop-blur-sm border-2 border-red-500/30" />
+                                  </div>
+                                </div>
+                                
+                                <h4 className="text-2xl sm:text-3xl font-bold text-foreground mb-2 group-hover:text-red-400 transition-colors">
+                                  Reza Arrofi
+                                </h4>
+                                <div className="inline-block px-4 py-1 mb-4 bg-red-500/20 border border-red-500/40 rounded-full">
+                                  <p className="text-sm font-semibold text-red-400">Digital Marketing</p>
+                                </div>
+                                
+                                <div className="space-y-2 mb-6 text-sm">
+                                  <div className="flex items-center justify-center gap-2 text-foreground/80">
+                                    <Sparkles className="w-4 h-4 text-red-400" />
+                                    <span>Concept Design Manager</span>
+                                  </div>
+                                  <div className="flex items-center justify-center gap-2 text-foreground/80">
+                                    <Heart className="w-4 h-4 text-red-400" />
+                                    <span>Creative Leader</span>
+                                  </div>
+                                </div>
+                                
+                                <div className="pt-4 border-t border-red-500/20">
+                                  <p className="text-xs text-muted-foreground mb-1">Class 10 PPLG 3</p>
+                                  <p className="text-xs text-muted-foreground">Software & Game Development</p>
+                                </div>
+                                
+                                {/* Glow effect on hover */}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/10 to-transparent animate-pulse" />
+                                </div>
+                              </div>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-border">
-                              <p className="text-xs text-muted-foreground">Class 10 PPLG 3</p>
-                              <p className="text-xs text-muted-foreground">Software & Game Development</p>
-                            </div>
-                          </div>
+                          </ScrollReveal>
                         </div>
                       </div>
                     </OrnamentFrame>

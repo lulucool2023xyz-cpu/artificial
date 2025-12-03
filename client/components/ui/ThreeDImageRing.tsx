@@ -83,6 +83,16 @@ export function ThreeDImageRing({
 
   const deviceCapability = useMemo(() => detectDeviceCapability(), []);
   
+  // Responsive width calculation
+  const responsiveWidth = useMemo(() => {
+    if (typeof window === 'undefined') return width;
+    const isMobile = window.innerWidth < (mobileBreakpoint || 768);
+    if (isMobile) {
+      return Math.min(width, window.innerWidth - 40); // Leave 20px padding on each side
+    }
+    return width;
+  }, [width, mobileBreakpoint]);
+  
   // Reduce initial image count for low-end devices
   const visibleImages = useMemo(() => {
     if (deviceCapability.isLowEnd) {
@@ -251,6 +261,7 @@ export function ThreeDImageRing({
         backgroundColor,
         transform: `scale(${currentScale})`,
         transformOrigin: "center center",
+        minHeight: deviceCapability.isMobile ? '300px' : '400px',
       }}
       onMouseDown={draggable ? handleDragStart : undefined}
       onTouchStart={draggable ? handleDragStart : undefined}
@@ -258,8 +269,10 @@ export function ThreeDImageRing({
       <div
         style={{
           perspective: `${perspective}px`,
-          width: `${width}px`,
-          height: `${width * 1.2}px`,
+          width: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
+          maxWidth: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
+          height: deviceCapability.isMobile ? '100%' : `${responsiveWidth * 1.2}px`,
+          maxHeight: deviceCapability.isMobile ? '100%' : `${responsiveWidth * 1.2}px`,
           position: "absolute",
           left: "50%",
           top: "50%",

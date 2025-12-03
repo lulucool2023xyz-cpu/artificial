@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { X, Mail, Lock, Eye, EyeOff, User, Check, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -94,15 +94,34 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
     }
   }, [isAuthenticated, onClose, navigate]);
 
-  // Prevent body scroll when modal is open
+  // Prevent body scroll when modal is open and scroll to top
   useEffect(() => {
     if (isOpen) {
+      // Save current scroll position
+      const scrollY = window.scrollY;
       document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      
+      // Scroll to top smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+      // Restore scroll position
+      const scrollY = document.body.style.top;
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
     }
     return () => {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
     };
   }, [isOpen]);
 
@@ -188,16 +207,26 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto"
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" style={{ zIndex: 99998 }} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-black/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div 
+        className="relative w-full max-w-md bg-black/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 my-auto"
+        style={{ zIndex: 99999, maxHeight: '90vh', overflowY: 'auto' }}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -304,6 +333,17 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
                   />
                   <span className="text-sm text-gray-300">Remember me</span>
                 </label>
+                <Link
+                  to="/auth/forgot-password"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onClose();
+                    setTimeout(() => navigate('/auth/forgot-password'), 100);
+                  }}
+                  className="text-sm text-indonesian-gold hover:text-white transition-colors"
+                >
+                  Forgot password?
+                </Link>
               </div>
 
               <button

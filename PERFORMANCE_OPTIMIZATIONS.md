@@ -153,3 +153,4 @@ function MyComponent() {
 3. Implement remaining optimizations berdasarkan priority
 4. Consider image CDN untuk better image delivery
 
+
