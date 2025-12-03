@@ -14,9 +14,9 @@ import { OrnamentFrame } from "@/components/landing/OrnamentFrame";
 const blogPosts = [
   {
     id: 1,
-    title: "Building an AI Platform with Indonesian Cultural Integration",
+    title: "Building Orenax with Indonesian Cultural Integration",
     excerpt: "Learn how we integrated Indonesian cultural elements into our AI platform, creating a unique user experience that celebrates local heritage.",
-    date: "2024-01-15",
+    date: "3 Desember 2025",
     author: "AI Team",
     category: "Development"
   },
@@ -24,7 +24,7 @@ const blogPosts = [
     id: 2,
     title: "The Future of Voice Recognition in Indonesia",
     excerpt: "Exploring the challenges and opportunities of implementing voice recognition for Indonesian language, including regional dialects and accents.",
-    date: "2024-01-10",
+    date: "3 Desember 2025",
     author: "AI Team",
     category: "Technology"
   },
@@ -32,7 +32,7 @@ const blogPosts = [
     id: 3,
     title: "Deep Learning: From Theory to Practice",
     excerpt: "A deep dive into how we implemented neural networks for real-time processing, including performance optimizations and best practices.",
-    date: "2024-01-05",
+    date: "3 Desember 2025",
     author: "AI Team",
     category: "Technical"
   },
@@ -40,7 +40,7 @@ const blogPosts = [
     id: 4,
     title: "Computer Vision Applications in Everyday Life",
     excerpt: "Discover how computer vision technology can be applied to solve real-world problems, from healthcare to education and beyond.",
-    date: "2024-01-01",
+    date: "3 Desember 2025",
     author: "AI Team",
     category: "Applications"
   }

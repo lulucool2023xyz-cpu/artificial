@@ -37,16 +37,16 @@ const Index = memo(function Index() {
         <section id="hero" aria-label="Hero section">
           <HeroSection onGetStartedClick={() => handleGetStarted("signup")} />
         </section>
-        <section id="features" aria-label="Features section">
+        <section id="intelligent-capabilities" aria-label="Intelligent Capabilities section">
           <FeaturesSection />
         </section>
-        <section id="demo" aria-label="Demo preview section">
+        <section id="set-in-action" aria-label="Set in Action section">
           <DemoPreviewSection />
         </section>
-        <section id="gallery" aria-label="Gallery showcase section">
+        <section id="visual-showcase" aria-label="Visual Showcase section">
           <GalleryShowcaseSection />
         </section>
-        <section id="cta" aria-label="Call to action section">
+        <section id="ready-to-explore" aria-label="Ready to Explore section">
           <CTASection onGetStartedClick={() => handleGetStarted("signup")} />
         </section>
         <Footer />

@@ -39,7 +39,7 @@ export function HeroSection({ onGetStartedClick }: HeroSectionProps) {
   };
 
   const handleLearnMore = () => {
-    scrollToSection('features');
+    scrollToSection('intelligent-capabilities');
   };
 
   return (
@@ -85,13 +85,13 @@ export function HeroSection({ onGetStartedClick }: HeroSectionProps) {
         <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold font-heading tracking-tight mb-4 sm:mb-6">
           <span className="text-glow">Experience the Future</span>
           <br />
-          <span className="text-white opacity-90">of AI Interaction</span>
+          <span className="text-foreground opacity-90">of AI Interaction</span>
         </h1>
         </ScrollReveal>
 
         {/* Subheadline */}
         <ScrollReveal delay={0.3} duration={0.7} distance={25}>
-        <p className="text-lg sm:text-xl md:text-2xl text-gray-300 font-light mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed">
+        <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground font-light mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed">
           Voice. Vision. Intelligence. All in one.
         </p>
         </ScrollReveal>
@@ -101,7 +101,7 @@ export function HeroSection({ onGetStartedClick }: HeroSectionProps) {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <button 
               onClick={onGetStartedClick || handleTryNow}
-              className="px-8 py-3 sm:px-10 sm:py-4 bg-white text-black font-semibold font-heading text-base sm:text-lg rounded-lg hover-glow button-batik-hover focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black cursor-pointer"
+              className="px-8 py-3 sm:px-10 sm:py-4 bg-primary text-primary-foreground font-semibold font-heading text-base sm:text-lg rounded-lg hover-glow button-batik-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background cursor-pointer"
               style={{
                 transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                 transform: 'scale(1)',
@@ -130,7 +130,7 @@ export function HeroSection({ onGetStartedClick }: HeroSectionProps) {
           </button>
             <button 
               onClick={handleLearnMore}
-              className="px-8 py-3 sm:px-10 sm:py-4 border-2 border-indonesian-gold/60 text-white font-semibold font-heading text-base sm:text-lg rounded-lg hover-glow button-batik-hover focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
+              className="px-8 py-3 sm:px-10 sm:py-4 border-2 border-indonesian-gold/60 text-foreground font-semibold font-heading text-base sm:text-lg rounded-lg hover-glow button-batik-hover focus:outline-none focus:ring-2 focus:ring-indonesian-gold focus:ring-offset-2 focus:ring-offset-background"
               style={{
                 transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                 transform: 'scale(1)',
@@ -148,7 +148,7 @@ export function HeroSection({ onGetStartedClick }: HeroSectionProps) {
               onMouseUp={(e) => {
                 e.currentTarget.style.transform = 'scale(1.03)';
               }}
-              aria-label="Learn more about AI Platform features"
+              aria-label="Learn more about Orenax features"
             >
             Learn More
           </button>
@@ -158,11 +158,11 @@ export function HeroSection({ onGetStartedClick }: HeroSectionProps) {
         {/* Scroll indicator */}
         <ScrollReveal delay={0.5} duration={0.7} distance={20}>
           <button
-            onClick={() => scrollToSection('features')}
-            className="mt-12 sm:mt-16 animate-bounce focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black rounded"
+            onClick={() => scrollToSection('intelligent-capabilities')}
+            className="mt-12 sm:mt-16 animate-bounce focus:outline-none focus:ring-2 focus:ring-indonesian-gold focus:ring-offset-2 focus:ring-offset-background rounded"
             aria-label="Scroll to features section"
           >
-            <svg className="w-6 h-6 mx-auto text-white opacity-50" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <svg className="w-6 h-6 mx-auto text-foreground opacity-50" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
           </svg>
           </button>

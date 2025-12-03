@@ -39,6 +39,10 @@ const ProductPlayground = lazy(() => import("./pages/product/Playground"));
 // Resources pages
 const ResourcesDocumentation = lazy(() => import("./pages/resources/Documentation"));
 const ResourcesBlog = lazy(() => import("./pages/resources/Blog"));
+const ResourcesStatus = lazy(() => import("./pages/resources/Status"));
+
+// Research page
+const Research = lazy(() => import("./pages/Research"));
 
 // Company pages
 const CompanyAbout = lazy(() => import("./pages/company/About"));
@@ -180,6 +184,10 @@ const App = () => (
                 {/* Resources Routes - Public */}
                 <Route path="/resources/documentation" element={<ResourcesDocumentation />} />
                 <Route path="/resources/blog" element={<ResourcesBlog />} />
+                <Route path="/resources/status" element={<ResourcesStatus />} />
+                
+                {/* Research Route - Public */}
+                <Route path="/research" element={<Research />} />
                 
                 {/* Company Routes - Public */}
                 <Route path="/company/about" element={<CompanyAbout />} />

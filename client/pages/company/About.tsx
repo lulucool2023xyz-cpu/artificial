@@ -53,12 +53,12 @@ const About = memo(function About() {
                   <OrnamentFrame variant="jawa" className="border rounded-xl p-6 sm:p-8 backdrop-blur-sm">
                     <div className="flex items-center gap-3 mb-4">
                       <Target className="w-8 h-8 text-indonesian-gold" />
-                      <h2 className="text-2xl font-bold text-foreground">Visi</h2>
+                      <h2 className="text-2xl font-bold text-foreground">Vision</h2>
                     </div>
                     <p className="text-muted-foreground leading-relaxed">
-                      Menjadi platform AI terdepan yang menghubungkan teknologi modern dengan 
-                      kearifan lokal Indonesia, menciptakan solusi yang tidak hanya cerdas tetapi 
-                      juga relevan dengan konteks budaya dan kebutuhan masyarakat Indonesia.
+                      To become a leading AI platform that seamlessly connects modern technology with 
+                      Indonesian cultural wisdom, creating intelligent solutions that are not only 
+                      powerful but also deeply relevant to the cultural context and needs of Indonesian society.
                     </p>
                   </OrnamentFrame>
                 </ScrollReveal>
@@ -67,24 +67,24 @@ const About = memo(function About() {
                   <OrnamentFrame variant="jawa" className="border rounded-xl p-6 sm:p-8 backdrop-blur-sm">
                     <div className="flex items-center gap-3 mb-4">
                       <Heart className="w-8 h-8 text-indonesian-gold" />
-                      <h2 className="text-2xl font-bold text-foreground">Misi</h2>
+                      <h2 className="text-2xl font-bold text-foreground">Mission</h2>
                     </div>
                     <ul className="space-y-3">
                       <li className="flex items-start gap-2 text-muted-foreground">
                         <span className="text-indonesian-gold mt-1">•</span>
-                        <span>Mengembangkan teknologi AI yang mudah diakses dan bermanfaat</span>
+                        <span>Develop accessible and beneficial AI technology for everyone</span>
                       </li>
                       <li className="flex items-start gap-2 text-muted-foreground">
                         <span className="text-indonesian-gold mt-1">•</span>
-                        <span>Mengintegrasikan nilai-nilai budaya Indonesia dalam teknologi</span>
+                        <span>Integrate Indonesian cultural values into cutting-edge technology</span>
                       </li>
                       <li className="flex items-start gap-2 text-muted-foreground">
                         <span className="text-indonesian-gold mt-1">•</span>
-                        <span>Menciptakan pengalaman pengguna yang inklusif dan bermakna</span>
+                        <span>Create inclusive and meaningful user experiences</span>
                       </li>
                       <li className="flex items-start gap-2 text-muted-foreground">
                         <span className="text-indonesian-gold mt-1">•</span>
-                        <span>Mendorong inovasi dan kolaborasi dalam ekosistem AI Indonesia</span>
+                        <span>Foster innovation and collaboration within Indonesia's AI ecosystem</span>
                       </li>
                     </ul>
                   </OrnamentFrame>
@@ -158,17 +158,135 @@ const About = memo(function About() {
                 </OrnamentFrame>
               </ScrollReveal>
 
+              <ScrollReveal delay={0.8} duration={0.7} distance={30}>
+                <div className="mb-16">
+                  <h2 className="text-3xl font-bold text-center mb-8 sm:mb-12 text-foreground">
+                    <span className="text-glow">Our Team</span>
+                  </h2>
+                  <div className="space-y-8">
+                    <OrnamentFrame variant="jawa" className="border rounded-xl p-6 sm:p-8 backdrop-blur-sm">
+                      <div className="space-y-4">
+                        <div className="text-center mb-6">
+                          <h3 className="text-xl font-bold text-foreground mb-2">Created By</h3>
+                          <p className="text-muted-foreground">
+                            A passionate team of students from SMK Marhas Margahayu, dedicated to bringing innovative AI solutions to life.
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="text-center p-4 border border-border rounded-lg hover:bg-primary/5 transition-colors">
+                            <Users className="w-12 h-12 mx-auto mb-4 text-indonesian-gold" />
+                            <h4 className="font-bold text-foreground mb-2">Arief Fajar</h4>
+                            <p className="text-sm text-muted-foreground mb-3">Application Development</p>
+                            <div className="space-y-1 text-xs text-muted-foreground">
+                              <p>Front End Developer</p>
+                              <p>Back End Developer</p>
+                              <p>AI/ML Engineer</p>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-border">
+                              <p className="text-xs text-muted-foreground">Class 11 PPLG 3</p>
+                              <p className="text-xs text-muted-foreground">Software & Game Development</p>
+                            </div>
+                          </div>
+
+                          <div className="text-center p-4 border border-border rounded-lg hover:bg-primary/5 transition-colors">
+                            <Users className="w-12 h-12 mx-auto mb-4 text-indonesian-gold" />
+                            <h4 className="font-bold text-foreground mb-2">Alif Ikhwan</h4>
+                            <p className="text-sm text-muted-foreground mb-3">Website Development</p>
+                            <div className="space-y-1 text-xs text-muted-foreground">
+                              <p>UI/UX Designer</p>
+                              <p>Plan Manager</p>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-border">
+                              <p className="text-xs text-muted-foreground">Class 11 PPLG 2</p>
+                              <p className="text-xs text-muted-foreground">Software & Game Development</p>
+                            </div>
+                          </div>
+
+                          <div className="text-center p-4 border border-border rounded-lg hover:bg-primary/5 transition-colors">
+                            <Users className="w-12 h-12 mx-auto mb-4 text-indonesian-gold" />
+                            <h4 className="font-bold text-foreground mb-2">Reza Arrofi</h4>
+                            <p className="text-sm text-muted-foreground mb-3">Digital Marketing</p>
+                            <div className="space-y-1 text-xs text-muted-foreground">
+                              <p>Concept Design Manager</p>
+                              <p>Creative Leader</p>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-border">
+                              <p className="text-xs text-muted-foreground">Class 10 PPLG 3</p>
+                              <p className="text-xs text-muted-foreground">Software & Game Development</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </OrnamentFrame>
+                  </div>
+                </div>
+              </ScrollReveal>
+
               <ScrollReveal delay={0.9} duration={0.7} distance={30}>
+                <OrnamentFrame variant="jawa" className="border rounded-xl p-6 sm:p-8 backdrop-blur-sm mb-16">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Globe className="w-8 h-8 text-indonesian-gold" />
+                    <h2 className="text-2xl font-bold text-foreground">Kisah Kami</h2>
+                  </div>
+                  <div className="space-y-4 text-muted-foreground">
+                    <p className="leading-relaxed">
+                      Orenax lahir dari visi bersama tiga siswa yang ambisius di SMK Marhas Margahayu. 
+                      Apa yang dimulai sebagai proyek kelas dalam Pengembangan Perangkat Lunak dan Gim (PPLG) 
+                      telah berubah menjadi platform AI komprehensif yang menghubungkan teknologi canggih dengan 
+                      nilai-nilai budaya Indonesia secara mulus.
+                    </p>
+                    <p className="leading-relaxed">
+                      <strong className="text-foreground">Arief Fajar</strong>, siswa Kelas 11 PPLG 3, berperan sebagai 
+                      lead developer dan AI/ML engineer kami. Dengan keahlian yang mencakup pengembangan full-stack, 
+                      rekayasa front-end dan back-end, Arief telah menciptakan fondasi teknis yang kuat yang menggerakkan 
+                      Orenax. Perhatiannya yang teliti terhadap detail dan semangatnya dalam menciptakan aplikasi yang 
+                      luar biasa terlihat jelas di setiap komponen, memastikan platform kami memberikan kinerja dan 
+                      keandalan yang luar biasa.
+                    </p>
+                    <p className="leading-relaxed">
+                      <strong className="text-foreground">Alif Ikhwan</strong>, juga siswa Kelas 11 PPLG 2, mengkhususkan 
+                      diri dalam pengembangan website, desain UI/UX, dan perencanaan proyek. Sebagai design and planning 
+                      manager kami, Alif mengubah konsep teknis yang kompleks menjadi pengalaman pengguna yang intuitif 
+                      dan menarik secara visual. Kemampuannya untuk menyeimbangkan desain estetika dengan persyaratan 
+                      fungsional memastikan bahwa Orenax tidak hanya powerful tetapi juga mudah diakses dan menarik bagi 
+                      pengguna dari berbagai latar belakang.
+                    </p>
+                    <p className="leading-relaxed">
+                      <strong className="text-foreground">Reza Arrofi</strong>, siswa Kelas 10 PPLG 3, membawa kreativitas 
+                      dan visi strategis ke tim kami sebagai spesialis digital marketing dan concept design manager. Sebagai 
+                      creative leader kami, Reza menggerakkan identitas merek platform melalui strategi pemasaran yang inovatif 
+                      dan konsep desain yang kohesif. Perspektif segarnya dan kepemimpinan kreatifnya membantu Orenax terhubung 
+                      dengan audiens sambil mempertahankan kehadiran merek yang kuat dan terpadu.
+                    </p>
+                    <p className="leading-relaxed">
+                      Bersama-sama, ketiga inovator muda dari SMK Marhas Margahayu ini telah menciptakan sesuatu yang luar biasa—sebuah 
+                      platform yang menunjukkan bagaimana semangat, keterampilan teknis, dan visi kreatif dapat mengatasi hambatan 
+                      tradisional. Orenax berdiri sebagai bukti dari apa yang dapat dicapai oleh siswa yang berdedikasi ketika mereka 
+                      menggabungkan keahlian mereka, merangkul warisan budaya, dan bekerja sama menuju tujuan bersama.
+                    </p>
+                    <div className="mt-6 pt-6 border-t border-border">
+                      <p className="text-sm font-semibold text-foreground mb-2">SMK Marhas Margahayu</p>
+                      <p className="text-sm text-muted-foreground">
+                        Memberdayakan generasi berikutnya dari pengembang dan inovator Indonesia melalui pendidikan berkualitas 
+                        dan pengalaman langsung dalam Pengembangan Perangkat Lunak dan Gim.
+                      </p>
+                    </div>
+                  </div>
+                </OrnamentFrame>
+              </ScrollReveal>
+
+              <ScrollReveal delay={1.0} duration={0.7} distance={30}>
                 <div className="text-center">
                   <h2 className="text-3xl font-bold mb-8 sm:mb-12 text-foreground">
-                    <span className="text-glow">Hubungi Kami</span>
+                    <span className="text-glow">Contact Us</span>
                   </h2>
                   <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
                     <a 
                       href="https://github.com" 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="flex items-center gap-2 px-6 py-3 border border-white/20 rounded-lg hover:bg-white/10 transition-all"
+                      className="flex items-center gap-2 px-6 py-3 border border-border rounded-lg hover:bg-primary/10 transition-all"
                     >
                       <Github className="w-5 h-5" /> GitHub
                     </a>
@@ -176,7 +294,7 @@ const About = memo(function About() {
                       href="https://twitter.com" 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="flex items-center gap-2 px-6 py-3 border border-white/20 rounded-lg hover:bg-white/10 transition-all"
+                      className="flex items-center gap-2 px-6 py-3 border border-border rounded-lg hover:bg-primary/10 transition-all"
                     >
                       <Twitter className="w-5 h-5" /> Twitter
                     </a>
@@ -184,13 +302,13 @@ const About = memo(function About() {
                       href="https://linkedin.com" 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="flex items-center gap-2 px-6 py-3 border border-white/20 rounded-lg hover:bg-white/10 transition-all"
+                      className="flex items-center gap-2 px-6 py-3 border border-border rounded-lg hover:bg-primary/10 transition-all"
                     >
                       <Linkedin className="w-5 h-5" /> LinkedIn
                     </a>
                     <a 
-                      href="mailto:contact@aiplatform.com" 
-                      className="flex items-center gap-2 px-6 py-3 border border-white/20 rounded-lg hover:bg-white/10 transition-all"
+                      href="mailto:contact@orenax.com" 
+                      className="flex items-center gap-2 px-6 py-3 border border-border rounded-lg hover:bg-primary/10 transition-all"
                     >
                       <Mail className="w-5 h-5" /> Email
                     </a>

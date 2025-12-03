@@ -14,12 +14,20 @@ interface MenuItem {
 }
 
 const menuStructure: MenuItem[] = [
-  { label: 'Home', path: '/' },
+  {
+    label: 'Home',
+    path: '/',
+    children: [
+      { label: 'Intelligent Capabilities', path: '/#intelligent-capabilities' },
+      { label: 'Set in Action', path: '/#set-in-action' },
+      { label: 'Visual Showcase', path: '/#visual-showcase' },
+      { label: 'Ready to Explore', path: '/#ready-to-explore' },
+    ],
+  },
   {
     label: 'Product',
     path: '/product',
     children: [
-      { label: 'Features', path: '/product/features' },
       { label: 'Demo', path: '/product/demo' },
       { label: 'Use Cases', path: '/product/use-cases' },
       { label: 'Playground', path: '/product/playground' },
@@ -30,7 +38,9 @@ const menuStructure: MenuItem[] = [
     path: '/resources',
     children: [
       { label: 'Documentation', path: '/resources/documentation' },
+      { label: 'Status & Changelog', path: '/resources/status' },
       { label: 'Blog', path: '/resources/blog' },
+      { label: 'Support', path: '/resources/support' },
     ],
   },
   {
@@ -133,7 +143,9 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
       className={cn(
         'fixed top-0 left-0 right-0 z-[1000] transition-all duration-300',
         isScrolled
-          ? 'bg-black/80 backdrop-blur-md border-b border-white/10'
+          ? theme === 'dark'
+            ? 'bg-black/80 backdrop-blur-md border-b border-white/10'
+            : 'bg-white/80 backdrop-blur-md border-b border-gray-200/50'
           : 'bg-transparent'
       )}
       role="navigation"
@@ -145,14 +157,21 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
           {/* Logo */}
           <Link
             to="/"
-            className="text-xl sm:text-2xl font-bold font-heading text-white hover:text-glow transition-all"
+            className="flex items-center gap-2 text-xl sm:text-2xl font-bold font-heading hover:text-glow transition-all"
             aria-label="Go to homepage"
           >
-            AI Platform
+            <img 
+              src="/logo/erasebg-transformed (1).png" 
+              alt="Orenax Logo" 
+              className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
+            />
+            <span className={cn(
+              theme === 'dark' ? "text-white" : "text-black"
+            )}>Orenax</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-6" style={{ pointerEvents: 'auto', zIndex: 1001 }}>
+          <div className="hidden lg:flex items-center gap-6 flex-1 justify-center ml-8" style={{ pointerEvents: 'auto', zIndex: 1001 }}>
             {menuStructure.map((item) => {
               const hasChildren = item.children && item.children.length > 0;
               const itemIsActive = isActive(item.path);
@@ -174,8 +193,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                       className={cn(
                         "flex items-center gap-1 px-3 py-2 font-medium rounded-md transition-all duration-300 cursor-pointer",
                         itemIsActive
-                          ? "text-white bg-white/10"
-                          : "text-gray-300 hover:text-white hover:bg-white/5"
+                          ? theme === 'dark' 
+                            ? "text-white bg-white/10"
+                            : "text-black bg-gray-100"
+                          : theme === 'dark'
+                            ? "text-gray-300 hover:text-white hover:bg-white/5"
+                            : "text-gray-700 hover:text-black hover:bg-gray-100"
                       )}
                       aria-expanded={openDropdown === item.path}
                       aria-haspopup="true"
@@ -193,7 +216,10 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                     {/* Dropdown Menu */}
                     <div
                       className={cn(
-                        "absolute top-full left-0 mt-2 min-w-[200px] bg-black/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl overflow-hidden transition-all duration-300 z-[1003]",
+                        "absolute top-full left-0 mt-2 min-w-[200px] backdrop-blur-md border rounded-lg shadow-xl overflow-hidden transition-all duration-300 z-[1003]",
+                        theme === 'dark'
+                          ? "bg-black/95 border-white/10"
+                          : "bg-white/95 border-gray-200/50",
                         openDropdown === item.path
                           ? "opacity-100 translate-y-0 pointer-events-auto"
                           : "opacity-0 -translate-y-2 pointer-events-none"
@@ -203,6 +229,8 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                       <div className="py-2">
                         {item.children?.map((child) => {
                           const childIsActive = location.pathname === child.path;
+                          const isHashLink = child.path.startsWith('/#');
+                          
                           return (
                             <Link
                               key={child.path}
@@ -210,10 +238,25 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                               className={cn(
                                 "block px-4 py-2 text-sm transition-colors duration-300 cursor-pointer",
                                 childIsActive
-                                  ? "text-white bg-indonesian-gold/20 border-l-2 border-indonesian-gold"
-                                  : "text-gray-300 hover:text-white hover:bg-white/5"
+                                  ? theme === 'dark'
+                                    ? "text-white bg-indonesian-gold/20 border-l-2 border-indonesian-gold"
+                                    : "text-black bg-indonesian-gold/30 border-l-2 border-indonesian-gold"
+                                  : theme === 'dark'
+                                    ? "text-gray-300 hover:text-white hover:bg-white/5"
+                                    : "text-gray-700 hover:text-black hover:bg-gray-100"
                               )}
-                              onClick={() => setOpenDropdown(null)}
+                              onClick={(e) => {
+                                setOpenDropdown(null);
+                                if (isHashLink) {
+                                  e.preventDefault();
+                                  const hash = child.path.substring(1);
+                                  if (location.pathname !== '/') {
+                                    window.location.href = child.path;
+                                  } else {
+                                    smoothScrollTo(hash.replace('#', ''), 80);
+                                  }
+                                }
+                              }}
                               style={{ pointerEvents: 'auto' }}
                             >
                               {child.label}
@@ -233,8 +276,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                   className={cn(
                     "px-3 py-2 font-medium rounded-md transition-all duration-300 cursor-pointer",
                     itemIsActive
-                      ? "text-white bg-white/10"
-                      : "text-gray-300 hover:text-white hover:bg-white/5"
+                      ? theme === 'dark'
+                        ? "text-white bg-white/10"
+                        : "text-black bg-gray-100"
+                      : theme === 'dark'
+                        ? "text-gray-300 hover:text-white hover:bg-white/5"
+                        : "text-gray-700 hover:text-black hover:bg-gray-100"
                   )}
                   aria-label={`Navigate to ${item.label} page`}
                   style={{ pointerEvents: 'auto' }}
@@ -243,27 +290,21 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                 </Link>
               );
             })}
+          </div>
 
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="flex items-center justify-center w-10 h-10 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-300 cursor-pointer"
-              aria-label="Toggle theme"
-              style={{ pointerEvents: 'auto' }}
-            >
-              {theme === "dark" ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-            </button>
-
+          {/* Right Side Actions */}
+          <div className="hidden lg:flex items-center gap-3 ml-auto" style={{ pointerEvents: 'auto', zIndex: 1001 }}>
             {/* User Menu / Get Started Button */}
             {isAuthenticated ? (
               <div className="relative" ref={userMenuRef} style={{ pointerEvents: 'auto', zIndex: 1002 }}>
                 <button
                   onClick={() => setOpenUserMenu(!openUserMenu)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-300 cursor-pointer"
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all duration-300 cursor-pointer",
+                    theme === 'dark'
+                      ? "text-gray-300 hover:text-white hover:bg-white/5"
+                      : "text-gray-700 hover:text-black hover:bg-gray-100"
+                  )}
                   aria-label="User menu"
                   style={{ pointerEvents: 'auto' }}
                 >
@@ -280,18 +321,39 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                 {/* User Dropdown Menu */}
                 {openUserMenu && (
                   <div
-                    className="absolute top-full right-0 mt-2 min-w-[200px] bg-black/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl overflow-hidden z-[1003]"
+                    className={cn(
+                      "absolute top-full right-0 mt-2 min-w-[200px] backdrop-blur-md border rounded-lg shadow-xl overflow-hidden z-[1003]",
+                      theme === 'dark'
+                        ? "bg-black/95 border-white/10"
+                        : "bg-white/95 border-gray-200/50"
+                    )}
                     style={{ pointerEvents: 'auto' }}
                   >
                     <div className="py-2">
-                      <div className="px-4 py-2 text-sm text-gray-300 border-b border-white/10">
-                        <div className="font-medium text-white">{user?.name}</div>
-                        <div className="text-xs text-gray-400">{user?.email}</div>
+                      <div className={cn(
+                        "px-4 py-2 text-sm border-b",
+                        theme === 'dark'
+                          ? "text-gray-300 border-white/10"
+                          : "text-gray-700 border-gray-200/50"
+                      )}>
+                        <div className={cn(
+                          "font-medium",
+                          theme === 'dark' ? "text-white" : "text-black"
+                        )}>{user?.name}</div>
+                        <div className={cn(
+                          "text-xs",
+                          theme === 'dark' ? "text-gray-400" : "text-gray-500"
+                        )}>{user?.email}</div>
                       </div>
                       <Link
                         to="/get-started"
                         onClick={() => setOpenUserMenu(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-2 text-sm transition-colors cursor-pointer",
+                          theme === 'dark'
+                            ? "text-gray-300 hover:text-white hover:bg-white/5"
+                            : "text-gray-700 hover:text-black hover:bg-gray-100"
+                        )}
                         style={{ pointerEvents: 'auto' }}
                       >
                         <LayoutDashboard className="w-4 h-4" />
@@ -300,7 +362,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                       <Link
                         to="/company/about"
                         onClick={() => setOpenUserMenu(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-2 text-sm transition-colors cursor-pointer",
+                          theme === 'dark'
+                            ? "text-gray-300 hover:text-white hover:bg-white/5"
+                            : "text-gray-700 hover:text-black hover:bg-gray-100"
+                        )}
                         style={{ pointerEvents: 'auto' }}
                       >
                         <Settings className="w-4 h-4" />
@@ -312,7 +379,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                           navigate("/");
                           setOpenUserMenu(false);
                         }}
-                        className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                        className={cn(
+                          "flex items-center gap-2 w-full text-left px-4 py-2 text-sm transition-colors cursor-pointer",
+                          theme === 'dark'
+                            ? "text-gray-300 hover:text-white hover:bg-white/5"
+                            : "text-gray-700 hover:text-black hover:bg-gray-100"
+                        )}
                         style={{ pointerEvents: 'auto' }}
                       >
                         <LogOut className="w-4 h-4" />
@@ -325,7 +397,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
             ) : (
               <button
                 onClick={handleGetStarted}
-                className="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                className={cn(
+                  "px-6 py-2 font-semibold rounded-lg transition-all duration-300 cursor-pointer",
+                  theme === 'dark'
+                    ? "bg-white text-black hover:bg-gray-100"
+                    : "bg-black text-white hover:bg-gray-900"
+                )}
                 style={{
                   transform: 'scale(1)',
                   willChange: 'transform, background-color',
@@ -342,12 +419,34 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                 Get Started
               </button>
             )}
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className={cn(
+                "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-300 cursor-pointer",
+                theme === 'dark'
+                  ? "text-gray-300 hover:text-white hover:bg-white/5"
+                  : "text-gray-700 hover:text-black hover:bg-gray-100"
+              )}
+              aria-label="Toggle theme"
+              style={{ pointerEvents: 'auto' }}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </button>
           </div>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-white"
+            className={cn(
+              "lg:hidden p-2 rounded-lg transition-all duration-300",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}
             aria-label="Toggle mobile menu"
             aria-expanded={isMobileMenuOpen}
           >
@@ -368,7 +467,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
           style={{ pointerEvents: isMobileMenuOpen ? 'auto' : 'none' }}
         >
           <div
-            className="pb-4 border-t border-white/10 bg-black/95 backdrop-blur-md"
+            className={cn(
+              "pb-4 border-t backdrop-blur-md",
+              theme === 'dark'
+                ? "border-white/10 bg-black/95"
+                : "border-gray-200/50 bg-white/95"
+            )}
             role="menu"
             aria-label="Mobile navigation menu"
             style={{ pointerEvents: 'auto' }}
@@ -390,8 +494,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                       className={cn(
                         "w-full flex items-center justify-between px-4 py-3 text-left transition-all duration-300 cursor-pointer",
                         itemIsActive
-                          ? "text-white bg-white/5"
-                          : "text-gray-300 hover:text-white hover:bg-white/5"
+                          ? theme === 'dark'
+                            ? "text-white bg-white/5"
+                            : "text-black bg-gray-100"
+                          : theme === 'dark'
+                            ? "text-gray-300 hover:text-white hover:bg-white/5"
+                            : "text-gray-700 hover:text-black hover:bg-gray-100"
                       )}
                       aria-expanded={isMobileDropdownOpen}
                       style={{ pointerEvents: 'auto' }}
@@ -416,15 +524,28 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                           <Link
                             key={child.path}
                             to={child.path}
-                            onClick={() => {
+                            onClick={(e) => {
                               setIsMobileMenuOpen(false);
                               setOpenMobileDropdown(null);
+                              if (child.path.startsWith('/#')) {
+                                e.preventDefault();
+                                const hash = child.path.substring(1);
+                                if (location.pathname !== '/') {
+                                  window.location.href = child.path;
+                                } else {
+                                  smoothScrollTo(hash.replace('#', ''), 80);
+                                }
+                              }
                             }}
                             className={cn(
                               "block pl-8 pr-4 py-2 text-sm transition-all duration-300",
                               childIsActive
-                                ? "text-white bg-indonesian-gold/20 border-l-2 border-indonesian-gold"
-                                : "text-gray-400 hover:text-white hover:bg-white/5"
+                                ? theme === 'dark'
+                                  ? "text-white bg-indonesian-gold/20 border-l-2 border-indonesian-gold"
+                                  : "text-black bg-indonesian-gold/30 border-l-2 border-indonesian-gold"
+                                : theme === 'dark'
+                                  ? "text-gray-400 hover:text-white hover:bg-white/5"
+                                  : "text-gray-600 hover:text-black hover:bg-gray-100"
                             )}
                             role="menuitem"
                           >
@@ -445,8 +566,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                   className={cn(
                     "block w-full text-left px-4 py-3 transition-all duration-300 cursor-pointer",
                     itemIsActive
-                      ? "text-white bg-white/5"
-                      : "text-gray-300 hover:text-white hover:bg-white/5"
+                      ? theme === 'dark'
+                        ? "text-white bg-white/5"
+                        : "text-black bg-gray-100"
+                      : theme === 'dark'
+                        ? "text-gray-300 hover:text-white hover:bg-white/5"
+                        : "text-gray-700 hover:text-black hover:bg-gray-100"
                   )}
                   role="menuitem"
                   aria-label={`Navigate to ${item.label} page`}
@@ -458,13 +583,21 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
             })}
 
             {/* Theme Toggle - Mobile */}
-            <div className="mt-2 border-t border-white/10 pt-2">
+            <div className={cn(
+              "mt-2 border-t pt-2",
+              theme === 'dark' ? "border-white/10" : "border-gray-200/50"
+            )}>
               <button
                 onClick={() => {
                   toggleTheme();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center gap-2 w-full text-left px-4 py-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-300 cursor-pointer"
+                className={cn(
+                  "flex items-center gap-2 w-full text-left px-4 py-3 rounded-lg transition-all duration-300 cursor-pointer",
+                  theme === 'dark'
+                    ? "text-gray-300 hover:text-white hover:bg-white/5"
+                    : "text-gray-700 hover:text-black hover:bg-gray-100"
+                )}
                 role="menuitem"
                 aria-label="Toggle theme"
                 style={{ pointerEvents: 'auto' }}
@@ -486,7 +619,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
             {/* User Menu / Get Started Button */}
             {isAuthenticated ? (
               <div className="mt-2 space-y-2">
-                <div className="px-4 py-3 text-sm text-gray-300 border-t border-white/10">
+                <div className={cn(
+                  "px-4 py-3 text-sm border-t",
+                  theme === 'dark'
+                    ? "text-gray-300 border-white/10"
+                    : "text-gray-700 border-gray-200/50"
+                )}>
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4" />
                     <span>{user?.name || user?.email}</span>
@@ -495,7 +633,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                 <Link
                   to="/get-started"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2 w-full text-left px-4 py-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-300 cursor-pointer"
+                  className={cn(
+                    "flex items-center gap-2 w-full text-left px-4 py-3 rounded-lg transition-all duration-300 cursor-pointer",
+                    theme === 'dark'
+                      ? "text-gray-300 hover:text-white hover:bg-white/5"
+                      : "text-gray-700 hover:text-black hover:bg-gray-100"
+                  )}
                   role="menuitem"
                   style={{ pointerEvents: 'auto' }}
                 >
@@ -508,7 +651,12 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                     navigate("/");
                     setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center gap-2 w-full text-left px-4 py-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-300 cursor-pointer"
+                  className={cn(
+                    "flex items-center gap-2 w-full text-left px-4 py-3 rounded-lg transition-all duration-300 cursor-pointer",
+                    theme === 'dark'
+                      ? "text-gray-300 hover:text-white hover:bg-white/5"
+                      : "text-gray-700 hover:text-black hover:bg-gray-100"
+                  )}
                   role="menuitem"
                   aria-label="Logout"
                   style={{ pointerEvents: 'auto' }}
@@ -518,12 +666,17 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => {
-                  handleGetStarted();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-4 py-3 mt-2 bg-white text-black font-semibold rounded-lg hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                <button
+                  onClick={() => {
+                    handleGetStarted();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={cn(
+                    "block w-full text-left px-4 py-3 mt-2 font-semibold rounded-lg transition-all duration-300 cursor-pointer",
+                    theme === 'dark'
+                      ? "bg-white text-black hover:bg-gray-100"
+                      : "bg-black text-white hover:bg-gray-900"
+                  )}
                 style={{
                   transform: 'scale(1)',
                   willChange: 'transform, background-color',

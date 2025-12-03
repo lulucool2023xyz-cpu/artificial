@@ -101,8 +101,20 @@ export function ThreeDImageRing({
       }
       currentRotationY.current = latestRotation;
     });
+    
+    // Initialize background position on mount
+    if (ringRef.current) {
+      Array.from(ringRef.current.children).forEach((imgElement, i) => {
+        (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
+          i,
+          initialRotation,
+          currentScale
+        );
+      });
+    }
+    
     return () => unsubscribe();
-  }, [rotationY, images.length, imageDistance, currentScale, angle]);
+  }, [rotationY, images.length, imageDistance, currentScale, angle, initialRotation]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -119,7 +131,33 @@ export function ThreeDImageRing({
 
   useEffect(() => {
     setShowImages(true);
-  }, []);
+    // Ensure initial rotation is set immediately
+    rotationY.set(initialRotation);
+  }, [initialRotation, rotationY]);
+
+  // Update background positions when images are shown and scale is ready
+  useEffect(() => {
+    if (showImages && ringRef.current) {
+      const updatePositions = () => {
+        if (ringRef.current) {
+          Array.from(ringRef.current.children).forEach((imgElement, i) => {
+            (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
+              i,
+              rotationY.get(),
+              currentScale
+            );
+          });
+        }
+      };
+      
+      // Update immediately
+      updatePositions();
+      
+      // Also update after a short delay to ensure DOM is ready
+      const timeout = setTimeout(updatePositions, 50);
+      return () => clearTimeout(timeout);
+    }
+  }, [showImages, currentScale, images.length, imageDistance, angle, rotationY]);
 
   const handleDragStart = (event: React.MouseEvent | React.TouchEvent) => {
     if (!draggable) return;
@@ -208,7 +246,7 @@ export function ThreeDImageRing({
         style={{
           perspective: `${perspective}px`,
           width: `${width}px`,
-          height: `${width * 1.33}px`,
+          height: `${width * 1.2}px`,
           position: "absolute",
           left: "50%",
           top: "50%",
@@ -238,13 +276,13 @@ export function ThreeDImageRing({
                 style={{
                   transformStyle: "preserve-3d",
                   backgroundImage: `url(${imageUrl})`,
-                  backgroundSize: "cover",
+                  backgroundSize: "contain",
                   backgroundRepeat: "no-repeat",
                   backfaceVisibility: "hidden",
                   rotateY: index * -angle,
                   z: -imageDistance * currentScale,
                   transformOrigin: `50% 50% ${imageDistance * currentScale}px`,
-                  backgroundPosition: getBgPos(index, currentRotationY.current, currentScale),
+                  backgroundPosition: getBgPos(index, initialRotation, currentScale),
                 }}
                 initial="hidden"
                 animate="visible"

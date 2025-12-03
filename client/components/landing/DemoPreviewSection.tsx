@@ -123,7 +123,7 @@ export function DemoPreviewSection() {
 
   return (
     <section 
-      className="section-padding section-container bg-black relative overflow-hidden"
+      className="section-padding section-container bg-background relative overflow-hidden"
       aria-label="Demo preview section"
     >
       {/* Background elements */}
@@ -137,14 +137,14 @@ export function DemoPreviewSection() {
         <ScrollReveal delay={0.1} duration={0.7} distance={30}>
           <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading mb-4 sm:mb-6">
-              <span className="text-white">See It in Action</span>
+              <span className="text-foreground">See It in Action</span>
               <br />
               <span className="text-indonesian-gold/80 text-2xl sm:text-3xl md:text-4xl font-light">
                 Lihat Dalam Aksi
               </span>
           </h2>
             <div className="w-16 h-1 bg-gradient-to-r from-transparent via-indonesian-gold/60 to-transparent mx-auto opacity-60 mb-4"></div>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Saksikan demo interaktif bagaimana AI kami bekerja dan membantu Anda
           </p>
         </div>

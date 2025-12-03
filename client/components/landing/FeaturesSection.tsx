@@ -47,7 +47,7 @@ const features = [
 export function FeaturesSection() {
   return (
     <section 
-      className="section-padding section-container bg-black relative overflow-hidden"
+      className="section-padding section-container bg-background relative overflow-hidden"
       aria-label="Features section"
     >
       {/* Background elements */}
@@ -60,14 +60,14 @@ export function FeaturesSection() {
         <ScrollReveal delay={0.1} duration={0.7} distance={30}>
           <div className="text-center mb-16 sm:mb-20">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading mb-4 sm:mb-6">
-              <span className="text-white">Intelligent Capabilities</span>
+              <span className="text-foreground">Intelligent Capabilities</span>
               <br />
               <span className="text-indonesian-gold/70 text-2xl sm:text-3xl md:text-4xl font-light">
                 Kemampuan Cerdas
               </span>
           </h2>
             <div className="w-16 h-1 bg-gradient-to-r from-transparent via-indonesian-gold/60 to-transparent mx-auto opacity-60"></div>
-          <p className="text-gray-400 text-lg mt-6 max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg mt-6 max-w-2xl mx-auto">
             Five powerful AI features working together to create an unprecedented platform for human-machine interaction
           </p>
         </div>
@@ -81,7 +81,7 @@ export function FeaturesSection() {
           maxWidth="100%"
           preserveLayout={true}
         >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 items-stretch">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
@@ -151,7 +151,7 @@ export function FeaturesSection() {
                   </h3>
 
                   {/* Description */}
-                  <p className="text-sm sm:text-base text-gray-200 leading-relaxed group-hover:text-white flex-1" style={{
+                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed group-hover:text-foreground flex-1" style={{
                     transition: 'color 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                   }}>
                     {feature.description}
@@ -183,7 +183,7 @@ export function FeaturesSection() {
         {/* Bottom accent */}
         <ScrollReveal delay={0.8} duration={0.7} distance={20}>
         <div className="mt-16 sm:mt-20 text-center">
-          <div className="inline-block px-6 py-2 border border-white/20 rounded-full text-sm text-gray-300 opacity-70 hover-glow cursor-default">
+          <div className="inline-block px-6 py-2 border border-border rounded-full text-sm text-muted-foreground opacity-70 hover-glow cursor-default">
             All features working in perfect harmony
           </div>
         </div>
