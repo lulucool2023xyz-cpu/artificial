@@ -6,6 +6,54 @@ import { cn } from "@/lib/utils";
 import { animate } from "framer-motion";
 import { detectDeviceCapability } from "@/utils/deviceCapability";
 
+// Hook untuk responsive width dan height
+function useResponsiveDimensions(width: number, mobileBreakpoint: number, containerRef: React.RefObject<HTMLDivElement>) {
+  const [dimensions, setDimensions] = useState({ width, height: width * 1.2 });
+  
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (!containerRef.current) return;
+      
+      const isMobile = window.innerWidth < mobileBreakpoint;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const containerHeight = containerRect.height;
+      
+      if (isMobile) {
+        // For mobile, use container dimensions with padding
+        const availableWidth = Math.min(width, containerWidth - 20);
+        const availableHeight = Math.min(width * 1.2, containerHeight - 20);
+        setDimensions({
+          width: availableWidth,
+          height: availableHeight || availableWidth * 1.2
+        });
+      } else {
+        setDimensions({
+          width: width,
+          height: width * 1.2
+        });
+      }
+    };
+    
+    updateDimensions();
+    
+    // Use ResizeObserver for better container size tracking
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    window.addEventListener('resize', updateDimensions);
+    
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, [width, mobileBreakpoint, containerRef]);
+  
+  return dimensions;
+}
+
 export interface ThreeDImageRingProps {
   /** Array of image URLs to display in the ring */
   images: string[];
@@ -82,16 +130,32 @@ export function ThreeDImageRing({
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
 
   const deviceCapability = useMemo(() => detectDeviceCapability(), []);
+  const responsiveDimensions = useResponsiveDimensions(width, mobileBreakpoint, containerRef);
   
-  // Responsive width calculation
-  const responsiveWidth = useMemo(() => {
-    if (typeof window === 'undefined') return width;
-    const isMobile = window.innerWidth < (mobileBreakpoint || 768);
-    if (isMobile) {
-      return Math.min(width, window.innerWidth - 40); // Leave 20px padding on each side
+  // Calculate mobile-optimized dimensions first
+  const mobileWidth = useMemo(() => {
+    if (deviceCapability.isMobile && containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      return Math.min(width, containerRect.width - 20);
     }
-    return width;
-  }, [width, mobileBreakpoint]);
+    return responsiveDimensions.width;
+  }, [deviceCapability.isMobile, width, responsiveDimensions.width]);
+
+  const mobileHeight = useMemo(() => {
+    if (deviceCapability.isMobile) {
+      return Math.min(responsiveDimensions.height, mobileWidth * 1.2);
+    }
+    return responsiveDimensions.height;
+  }, [deviceCapability.isMobile, responsiveDimensions.height, mobileWidth]);
+
+  // Adjust perspective and imageDistance for mobile
+  const adjustedPerspective = useMemo(() => {
+    return deviceCapability.isMobile ? Math.min(perspective, 1000) : perspective;
+  }, [deviceCapability.isMobile, perspective]);
+
+  const adjustedImageDistance = useMemo(() => {
+    return deviceCapability.isMobile ? Math.min(imageDistance, mobileWidth * 0.8) : imageDistance;
+  }, [deviceCapability.isMobile, imageDistance, mobileWidth]);
   
   // Reduce initial image count for low-end devices
   const visibleImages = useMemo(() => {
@@ -104,8 +168,8 @@ export function ThreeDImageRing({
 
   const angle = useMemo(() => 360 / visibleImages.length, [visibleImages.length]);
 
-  const getBgPos = (imageIndex: number, currentRot: number, scale: number) => {
-    const scaledImageDistance = imageDistance * scale;
+  const getBgPos = (imageIndex: number, currentRot: number, scale: number, imageDist: number) => {
+    const scaledImageDistance = imageDist * scale;
     const effectiveRotation = currentRot - 180 - imageIndex * angle;
     const parallaxOffset = ((effectiveRotation % 360 + 360) % 360) / 360;
     return `${-(parallaxOffset * (scaledImageDistance / 1.5))}px 0px`;
@@ -118,7 +182,8 @@ export function ThreeDImageRing({
           (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
             i,
             latestRotation,
-            currentScale
+            currentScale,
+            adjustedImageDistance
           );
         });
       }
@@ -131,13 +196,14 @@ export function ThreeDImageRing({
         (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
           i,
           initialRotation,
-          currentScale
+          currentScale,
+          adjustedImageDistance
         );
       });
     }
     
     return () => unsubscribe();
-  }, [rotationY, images.length, imageDistance, currentScale, angle, initialRotation]);
+  }, [rotationY, images.length, currentScale, angle, initialRotation, adjustedImageDistance]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -167,7 +233,8 @@ export function ThreeDImageRing({
             (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
               i,
               rotationY.get(),
-              currentScale
+              currentScale,
+              adjustedImageDistance
             );
           });
         }
@@ -180,7 +247,7 @@ export function ThreeDImageRing({
       const timeout = setTimeout(updatePositions, 50);
       return () => clearTimeout(timeout);
     }
-  }, [showImages, currentScale, images.length, imageDistance, angle, rotationY]);
+  }, [showImages, currentScale, images.length, angle, rotationY, adjustedImageDistance]);
 
   const handleDragStart = (event: React.MouseEvent | React.TouchEvent) => {
     if (!draggable) return;
@@ -261,18 +328,17 @@ export function ThreeDImageRing({
         backgroundColor,
         transform: `scale(${currentScale})`,
         transformOrigin: "center center",
-        minHeight: deviceCapability.isMobile ? '300px' : '400px',
       }}
       onMouseDown={draggable ? handleDragStart : undefined}
       onTouchStart={draggable ? handleDragStart : undefined}
     >
       <div
         style={{
-          perspective: `${perspective}px`,
-          width: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
-          maxWidth: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
-          height: deviceCapability.isMobile ? '100%' : `${responsiveWidth * 1.2}px`,
-          maxHeight: deviceCapability.isMobile ? '100%' : `${responsiveWidth * 1.2}px`,
+          perspective: `${adjustedPerspective}px`,
+          width: `${mobileWidth}px`,
+          maxWidth: '100%',
+          height: `${mobileHeight}px`,
+          maxHeight: '100%',
           position: "absolute",
           left: "50%",
           top: "50%",
@@ -305,13 +371,13 @@ export function ThreeDImageRing({
                   style={{
                     transformStyle: "preserve-3d",
                     backgroundImage: isLoaded ? `url(${imageUrl})` : 'none',
-                    backgroundSize: "contain",
+                    backgroundSize: deviceCapability.isMobile ? "contain" : "cover",
                     backgroundRepeat: "no-repeat",
+                    backgroundPosition: "center center",
                     backfaceVisibility: "hidden",
                     rotateY: index * -angle,
-                    z: -imageDistance * currentScale,
-                    transformOrigin: `50% 50% ${imageDistance * currentScale}px`,
-                    backgroundPosition: getBgPos(index, initialRotation, currentScale),
+                    z: -adjustedImageDistance * currentScale,
+                    transformOrigin: `50% 50% ${adjustedImageDistance * currentScale}px`,
                     willChange: "transform, opacity",
                   }}
                   initial="hidden"
