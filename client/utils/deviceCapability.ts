@@ -69,24 +69,28 @@ export function detectDeviceCapability(): DeviceCapability {
   const screenHeight = window.screen.height;
 
   // Determine if low-end device
-  // Low-end criteria:
-  // - Mobile device with low memory (< 3GB)
-  // - Low hardware concurrency (< 4 cores)
-  // - Slow connection (2g or 3g)
+  // Low-end criteria (more lenient for mobile):
+  // - Very low memory (< 2GB) - not just mobile
+  // - Very low hardware concurrency (< 2 cores)
+  // - Very slow connection (slow-2g or 2g)
   // - No WebGL support
+  // Note: Mobile devices with WebGL support should be allowed to run with reduced quality
   const isLowEnd = 
-    (isMobile && deviceMemory < 3) ||
-    hardwareConcurrency < 4 ||
+    deviceMemory < 2 || // Only very low memory devices
+    hardwareConcurrency < 2 || // Only very low core count
     connectionType === 'slow-2g' ||
     connectionType === '2g' ||
-    !supportsWebGL ||
-    (isMobile && pixelRatio > 2); // High DPI on mobile can be performance issue
+    !supportsWebGL; // Remove pixelRatio > 2 check - modern mobile can handle it with lower quality
 
   // Determine recommended quality
+  // Mobile devices should get medium quality by default (not low) to allow animations
   let recommendedQuality: 'low' | 'medium' | 'high' = 'high';
   if (isLowEnd || connectionType === 'slow-2g' || connectionType === '2g') {
     recommendedQuality = 'low';
-  } else if (isMobile || connectionType === '3g' || deviceMemory < 4) {
+  } else if (isMobile) {
+    // Mobile devices with WebGL support should get medium quality
+    recommendedQuality = 'medium';
+  } else if (connectionType === '3g' || deviceMemory < 4) {
     recommendedQuality = 'medium';
   }
 
@@ -117,10 +121,12 @@ export function canHandleHeavyAnimations(): boolean {
 
 /**
  * Check if device can handle WebGL/Three.js
+ * More lenient for mobile - allow if WebGL is supported, even on mobile
  */
 export function canHandleWebGL(): boolean {
   const capability = detectDeviceCapability();
-  return capability.supportsWebGL && !capability.isLowEnd;
+  // Allow WebGL if supported, even on mobile (will use lower quality settings)
+  return capability.supportsWebGL;
 }
 
 /**

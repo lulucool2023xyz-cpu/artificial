@@ -22,15 +22,17 @@ export const HeroSection = memo(function HeroSection({ onGetStartedClick }: Hero
   const deviceCapability = useDeviceCapability();
   const [showHyperspeed, setShowHyperspeed] = useState(false);
   
-  // Only show Hyperspeed if device can handle WebGL
+  // Show Hyperspeed if device can handle WebGL (including mobile with reduced quality)
   const shouldShowHyperspeed = useMemo(() => {
-    return canHandleWebGL() && !deviceCapability?.isLowEnd;
+    // Allow on all devices with WebGL support, including mobile
+    // Quality will be adjusted automatically in Hyperspeed component
+    return canHandleWebGL();
   }, [deviceCapability]);
 
   useEffect(() => {
     // Delay Hyperspeed loading to improve initial page load
-    // Longer delay for low-end devices
-    const delay = deviceCapability?.isLowEnd ? 2000 : 500;
+    // Shorter delay for mobile to show animation faster
+    const delay = deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 2000 : 500;
     const timer = setTimeout(() => {
       if (shouldShowHyperspeed) {
         setShowHyperspeed(true);
