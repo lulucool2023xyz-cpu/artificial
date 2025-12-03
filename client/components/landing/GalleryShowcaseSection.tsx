@@ -83,23 +83,22 @@ export const GalleryShowcaseSection = memo(function GalleryShowcaseSection() {
               <div 
                 className="w-full flex items-center justify-center relative"
                 style={{ 
-                  height: deviceCapability?.isMobile ? '350px' : deviceCapability?.isLowEnd ? '500px' : '600px',
-                  minHeight: deviceCapability?.isMobile ? '300px' : '400px',
-                  maxHeight: deviceCapability?.isMobile ? '400px' : 'none',
+                  height: deviceCapability?.isMobile ? '400px' : deviceCapability?.isLowEnd ? '500px' : '600px',
+                  minHeight: deviceCapability?.isMobile ? '350px' : '400px',
                 }}
               >
                 <ThreeDImageRing
                   images={optimizedImages}
-                  width={deviceCapability?.isMobile ? 280 : deviceCapability?.isLowEnd ? 600 : 1200}
-                  perspective={deviceCapability?.isMobile ? 600 : deviceCapability?.isLowEnd ? 1200 : 2000}
-                  imageDistance={deviceCapability?.isMobile ? 200 : deviceCapability?.isLowEnd ? 500 : 900}
+                  width={deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 600 : 1200}
+                  perspective={deviceCapability?.isMobile ? 800 : deviceCapability?.isLowEnd ? 1200 : 2000}
+                  imageDistance={deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 500 : 900}
                   initialRotation={180}
                   animationDuration={deviceCapability?.isLowEnd ? 1.0 : 1.5}
                   staggerDelay={deviceCapability?.isLowEnd ? 0.1 : 0.15}
                   hoverOpacity={0.4}
                   draggable={!deviceCapability?.isLowEnd}
                   mobileBreakpoint={768}
-                  mobileScaleFactor={deviceCapability?.isMobile ? 0.35 : deviceCapability?.isLowEnd ? 0.5 : 0.7}
+                  mobileScaleFactor={deviceCapability?.isMobile ? 0.4 : deviceCapability?.isLowEnd ? 0.5 : 0.7}
                   inertiaPower={0.85}
                   inertiaTimeConstant={350}
                   inertiaVelocityMultiplier={18}

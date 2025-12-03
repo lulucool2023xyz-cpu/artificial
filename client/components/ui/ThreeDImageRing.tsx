@@ -6,52 +6,26 @@ import { cn } from "@/lib/utils";
 import { animate } from "framer-motion";
 import { detectDeviceCapability } from "@/utils/deviceCapability";
 
-// Hook untuk responsive width dan height
-function useResponsiveDimensions(width: number, mobileBreakpoint: number, containerRef: React.RefObject<HTMLDivElement>) {
-  const [dimensions, setDimensions] = useState({ width, height: width * 1.2 });
+// Hook untuk responsive width
+function useResponsiveWidth(width: number, mobileBreakpoint: number) {
+  const [responsiveWidth, setResponsiveWidth] = useState(width);
   
   useEffect(() => {
-    const updateDimensions = () => {
-      if (!containerRef.current) return;
-      
+    const updateWidth = () => {
       const isMobile = window.innerWidth < mobileBreakpoint;
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const containerWidth = containerRect.width;
-      const containerHeight = containerRect.height;
-      
       if (isMobile) {
-        // For mobile, use container dimensions with padding
-        const availableWidth = Math.min(width, containerWidth - 20);
-        const availableHeight = Math.min(width * 1.2, containerHeight - 20);
-        setDimensions({
-          width: availableWidth,
-          height: availableHeight || availableWidth * 1.2
-        });
+        setResponsiveWidth(Math.min(width, window.innerWidth - 40));
       } else {
-        setDimensions({
-          width: width,
-          height: width * 1.2
-        });
+        setResponsiveWidth(width);
       }
     };
     
-    updateDimensions();
-    
-    // Use ResizeObserver for better container size tracking
-    const resizeObserver = new ResizeObserver(updateDimensions);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    
-    window.addEventListener('resize', updateDimensions);
-    
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', updateDimensions);
-    };
-  }, [width, mobileBreakpoint, containerRef]);
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [width, mobileBreakpoint]);
   
-  return dimensions;
+  return responsiveWidth;
 }
 
 export interface ThreeDImageRingProps {
@@ -130,32 +104,7 @@ export function ThreeDImageRing({
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
 
   const deviceCapability = useMemo(() => detectDeviceCapability(), []);
-  const responsiveDimensions = useResponsiveDimensions(width, mobileBreakpoint, containerRef);
-  
-  // Calculate mobile-optimized dimensions first
-  const mobileWidth = useMemo(() => {
-    if (deviceCapability.isMobile && containerRef.current) {
-      const containerRect = containerRef.current.getBoundingClientRect();
-      return Math.min(width, containerRect.width - 20);
-    }
-    return responsiveDimensions.width;
-  }, [deviceCapability.isMobile, width, responsiveDimensions.width]);
-
-  const mobileHeight = useMemo(() => {
-    if (deviceCapability.isMobile) {
-      return Math.min(responsiveDimensions.height, mobileWidth * 1.2);
-    }
-    return responsiveDimensions.height;
-  }, [deviceCapability.isMobile, responsiveDimensions.height, mobileWidth]);
-
-  // Adjust perspective and imageDistance for mobile
-  const adjustedPerspective = useMemo(() => {
-    return deviceCapability.isMobile ? Math.min(perspective, 1000) : perspective;
-  }, [deviceCapability.isMobile, perspective]);
-
-  const adjustedImageDistance = useMemo(() => {
-    return deviceCapability.isMobile ? Math.min(imageDistance, mobileWidth * 0.8) : imageDistance;
-  }, [deviceCapability.isMobile, imageDistance, mobileWidth]);
+  const responsiveWidth = useResponsiveWidth(width, mobileBreakpoint);
   
   // Reduce initial image count for low-end devices
   const visibleImages = useMemo(() => {
@@ -168,8 +117,8 @@ export function ThreeDImageRing({
 
   const angle = useMemo(() => 360 / visibleImages.length, [visibleImages.length]);
 
-  const getBgPos = (imageIndex: number, currentRot: number, scale: number, imageDist: number) => {
-    const scaledImageDistance = imageDist * scale;
+  const getBgPos = (imageIndex: number, currentRot: number, scale: number) => {
+    const scaledImageDistance = imageDistance * scale;
     const effectiveRotation = currentRot - 180 - imageIndex * angle;
     const parallaxOffset = ((effectiveRotation % 360 + 360) % 360) / 360;
     return `${-(parallaxOffset * (scaledImageDistance / 1.5))}px 0px`;
@@ -182,8 +131,7 @@ export function ThreeDImageRing({
           (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
             i,
             latestRotation,
-            currentScale,
-            adjustedImageDistance
+            currentScale
           );
         });
       }
@@ -196,14 +144,13 @@ export function ThreeDImageRing({
         (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
           i,
           initialRotation,
-          currentScale,
-          adjustedImageDistance
+          currentScale
         );
       });
     }
     
     return () => unsubscribe();
-  }, [rotationY, images.length, currentScale, angle, initialRotation, adjustedImageDistance]);
+  }, [rotationY, images.length, imageDistance, currentScale, angle, initialRotation]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -233,8 +180,7 @@ export function ThreeDImageRing({
             (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
               i,
               rotationY.get(),
-              currentScale,
-              adjustedImageDistance
+              currentScale
             );
           });
         }
@@ -247,7 +193,7 @@ export function ThreeDImageRing({
       const timeout = setTimeout(updatePositions, 50);
       return () => clearTimeout(timeout);
     }
-  }, [showImages, currentScale, images.length, angle, rotationY, adjustedImageDistance]);
+  }, [showImages, currentScale, images.length, imageDistance, angle, rotationY]);
 
   const handleDragStart = (event: React.MouseEvent | React.TouchEvent) => {
     if (!draggable) return;
@@ -328,17 +274,18 @@ export function ThreeDImageRing({
         backgroundColor,
         transform: `scale(${currentScale})`,
         transformOrigin: "center center",
+        minHeight: deviceCapability.isMobile ? '300px' : '400px',
       }}
       onMouseDown={draggable ? handleDragStart : undefined}
       onTouchStart={draggable ? handleDragStart : undefined}
     >
       <div
         style={{
-          perspective: `${adjustedPerspective}px`,
-          width: `${mobileWidth}px`,
-          maxWidth: '100%',
-          height: `${mobileHeight}px`,
-          maxHeight: '100%',
+          perspective: `${perspective}px`,
+          width: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
+          maxWidth: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
+          height: deviceCapability.isMobile ? '100%' : `${responsiveWidth * 1.2}px`,
+          maxHeight: deviceCapability.isMobile ? '100%' : `${responsiveWidth * 1.2}px`,
           position: "absolute",
           left: "50%",
           top: "50%",
@@ -371,13 +318,13 @@ export function ThreeDImageRing({
                   style={{
                     transformStyle: "preserve-3d",
                     backgroundImage: isLoaded ? `url(${imageUrl})` : 'none',
-                    backgroundSize: deviceCapability.isMobile ? "contain" : "cover",
+                    backgroundSize: "contain",
                     backgroundRepeat: "no-repeat",
-                    backgroundPosition: "center center",
                     backfaceVisibility: "hidden",
                     rotateY: index * -angle,
-                    z: -adjustedImageDistance * currentScale,
-                    transformOrigin: `50% 50% ${adjustedImageDistance * currentScale}px`,
+                    z: -imageDistance * currentScale,
+                    transformOrigin: `50% 50% ${imageDistance * currentScale}px`,
+                    backgroundPosition: getBgPos(index, initialRotation, currentScale),
                     willChange: "transform, opacity",
                   }}
                   initial="hidden"
