@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,7 @@ interface CTASectionProps {
   onGetStartedClick?: () => void;
 }
 
-export function CTASection({ onGetStartedClick }: CTASectionProps) {
+export const CTASection = memo(function CTASection({ onGetStartedClick }: CTASectionProps) {
   const { theme } = useTheme();
 
   return (
@@ -177,4 +178,4 @@ export function CTASection({ onGetStartedClick }: CTASectionProps) {
       </div>
     </section>
   );
-}
+});

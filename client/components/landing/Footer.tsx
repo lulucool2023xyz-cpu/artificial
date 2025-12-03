@@ -1,3 +1,4 @@
+import { memo, useMemo, useCallback } from 'react';
 import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from 'next-themes';
@@ -6,19 +7,19 @@ import { BackgroundGrid } from './BackgroundGrid';
 import { smoothScrollTo } from '@/utils/scroll';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
-export function Footer() {
-  const currentYear = new Date().getFullYear();
+export const Footer = memo(function Footer() {
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
   const location = useLocation();
   const { theme } = useTheme();
 
-  const scrollToSection = (id: string) => {
+  const scrollToSection = useCallback((id: string) => {
     if (location.pathname !== '/') {
       // If not on home page, navigate to home first
       window.location.href = `/#${id}`;
     } else {
       smoothScrollTo(id, 80);
     }
-  };
+  }, [location.pathname]);
 
   return (
     <footer 
@@ -408,4 +409,4 @@ export function Footer() {
       </div>
     </footer>
   );
-}
+});

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence, useMotionValue, easeOut } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { animate } from "framer-motion";
+import { detectDeviceCapability } from "@/utils/deviceCapability";
 
 export interface ThreeDImageRingProps {
   /** Array of image URLs to display in the ring */
@@ -78,8 +79,20 @@ export function ThreeDImageRing({
 
   const [currentScale, setCurrentScale] = useState(1);
   const [showImages, setShowImages] = useState(false);
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
 
-  const angle = useMemo(() => 360 / images.length, [images.length]);
+  const deviceCapability = useMemo(() => detectDeviceCapability(), []);
+  
+  // Reduce initial image count for low-end devices
+  const visibleImages = useMemo(() => {
+    if (deviceCapability.isLowEnd) {
+      // Only show first 6 images initially for low-end devices
+      return images.slice(0, Math.min(6, images.length));
+    }
+    return images;
+  }, [images, deviceCapability.isLowEnd]);
+
+  const angle = useMemo(() => 360 / visibleImages.length, [visibleImages.length]);
 
   const getBgPos = (imageIndex: number, currentRot: number, scale: number) => {
     const scaledImageDistance = imageDistance * scale;
@@ -266,55 +279,70 @@ export function ThreeDImageRing({
           }}
         >
           <AnimatePresence>
-            {showImages && images.map((imageUrl, index) => (
-              <motion.div
-                key={index}
-                className={cn(
-                  "w-full h-full absolute",
-                  imageClassName
-                )}
-                style={{
-                  transformStyle: "preserve-3d",
-                  backgroundImage: `url(${imageUrl})`,
-                  backgroundSize: "contain",
-                  backgroundRepeat: "no-repeat",
-                  backfaceVisibility: "hidden",
-                  rotateY: index * -angle,
-                  z: -imageDistance * currentScale,
-                  transformOrigin: `50% 50% ${imageDistance * currentScale}px`,
-                  backgroundPosition: getBgPos(index, initialRotation, currentScale),
-                }}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-                variants={imageVariants}
-                custom={index}
-                transition={{
-                  delay: index * staggerDelay,
-                  duration: animationDuration,
-                  ease: easeOut,
-                }}
-                whileHover={{ opacity: 1, transition: { duration: 0.15 } }}
-                onHoverStart={() => {
-                  if (isDragging.current) return;
-                  if (ringRef.current) {
-                    Array.from(ringRef.current.children).forEach((imgEl, i) => {
-                      if (i !== index) {
-                        (imgEl as HTMLElement).style.opacity = `${hoverOpacity}`;
-                      }
-                    });
-                  }
-                }}
-                onHoverEnd={() => {
-                  if (isDragging.current) return;
-                  if (ringRef.current) {
-                    Array.from(ringRef.current.children).forEach((imgEl) => {
-                      (imgEl as HTMLElement).style.opacity = `1`;
-                    });
-                  }
-                }}
-              />
-            ))}
+            {showImages && visibleImages.map((imageUrl, index) => {
+              const isLoaded = loadedImages.has(index);
+              
+              return (
+                <motion.div
+                  key={index}
+                  className={cn(
+                    "w-full h-full absolute",
+                    imageClassName
+                  )}
+                  style={{
+                    transformStyle: "preserve-3d",
+                    backgroundImage: isLoaded ? `url(${imageUrl})` : 'none',
+                    backgroundSize: "contain",
+                    backgroundRepeat: "no-repeat",
+                    backfaceVisibility: "hidden",
+                    rotateY: index * -angle,
+                    z: -imageDistance * currentScale,
+                    transformOrigin: `50% 50% ${imageDistance * currentScale}px`,
+                    backgroundPosition: getBgPos(index, initialRotation, currentScale),
+                    willChange: "transform, opacity",
+                  }}
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  variants={imageVariants}
+                  custom={index}
+                  transition={{
+                    delay: index * staggerDelay,
+                    duration: deviceCapability.isLowEnd ? animationDuration * 0.7 : animationDuration,
+                    ease: easeOut,
+                  }}
+                  whileHover={!deviceCapability.isLowEnd ? { opacity: 1, transition: { duration: 0.15 } } : undefined}
+                  onHoverStart={() => {
+                    if (isDragging.current || deviceCapability.isLowEnd) return;
+                    if (ringRef.current) {
+                      Array.from(ringRef.current.children).forEach((imgEl, i) => {
+                        if (i !== index) {
+                          (imgEl as HTMLElement).style.opacity = `${hoverOpacity}`;
+                        }
+                      });
+                    }
+                  }}
+                  onHoverEnd={() => {
+                    if (isDragging.current || deviceCapability.isLowEnd) return;
+                    if (ringRef.current) {
+                      Array.from(ringRef.current.children).forEach((imgEl) => {
+                        (imgEl as HTMLElement).style.opacity = `1`;
+                      });
+                    }
+                  }}
+                  onAnimationComplete={() => {
+                    // Lazy load image after animation starts
+                    if (!isLoaded) {
+                      const img = new Image();
+                      img.onload = () => {
+                        setLoadedImages(prev => new Set([...prev, index]));
+                      };
+                      img.src = imageUrl;
+                    }
+                  }}
+                />
+              );
+            })}
           </AnimatePresence>
         </motion.div>
       </div>

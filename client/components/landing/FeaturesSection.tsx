@@ -44,7 +44,9 @@ const features = [
   }
 ];
 
-export function FeaturesSection() {
+import { memo } from 'react';
+
+export const FeaturesSection = memo(function FeaturesSection() {
   return (
     <section 
       className="section-padding section-container bg-background relative overflow-hidden"
@@ -191,4 +193,4 @@ export function FeaturesSection() {
       </div>
     </section>
   );
-}
+});

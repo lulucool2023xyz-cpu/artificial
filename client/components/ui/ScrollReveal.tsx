@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, ReactNode } from 'react';
+import { useEffect, useRef, useState, ReactNode, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { detectDeviceCapability } from '@/utils/deviceCapability';
 
 interface ScrollRevealProps {
   children: ReactNode;
@@ -30,13 +31,17 @@ export function ScrollReveal({
   const lastScrollY = useRef(0);
   const scrollDirectionRef = useRef<'up' | 'down'>('down');
 
-  // Check for reduced motion preference - use state to trigger re-render
+  // Check for reduced motion preference and device capability
+  const deviceCapability = useMemo(() => detectDeviceCapability(), []);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
     return false;
   });
+  
+  // Disable animations on low-end devices
+  const shouldDisableAnimations = deviceCapability.isLowEnd || prefersReducedMotion;
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -115,9 +120,9 @@ export function ScrollReveal({
   // Calculate total delay (base delay + stagger * index)
   const totalDelay = delay + stagger * index;
 
-  // If reduced motion is preferred, show immediately without animation
-  const shouldAnimate = !prefersReducedMotion;
-  const finalDuration = shouldAnimate ? duration : 0.01;
+  // If reduced motion is preferred or device is low-end, show immediately without animation
+  const shouldAnimate = !shouldDisableAnimations;
+  const finalDuration = shouldAnimate ? (deviceCapability.isLowEnd ? duration * 0.5 : duration) : 0.01;
   const finalDelay = shouldAnimate ? (isVisible ? totalDelay : 0) : 0;
   const finalTransform = shouldAnimate ? getTransform() : 'translateY(0) translateX(0)';
   const finalOpacity = shouldAnimate ? (isVisible ? 1 : 0) : 1;

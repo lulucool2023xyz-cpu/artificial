@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import { MessageSquare, Send } from 'lucide-react';
 import { BackgroundGrid } from './BackgroundGrid';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
@@ -13,7 +13,7 @@ interface Message {
   isTyping?: boolean;
 }
 
-export function DemoPreviewSection() {
+export const DemoPreviewSection = memo(function DemoPreviewSection() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -109,6 +109,12 @@ export function DemoPreviewSection() {
   useEffect(() => {
     // Start first animation
     runAnimation();
+    
+    // Cleanup on unmount
+    return () => {
+      setIsAnimating(false);
+      setMessages([]);
+    };
   }, []);
 
   useEffect(() => {
@@ -119,7 +125,7 @@ export function DemoPreviewSection() {
       }, 2000);
       return () => clearTimeout(timeout);
     }
-  }, [isAnimating]);
+  }, [isAnimating, runAnimation]);
 
   return (
     <section 
@@ -262,4 +268,4 @@ export function DemoPreviewSection() {
       </div>
     </section>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { hyperspeedPresets } from '@/components/hyperspeed-presets';
@@ -10,6 +10,7 @@ import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BatikPattern } from './BatikPattern';
 import { BatikParticles } from './BatikParticles';
 import { WayangDecoration } from './WayangDecoration';
+import { useDeviceCapability, canHandleWebGL } from '@/utils/deviceCapability';
 
 const Hyperspeed = lazy(() => import('@/components/Hyperspeed'));
 
@@ -17,55 +18,71 @@ interface HeroSectionProps {
   onGetStartedClick?: () => void;
 }
 
-export function HeroSection({ onGetStartedClick }: HeroSectionProps) {
+export const HeroSection = memo(function HeroSection({ onGetStartedClick }: HeroSectionProps) {
+  const deviceCapability = useDeviceCapability();
   const [showHyperspeed, setShowHyperspeed] = useState(false);
+  
+  // Only show Hyperspeed if device can handle WebGL
+  const shouldShowHyperspeed = useMemo(() => {
+    return canHandleWebGL() && !deviceCapability?.isLowEnd;
+  }, [deviceCapability]);
 
   useEffect(() => {
     // Delay Hyperspeed loading to improve initial page load
+    // Longer delay for low-end devices
+    const delay = deviceCapability?.isLowEnd ? 2000 : 500;
     const timer = setTimeout(() => {
-      setShowHyperspeed(true);
-    }, 500);
+      if (shouldShowHyperspeed) {
+        setShowHyperspeed(true);
+      }
+    }, delay);
 
     return () => clearTimeout(timer);
+  }, [shouldShowHyperspeed, deviceCapability]);
+
+  const scrollToSection = useCallback((id: string) => {
+    smoothScrollTo(id, 80);
   }, []);
 
-  const scrollToSection = (id: string) => {
-    smoothScrollTo(id, 80);
-  };
-
-  const handleTryNow = () => {
+  const handleTryNow = useCallback(() => {
     // Navigate to demo page
     window.location.href = '/demo';
-  };
+  }, []);
 
-  const handleLearnMore = () => {
+  const handleLearnMore = useCallback(() => {
     scrollToSection('intelligent-capabilities');
-  };
+  }, [scrollToSection]);
 
   return (
     <section 
       className="min-h-screen flex flex-col items-center justify-center section-container pt-20 sm:pt-24 pb-20 relative overflow-hidden"
       aria-label="Hero section"
     >
-      {/* Hyperspeed background effect with lazy loading */}
-      <div className="absolute inset-0 opacity-30">
-        {showHyperspeed ? (
-          <Suspense fallback={<HyperspeedFallback />}>
-            <ErrorBoundary fallback={<HyperspeedFallback />}>
-              <Hyperspeed effectOptions={hyperspeedPresets.one} />
-            </ErrorBoundary>
-          </Suspense>
-        ) : (
-          <HyperspeedFallback />
-        )}
-      </div>
+      {/* Hyperspeed background effect with lazy loading - only on capable devices */}
+      {shouldShowHyperspeed && (
+        <div className="absolute inset-0 opacity-30">
+          {showHyperspeed ? (
+            <Suspense fallback={<HyperspeedFallback />}>
+              <ErrorBoundary fallback={<HyperspeedFallback />}>
+                <Hyperspeed effectOptions={hyperspeedPresets.one as any} />
+              </ErrorBoundary>
+            </Suspense>
+          ) : (
+            <HyperspeedFallback />
+          )}
+        </div>
+      )}
 
       {/* Background grid effect */}
       <BackgroundGrid opacity="opacity-5" size="50px" className="z-10" />
       
-      {/* Indonesian cultural elements */}
-      <BatikPattern variant="mega-mendung" opacity="opacity-[0.04]" speed={40} className="z-10" />
-      <BatikParticles count={15} className="z-10 opacity-15" />
+      {/* Indonesian cultural elements - reduce on low-end devices */}
+      {!deviceCapability?.isLowEnd && (
+        <>
+          <BatikPattern variant="mega-mendung" opacity="opacity-[0.04]" speed={40} className="z-10" />
+          <BatikParticles count={deviceCapability?.isMobile ? 8 : 15} className="z-10 opacity-15" />
+        </>
+      )}
       <WayangDecoration variant="left" size="md" className="z-10 opacity-20" />
       <WayangDecoration variant="right" size="md" className="z-10 opacity-20" />
 
@@ -170,4 +187,4 @@ export function HeroSection({ onGetStartedClick }: HeroSectionProps) {
       </div>
     </section>
   );
-}
+});

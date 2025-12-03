@@ -14,6 +14,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "next-themes";
 import { handleError, logError } from "@/lib/errorHandler";
+import { initPerformanceMonitoring } from "@/utils/performance";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -77,6 +78,9 @@ const PageLoader = () => (
 // Global error handler setup
 function GlobalErrorHandler() {
   useEffect(() => {
+    // Initialize performance monitoring
+    initPerformanceMonitoring();
+
     // Handle unhandled promise rejections
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       event.preventDefault();

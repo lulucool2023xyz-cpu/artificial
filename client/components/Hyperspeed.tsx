@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { BloomEffect, EffectComposer, EffectPass, RenderPass, SMAAEffect, SMAAPreset } from 'postprocessing';
+import { detectDeviceCapability, getWebGLQualitySettings, canHandleWebGL } from '@/utils/deviceCapability';
 
 interface HyperspeedProps {
   effectOptions?: {
@@ -85,6 +86,12 @@ const Hyperspeed = ({
   const appRef = useRef<any>(null);
 
   useEffect(() => {
+    // Check if device can handle WebGL
+    if (!canHandleWebGL()) {
+      console.log('WebGL not supported or device is low-end, skipping Hyperspeed effect');
+      return;
+    }
+
     if (appRef.current) {
       appRef.current.dispose();
       const container = document.getElementById('lights');
@@ -94,6 +101,9 @@ const Hyperspeed = ({
         }
       }
     }
+
+    // Get device capability and quality settings (will be used in App class)
+    const deviceCapability = detectDeviceCapability();
 
     const mountainUniforms = {
       uFreq: { value: new THREE.Vector3(3, 6, 10) },
@@ -349,12 +359,20 @@ const Hyperspeed = ({
           };
         }
         this.container = container;
+        
+        // Get quality settings from device capability
+        const qualitySettings = getWebGLQualitySettings();
+        
         this.renderer = new THREE.WebGLRenderer({
-          antialias: false,
-          alpha: true
+          antialias: qualitySettings.antialias,
+          alpha: true,
+          powerPreference: 'high-performance',
+          stencil: false,
+          depth: true,
         });
         this.renderer.setSize(container.offsetWidth, container.offsetHeight, false);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setPixelRatio(qualitySettings.pixelRatio);
+        this.renderer.shadowMap.enabled = qualitySettings.shadowMap;
         this.composer = new EffectComposer(this.renderer);
         container.append(this.renderer.domElement);
 
@@ -417,30 +435,42 @@ const Hyperspeed = ({
       }
 
       initPasses() {
+        const qualitySettings = getWebGLQualitySettings();
+        
         this.renderPass = new RenderPass(this.scene, this.camera);
-        this.bloomPass = new EffectPass(
-          this.camera,
-          new BloomEffect({
-            luminanceThreshold: 0.2,
-            luminanceSmoothing: 0,
-            resolutionScale: 1
-          })
-        );
+        this.renderPass.renderToScreen = !qualitySettings.bloom;
+        
+        // Only add bloom if device can handle it
+        if (qualitySettings.bloom) {
+          this.bloomPass = new EffectPass(
+            this.camera,
+            new BloomEffect({
+              luminanceThreshold: 0.2,
+              luminanceSmoothing: 0,
+              resolutionScale: 0.5 // Reduce resolution for performance
+            })
+          );
+          this.bloomPass.renderToScreen = false;
+          this.composer.addPass(this.bloomPass);
+        }
 
-        const smaaPass = new EffectPass(
-          this.camera,
-          new SMAAEffect({
-            preset: SMAAPreset.MEDIUM,
-            searchImage: SMAAEffect.searchImageDataURL,
-            areaImage: SMAAEffect.areaImageDataURL
-          })
-        );
-        this.renderPass.renderToScreen = false;
-        this.bloomPass.renderToScreen = false;
-        smaaPass.renderToScreen = true;
+        // Only add SMAA if device can handle it (medium/high quality)
+        if (qualitySettings.antialias) {
+          const smaaPass = new EffectPass(
+            this.camera,
+            new SMAAEffect({
+              preset: SMAAPreset.LOW, // Use LOW preset for better performance
+              searchImage: SMAAEffect.searchImageDataURL,
+              areaImage: SMAAEffect.areaImageDataURL
+            })
+          );
+          smaaPass.renderToScreen = true;
+          this.composer.addPass(smaaPass);
+        } else {
+          this.renderPass.renderToScreen = true;
+        }
+        
         this.composer.addPass(this.renderPass);
-        this.composer.addPass(this.bloomPass);
-        this.composer.addPass(smaaPass);
       }
 
       loadAssets() {
@@ -600,7 +630,21 @@ const Hyperspeed = ({
         const delta = this.clock.getDelta();
         this.render(delta);
         this.update(delta);
-        requestAnimationFrame(this.tick.bind(this));
+        
+        // Use recommended frame rate for device capability
+        const deviceCapability = detectDeviceCapability();
+        const targetFPS = deviceCapability.recommendedQuality === 'low' ? 30 : 
+                         deviceCapability.recommendedQuality === 'medium' ? 45 : 60;
+        const frameDelay = 1000 / targetFPS;
+        
+        // Throttle frame rate for low-end devices
+        if (deviceCapability.isLowEnd) {
+          setTimeout(() => {
+            requestAnimationFrame(this.tick.bind(this));
+          }, frameDelay - 16); // 16ms is ~60fps, adjust for target FPS
+        } else {
+          requestAnimationFrame(this.tick.bind(this));
+        }
       }
     }
 

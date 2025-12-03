@@ -1,9 +1,11 @@
+import { memo, useMemo } from 'react';
 import { BackgroundGrid } from './BackgroundGrid';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BatikPattern } from './BatikPattern';
 import { WayangDecoration } from './WayangDecoration';
 import { OrnamentFrame } from './OrnamentFrame';
 import { ThreeDImageRing } from '@/components/ui/ThreeDImageRing';
+import { useDeviceCapability } from '@/utils/deviceCapability';
 
 // Gambar-gambar budaya Indonesia dari folder public
 const galleryImages = [
@@ -18,7 +20,18 @@ const galleryImages = [
   '/tarian.jpeg',
 ];
 
-export function GalleryShowcaseSection() {
+export const GalleryShowcaseSection = memo(function GalleryShowcaseSection() {
+  const deviceCapability = useDeviceCapability();
+  
+  // Reduce image count for low-end devices
+  const optimizedImages = useMemo(() => {
+    if (deviceCapability?.isLowEnd) {
+      // Only load first 6 images for low-end devices
+      return galleryImages.slice(0, 6);
+    }
+    return galleryImages;
+  }, [deviceCapability?.isLowEnd]);
+
   return (
     <section 
       className="section-padding section-container bg-background relative overflow-hidden"
@@ -75,17 +88,17 @@ export function GalleryShowcaseSection() {
                 }}
               >
                 <ThreeDImageRing
-                  images={galleryImages}
-                  width={1200}
-                  perspective={2000}
-                  imageDistance={900}
+                  images={optimizedImages}
+                  width={deviceCapability?.isLowEnd ? 800 : 1200}
+                  perspective={deviceCapability?.isLowEnd ? 1500 : 2000}
+                  imageDistance={deviceCapability?.isLowEnd ? 600 : 900}
                   initialRotation={180}
-                  animationDuration={1.5}
-                  staggerDelay={0.15}
+                  animationDuration={deviceCapability?.isLowEnd ? 1.0 : 1.5}
+                  staggerDelay={deviceCapability?.isLowEnd ? 0.1 : 0.15}
                   hoverOpacity={0.4}
-                  draggable={true}
+                  draggable={!deviceCapability?.isLowEnd}
                   mobileBreakpoint={768}
-                  mobileScaleFactor={0.7}
+                  mobileScaleFactor={deviceCapability?.isLowEnd ? 0.5 : 0.7}
                   inertiaPower={0.85}
                   inertiaTimeConstant={350}
                   inertiaVelocityMultiplier={18}
@@ -109,5 +122,5 @@ export function GalleryShowcaseSection() {
       </div>
     </section>
   );
-}
+});
 
