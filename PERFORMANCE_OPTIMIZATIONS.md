@@ -154,3 +154,5 @@ function MyComponent() {
 4. Consider image CDN untuk better image delivery
 
 
+
+
