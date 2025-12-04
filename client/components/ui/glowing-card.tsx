@@ -163,7 +163,7 @@ export const GlowingCards: React.FC<GlowingCardsProps> = ({
             ref={overlayRef}
             className={cn(
               "absolute inset-0 pointer-events-none select-none",
-              "opacity-0 transition-all duration-[var(--animation-duration)] ease-out"
+              "opacity-0 transition-all ease-out"
             )}
             style={{
               // String concatenation for WebkitMask and mask
@@ -172,6 +172,7 @@ export const GlowingCards: React.FC<GlowingCardsProps> = ({
               mask:
                 "radial-gradient(var(--glow-radius) var(--glow-radius) at var(--x, 0) var(--y, 0), #000 1%, transparent 50%)",
               opacity: showOverlay ? 'var(--opacity)' : '0',
+              transitionDuration: 'var(--animation-duration)',
             }}
           >
             <div

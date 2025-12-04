@@ -15,6 +15,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "next-themes";
 import { handleError, logError } from "@/lib/errorHandler";
 import { initPerformanceMonitoring } from "@/utils/performance";
+import SmokeyCursor from "@/components/SmokeyCursor";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -124,6 +125,7 @@ const App = () => (
         <GlobalErrorHandler />
         <Toaster />
         <Sonner />
+        <SmokeyCursor />
         <BrowserRouter>
             <ScrollToTop />
             <Suspense fallback={<PageLoader />}>
