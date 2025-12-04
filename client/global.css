@@ -72,13 +72,14 @@
     /* Futuristic glow accent */
     --glow: 0 0% 100%;
 
-    /* Indonesian Cultural Colors */
+    /* Indonesian Cultural Colors - Elegant Gold Theme */
     --indonesian-earth: 28 45% 35%;      /* Coklat tanah */
-    --indonesian-gold: 43 96% 56%;       /* Emas keemasan */
+    --indonesian-gold: 43 96% 70%;       /* Emas terang untuk dark theme */
+    --indonesian-gold-dark: 43 96% 56%; /* Emas untuk kontras */
     --indonesian-brick: 12 76% 45%;      /* Merah bata */
     --indonesian-leaf: 142 52% 35%;      /* Hijau daun */
     --indonesian-terracotta: 12 76% 61%; /* Terracotta */
-    --indonesian-amber: 43 96% 56%;      /* Amber/Emas */
+    --indonesian-amber: 43 96% 70%;      /* Amber/Emas terang */
   }
 
   .light {

@@ -15,7 +15,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "next-themes";
 import { handleError, logError } from "@/lib/errorHandler";
 import { initPerformanceMonitoring } from "@/utils/performance";
-import SmokeyCursor from "@/components/SmokeyCursor";
+import { ConditionalSmokeyCursor } from "@/components/ConditionalSmokeyCursor";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -124,9 +124,14 @@ const App = () => (
         <AuthProvider>
         <GlobalErrorHandler />
         <Toaster />
-        <Sonner />
-        <SmokeyCursor />
-        <BrowserRouter>
+        <Sonner position="top-left" />
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+            <ConditionalSmokeyCursor />
             <ScrollToTop />
             <Suspense fallback={<PageLoader />}>
           <Routes>

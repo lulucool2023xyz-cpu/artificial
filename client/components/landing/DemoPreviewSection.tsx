@@ -174,7 +174,7 @@ export const DemoPreviewSection = memo(function DemoPreviewSection() {
               e.currentTarget.style.boxShadow = "0 0 60px rgba(255, 255, 255, 0.1), inset 0 0 40px rgba(255, 255, 255, 0.05)";
             }}
           >
-            <div className="p-6 sm:p-8 lg:p-12 relative">
+            <div className="p-4 sm:p-6 md:p-8 lg:p-12 relative">
             {/* Header bar */}
             <div className="flex items-center justify-between mb-8 pb-6 border-b border-indonesian-gold/20">
               <div className="flex items-center gap-3">
@@ -191,8 +191,8 @@ export const DemoPreviewSection = memo(function DemoPreviewSection() {
               </div>
             </div>
 
-            {/* Chat messages area */}
-            <div className="mb-8 h-[400px] bg-black/50 rounded-xl p-6 border border-white/10 overflow-y-auto scroll-smooth">
+            {/* Chat messages area - Responsive */}
+            <div className="mb-8 h-[300px] sm:h-[350px] md:h-[400px] lg:h-[450px] bg-black/50 rounded-xl p-4 sm:p-6 border border-white/10 overflow-y-auto scroll-smooth">
               <div className="space-y-4">
                 {messages.length === 0 && (
                   <div className="flex items-center justify-center h-full">
@@ -203,8 +203,8 @@ export const DemoPreviewSection = memo(function DemoPreviewSection() {
                   </div>
                 )}
                 {messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in-up`}>
-                    <div className={`max-w-[85%] rounded-2xl p-4 text-sm border ${
+                  <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in-up mb-3 sm:mb-4`}>
+                    <div className={`max-w-[90%] sm:max-w-[85%] md:max-w-[80%] rounded-2xl p-3 sm:p-4 text-xs sm:text-sm border ${
                       message.type === 'user' 
                         ? 'bg-gradient-to-br from-indonesian-gold/30 to-indonesian-gold/20 text-white border-indonesian-gold/40 rounded-tr-sm shadow-lg' 
                         : 'bg-white/10 text-gray-200 border-white/10 rounded-tl-sm backdrop-blur-sm'
@@ -240,20 +240,20 @@ export const DemoPreviewSection = memo(function DemoPreviewSection() {
               </div>
             </div>
 
-            {/* Input area */}
-            <div className="flex gap-3">
+            {/* Input area - Responsive */}
+            <div className="flex gap-2 sm:gap-3">
               <input
                 type="text"
                 placeholder="Ketik pesan Anda..."
-                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:border-indonesian-gold/40 focus:ring-indonesian-gold/20 transition-all"
+                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:border-indonesian-gold/40 focus:ring-indonesian-gold/20 transition-all"
                 disabled
               />
               <button 
-                className="px-6 py-3 bg-indonesian-gold text-black font-semibold font-heading rounded-lg hover:bg-indonesian-gold/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indonesian-gold focus:ring-offset-2 focus:ring-offset-black transition-all"
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-indonesian-gold text-black font-semibold font-heading rounded-lg hover:bg-indonesian-gold/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indonesian-gold focus:ring-offset-2 focus:ring-offset-black transition-all flex-shrink-0"
                 disabled
                 aria-label="Send message (demo)"
               >
-                <Send className="w-5 h-5" aria-hidden="true" />
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
               </button>
             </div>
           </div>

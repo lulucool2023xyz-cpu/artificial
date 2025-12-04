@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Camera, Settings, User, History, Menu, X, Zap, Brain, Gauge, Trash2, ChevronDown, Plus, LogOut, MessageSquare, Search, Save, Bell, Copy, RotateCcw, Sun, Moon, Monitor, Paperclip, File, Image as ImageIcon, FileText } from 'lucide-react';
+import { Send, Mic, Camera, Settings, User, History, Menu, X, Zap, Brain, Gauge, Trash2, ChevronDown, Plus, LogOut, MessageSquare, Search, Save, Bell, Copy, RotateCcw, Sun, Moon, Monitor, Paperclip, File, Image as ImageIcon, FileText, Newspaper, Sparkles, HelpCircle, Clock, Palette, CreditCard, AlignJustify, BookOpen, PenTool } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,28 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from 'next-themes';
+import { MorphingNavigation, type MorphingNavigationLink } from '@/components/ui/MorphingNavigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface AIChatbotProps {
   initialView?: 'chat' | 'history' | 'profile' | 'settings';
@@ -33,6 +55,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const { theme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
+  const sidebarToggleRef = useRef(false);
   const [currentView, setCurrentView] = useState(initialView);
   const [mode, setMode] = useState('balance');
   const [messages, setMessages] = useState([]);
@@ -47,6 +70,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
@@ -54,6 +78,44 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
+  const [voiceLiveActive, setVoiceLiveActive] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [likedMessages, setLikedMessages] = useState<Set<string>>(new Set());
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [currentModel, setCurrentModel] = useState('Gemini 2.5 Pro');
+
+  // Detect mobile view and fix sidebar state
+  useEffect(() => {
+    const checkMobile = () => {
+      const wasMobile = isMobileView;
+      const nowMobile = window.innerWidth < 1024;
+      setIsMobileView(nowMobile);
+      
+      // Fix sidebar state when switching between mobile and desktop
+      if (wasMobile !== nowMobile) {
+        if (nowMobile) {
+          // Switching to mobile - close sidebar
+          setSidebarOpen(false);
+        } else {
+          // Switching to desktop - open sidebar if it was open before
+          setSidebarOpen(true);
+          setSidebarMinimized(false);
+        }
+      }
+    };
+    
+    // Initial check
+    const initialMobile = window.innerWidth < 1024;
+    setIsMobileView(initialMobile);
+    if (initialMobile) {
+      setSidebarOpen(false);
+    }
+    
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [isMobileView]);
   
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -92,17 +154,20 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       if (modeMenuOpen && !(event.target as Element).closest('.mode-dropdown')) {
         setModeMenuOpen(false);
       }
+      if (toolsMenuOpen && !(event.target as Element).closest('.tools-dropdown')) {
+        setToolsMenuOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [modeMenuOpen]);
+  }, [modeMenuOpen, toolsMenuOpen]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // ESC to close sidebar on mobile
-      if (event.key === 'Escape' && sidebarOpen && window.innerWidth < 1024) {
+      if (event.key === 'Escape' && sidebarOpen && isMobileView) {
         setSidebarOpen(false);
       }
       // ESC to close mode dropdown
@@ -225,7 +290,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
         toast.error('File terlalu besar', {
-          description: `${file.name} melebihi batas 10MB`
+          description: `${file.name} melebihi batas 10MB`,
+          duration: 1000
         });
         return false;
       }
@@ -523,7 +589,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Gagal mengirim pesan', {
-        description: error instanceof Error ? error.message : 'Terjadi kesalahan tidak terduga'
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan tidak terduga',
+        duration: 1000
       });
       
       // Fallback to mock response if API fails
@@ -552,7 +619,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         
         if (!SpeechRecognition) {
           toast.error('Browser tidak support', {
-            description: 'Browser Anda tidak mendukung speech recognition'
+            description: 'Browser Anda tidak mendukung speech recognition',
+            duration: 1000
           });
           return;
         }
@@ -578,7 +646,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
           toast.error('Error merekam suara', {
-            description: event.error === 'no-speech' ? 'Tidak ada suara terdeteksi' : 'Terjadi kesalahan'
+            description: event.error === 'no-speech' ? 'Tidak ada suara terdeteksi' : 'Terjadi kesalahan',
+            duration: 1000
           });
           setIsRecording(false);
         };
@@ -591,7 +660,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       } catch (err) {
         console.error('Cannot access microphone:', err);
         toast.error('Tidak dapat mengakses mikrofon', {
-          description: 'Pastikan izin mikrofon telah diberikan'
+          description: 'Pastikan izin mikrofon telah diberikan',
+          duration: 1000
         });
       }
     } else {
@@ -661,7 +731,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       description: 'Melanjutkan percakapan sebelumnya'
     });
     navigate('/chat');
-    if (window.innerWidth < 1024) setSidebarOpen(false);
+    if (isMobileView) setSidebarOpen(false);
   };
 
   const deleteChat = (chatId) => {
@@ -677,7 +747,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 setMessages([]);
                 setCurrentChatId(null);
               }
-              toast.dismiss(t.id);
+              toast.dismiss(t);
               toast.success('Chat berhasil dihapus');
             }}
             className="flex-1 px-3 py-2 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:bg-destructive/90"
@@ -685,7 +755,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             Hapus
           </button>
           <button
-            onClick={() => toast.dismiss(t.id)}
+            onClick={() => toast.dismiss(t)}
             className="flex-1 px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:bg-secondary/80"
           >
             Batal
@@ -731,7 +801,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               localStorage.removeItem('chatHistory');
               localStorage.removeItem('userProfile');
               localStorage.removeItem('appSettings');
-              toast.dismiss(t.id);
+              toast.dismiss(t);
               toast.success('Data dihapus', {
                 description: 'Semua data aplikasi telah dibersihkan'
               });
@@ -742,7 +812,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             Hapus Semua
           </button>
           <button
-            onClick={() => toast.dismiss(t.id)}
+            onClick={() => toast.dismiss(t)}
             className="flex-1 px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:bg-secondary/80"
           >
             Batal
@@ -762,7 +832,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       });
     } catch (err) {
       toast.error('Gagal menyalin', {
-        description: 'Tidak dapat menyalin teks'
+        description: 'Tidak dapat menyalin teks',
+        duration: 1000
       });
     }
   };
@@ -779,7 +850,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
     if (userMessageIndex < 0) {
       toast.error('Tidak dapat regenerate', {
-        description: 'Pesan pengguna tidak ditemukan'
+        description: 'Pesan pengguna tidak ditemukan',
+        duration: 1000
       });
       return;
     }
@@ -861,7 +933,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     } catch (error) {
       console.error('Error regenerating:', error);
       toast.error('Error', {
-        description: 'Tidak dapat membuat ulang respons'
+        description: 'Tidak dapat membuat ulang respons',
+        duration: 1000
       });
     } finally {
       setIsLoading(false);
@@ -869,180 +942,102 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   };
 
   const handleLogout = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const confirmLogout = () => {
     logout();
     navigate('/auth/login');
   };
 
-  const renderChat = () => (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setSidebarOpen(!sidebarOpen)} 
-            className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Toggle sidebar menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <h2 className="text-sm font-medium text-muted-foreground font-heading">Asisten AI Indonesia</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Theme Toggle */}
-          <button
-            onClick={() => {
-              const newTheme = theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark';
-              setTheme(newTheme);
-              toast.success('Theme diubah', {
-                description: `Tema: ${newTheme === 'dark' ? 'Gelap' : newTheme === 'light' ? 'Terang' : 'Sistem'}`
-              });
-            }}
-            className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? (
-              <Moon className="w-4 h-4 text-blue-500" />
-            ) : theme === 'light' ? (
-              <Sun className="w-4 h-4 text-yellow-500" />
-            ) : (
-              <Monitor className="w-4 h-4 text-muted-foreground" />
-            )}
-          </button>
-          
-          {/* Mode Dropdown */}
-          <div className="mode-dropdown relative">
-          <button
-            onClick={() => setModeMenuOpen(!modeMenuOpen)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors group focus:outline-none focus:ring-2 focus:ring-ring"
-            aria-label="Select AI mode"
-            aria-haspopup="menu"
-            aria-expanded={modeMenuOpen}
-          >
-            {React.createElement(modeConfig[mode].icon, { 
-              className: cn("w-4 h-4", modeConfig[mode].textColor)
-            })}
-            <span className="text-sm text-foreground font-medium">{modeConfig[mode].label}</span>
-            <ChevronDown className={cn(
-              "w-3.5 h-3.5 text-muted-foreground transition-transform",
-              modeMenuOpen && "rotate-180"
-            )} />
-            
-            {/* Dropdown Menu */}
-            {modeMenuOpen && (
-              <div className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-50" role="menu" aria-label="AI mode options">
-                {Object.entries(modeConfig).map(([key, config]) => {
-                  const Icon = config.icon;
-                  return (
-                    <button
-                      key={key}
-                      onClick={(e) => { e.stopPropagation(); setMode(key); setModeMenuOpen(false); }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-ring",
-                        mode === key
-                          ? "bg-secondary text-foreground"
-                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                      )}
-                      role="menuitem"
-                      aria-label={`Select ${config.label} mode`}
-                    >
-                      <Icon className={cn("w-4 h-4", mode === key && config.textColor)} />
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">{config.label}</p>
-                        <p className="text-xs text-muted-foreground">{config.desc}</p>
-                      </div>
-                      {mode === key && (
-                        <div className={cn("w-1.5 h-1.5 rounded-full", config.color)}></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </button>
-          </div>
-        </div>
-      </div>
+  const renderChat = () => {
+    const isEmpty = messages.length === 0;
+    
+    return (
+    <div className="flex flex-col h-full relative">
+      {/* Modern Header with Navigation */}
+      {!isEmpty && (
+        <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
+          <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+            {/* Left Side - Mobile Menu & Title */}
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+              {/* Mobile Menu Button */}
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!sidebarToggleRef.current) {
+                    sidebarToggleRef.current = true;
+                    setSidebarOpen(!sidebarOpen);
+                    setTimeout(() => {
+                      sidebarToggleRef.current = false;
+                    }, 300);
+                  }
+                }}
+                className="lg:hidden text-[#FFD700] hover:text-[#FFA500] transition-colors p-2 rounded-lg hover:bg-[#FFD700]/10 flex-shrink-0"
+                aria-label="Toggle sidebar menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 bg-background" role="log" aria-live="polite" aria-atomic="false">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className={cn(
-              "w-20 h-20 rounded-3xl flex items-center justify-center mb-6",
-              modeConfig[mode].bgLight,
-              "shadow-lg"
-            )}>
-              {React.createElement(modeConfig[mode].icon, { 
-                className: cn("w-10 h-10", modeConfig[mode].textColor)
-              })}
+              {/* Title - Model Name */}
+              <h1 className="text-lg sm:text-xl font-bold text-[#FFD700] truncate">{currentModel}</h1>
             </div>
-            <h3 className="text-xl font-bold mb-2 font-heading">Apa yang bisa AI bantu?</h3>
-            <p className="text-xs text-muted-foreground max-w-md mb-6">
-              Asisten AI Indonesia siap membantu Anda dengan berbagai kebutuhan
-            </p>
-            
-            {/* AI Capabilities Grid */}
-            <div className="grid grid-cols-2 gap-3 w-full max-w-xl">
-              {/* Text Generation */}
-              <button 
-                onClick={() => handleFeatureClick('chat')}
-                className="group bg-card border border-border rounded-xl p-4 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all active:scale-95 text-left"
+
+            {/* Center - Navigation (Desktop & Mobile) */}
+            <div className="flex items-center justify-center flex-1">
+              <MorphingNavigation
+                links={navLinks}
+                theme="glass"
+                scrollThreshold={50}
+                initialTop={0}
+                compactTop={0}
+                onLinkClick={handleNavLinkClick}
+                className="relative !fixed !top-0 !left-1/2 !-translate-x-1/2"
+                disableAutoMorph={false}
+              />
+            </div>
+
+            {/* Right Side - Actions */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/* Theme Toggle */}
+              <button
+                onClick={() => {
+                  const newTheme = theme === 'dark' ? 'light' : 'dark';
+                  setTheme(newTheme);
+                  toast.success('Theme changed', {
+                    description: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} theme`
+                  });
+                }}
+                className="p-2 rounded-lg transition-all duration-200 bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 text-[#FFD700] flex-shrink-0"
+                aria-label="Toggle theme"
+                title="Toggle theme"
               >
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition-colors">
-                  <MessageSquare className="w-5 h-5 text-blue-500" />
-                </div>
-                <h4 className="text-sm font-semibold mb-1 text-foreground">Percakapan & Teks</h4>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                  Jawab pertanyaan, buat konten, atau diskusi topik
-                </p>
+                {theme === 'dark' ? (
+                  <Moon className="w-4 h-4" />
+                ) : (
+                  <Sun className="w-4 h-4" />
+                )}
               </button>
 
-              {/* Code Assistant */}
-              <button 
-                onClick={() => handleFeatureClick('code')}
-                className="group bg-card border border-border rounded-xl p-4 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all active:scale-95 text-left"
+              {/* History Button */}
+              <button
+                onClick={() => navigate('/chat/history')}
+                className="p-2 rounded-lg transition-all duration-200 bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 text-[#FFD700] flex-shrink-0"
+                aria-label="Recent chat history"
+                title="Recent Chat History"
               >
-                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3 group-hover:bg-purple-500/20 transition-colors">
-                  <Brain className="w-5 h-5 text-purple-500" />
-                </div>
-                <h4 className="text-sm font-semibold mb-1 text-foreground">Pemrograman & Kode</h4>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                  Debug kode, review, atau jelaskan konsep
-                </p>
-              </button>
-
-              {/* Analysis */}
-              <button 
-                onClick={() => handleFeatureClick('analysis')}
-                className="group bg-card border border-border rounded-xl p-4 hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all active:scale-95 text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-3 group-hover:bg-yellow-500/20 transition-colors">
-                  <Zap className="w-5 h-5 text-yellow-500" />
-                </div>
-                <h4 className="text-sm font-semibold mb-1 text-foreground">Analisis & Riset</h4>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                  Analisis data, riset, atau rangkum info
-                </p>
-              </button>
-
-              {/* Creative */}
-              <button 
-                onClick={() => handleFeatureClick('creative')}
-                className="group bg-card border border-border rounded-xl p-4 hover:border-green-500/50 hover:bg-green-500/5 transition-all active:scale-95 text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-3 group-hover:bg-green-500/20 transition-colors">
-                  <Gauge className="w-5 h-5 text-green-500" />
-                </div>
-                <h4 className="text-sm font-semibold mb-1 text-foreground">Kreativitas & Ide</h4>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                  Brainstorming, cerita, atau solusi inovatif
-                </p>
+                <Clock className="w-4 h-4" />
               </button>
             </div>
           </div>
-        ) : (
-          <div className="space-y-6 max-w-3xl mx-auto">
-            {messages.map((msg, index) => (
+        </header>
+      )}
+
+      {/* Messages Container - Mobile Responsive */}
+      {!isEmpty ? (
+      <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-background" role="log" aria-live="polite" aria-atomic="false">
+        <div className="space-y-6 max-w-3xl mx-auto pt-4">
+          {messages.map((msg, index) => (
               <div key={msg.id} className={cn(
                 "flex group",
                 msg.type === 'user' ? 'justify-end animate-slide-in-right' : 'justify-start animate-slide-in-left'
@@ -1054,10 +1049,10 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                   <div className={cn(
                     "px-4 py-3 rounded-2xl",
                     msg.type === 'user'
-                      ? "bg-gradient-to-br from-blue-600 to-blue-500 text-white rounded-tr-sm shadow-lg shadow-blue-500/20"
+                      ? "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tr-sm"
                       : msg.type === 'error'
                       ? "bg-red-500/10 border border-red-500/30 text-foreground rounded-tl-sm"
-                      : "bg-secondary text-foreground rounded-tl-sm border border-border"
+                      : "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tl-sm"
                   )}>
                     {msg.type === 'error' ? (
                       <div className="flex flex-col gap-2">
@@ -1193,23 +1188,84 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                     </span>
                   </div>
                   
-                  {/* Action Buttons for Bot Messages */}
+                  {/* Action Buttons for Bot Messages - Calm Design */}
                   {msg.type === 'bot' && (
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/50">
                       <button
                         onClick={() => copyToClipboard(msg.text)}
-                        className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+                        className="p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool"
                         title="Salin teks"
                       >
-                        <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                        <Copy className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors" />
                       </button>
                       <button
-                        onClick={() => regenerateResponse(msg.id)}
-                        disabled={isLoading}
-                        className="p-1.5 rounded-lg hover:bg-secondary transition-colors disabled:opacity-50"
-                        title="Buat ulang respons"
+                        onClick={() => {
+                          if (navigator.share) {
+                            navigator.share({
+                              title: 'AI Response',
+                              text: msg.text
+                            }).catch(() => {});
+                          } else {
+                            copyToClipboard(msg.text);
+                            toast.success('Link copied to clipboard');
+                          }
+                        }}
+                        className="p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool"
+                        title="Share"
                       >
-                        <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors">
+                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                          <polyline points="16 6 12 2 8 6"></polyline>
+                          <line x1="12" y1="2" x2="12" y2="15"></line>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const utterance = new SpeechSynthesisUtterance(msg.text);
+                          utterance.lang = 'id-ID';
+                          if (playingAudio === msg.id) {
+                            window.speechSynthesis.cancel();
+                            setPlayingAudio(null);
+                          } else {
+                            window.speechSynthesis.cancel();
+                            window.speechSynthesis.speak(utterance);
+                            setPlayingAudio(msg.id);
+                            utterance.onend = () => setPlayingAudio(null);
+                          }
+                        }}
+                        className={cn(
+                          "p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool",
+                          playingAudio === msg.id && "bg-secondary"
+                        )}
+                        title="Dengarkan"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors">
+                          <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const newLiked = new Set(likedMessages);
+                          if (newLiked.has(msg.id)) {
+                            newLiked.delete(msg.id);
+                          } else {
+                            newLiked.add(msg.id);
+                          }
+                          setLikedMessages(newLiked);
+                        }}
+                        className={cn(
+                          "p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool",
+                          likedMessages.has(msg.id) && "bg-secondary"
+                        )}
+                        title="Like"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={likedMessages.has(msg.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn(
+                          "w-4 h-4 transition-colors",
+                          likedMessages.has(msg.id) ? "text-foreground" : "text-muted-foreground group-hover/tool:text-foreground"
+                        )}>
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
                       </button>
                     </div>
                   )}
@@ -1232,8 +1288,20 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             )}
             <div ref={messagesEndRef} />
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Empty State - Welcome Screen */
+        <div className="flex-1 flex items-start justify-center px-3 sm:px-4 md:px-6 pt-16 sm:pt-20 md:pt-24 relative z-0 pointer-events-auto">
+          <div className="w-full max-w-2xl mx-auto text-center space-y-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground select-text">
+              Selamat Datang di Orenax Chat
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground select-text">
+              Mulai percakapan dengan AI asisten Anda. Tanyakan apa saja!
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Camera Preview */}
       {isCameraOn && (
@@ -1257,11 +1325,13 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         </div>
       )}
 
-      {/* Input Area */}
+      {/* Input Area - Centered when empty, Sticky when has messages - Mobile Responsive */}
       <div 
         className={cn(
-          "px-6 py-4 border-t border-border bg-card transition-colors",
-          isDragging && "bg-blue-500/10 border-blue-500"
+          isEmpty 
+            ? "absolute bottom-0 left-0 right-0 flex items-center justify-center px-3 sm:px-4 md:px-6 pb-8 sm:pb-12 md:pb-16 z-40" 
+            : "sticky bottom-0 bg-background/80 backdrop-blur-sm border-t border-border/50 py-4 z-40 flex items-center justify-center",
+          isDragging && "bg-blue-500/10"
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -1269,8 +1339,14 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       >
         {/* Uploaded Files Preview */}
         {uploadedFiles.length > 0 && (
-          <div className="max-w-3xl mx-auto mb-3">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className={cn(
+            "mb-3 w-full",
+            isEmpty ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"
+          )}>
+            <div className={cn(
+              "flex items-center gap-2 flex-wrap",
+              isEmpty ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"
+            )}>
               {uploadedFiles.map((file) => (
                 <div key={file.id} className="relative group">
                   <div className="flex items-center gap-2 bg-secondary border border-border rounded-lg p-2 pr-8">
@@ -1300,7 +1376,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         
         {/* Drag & Drop Overlay */}
         {isDragging && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500 rounded-xl flex items-center justify-center pointer-events-none z-10">
+          <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500 rounded-2xl flex items-center justify-center pointer-events-none z-10">
             <div className="text-center">
               <Paperclip className="w-12 h-12 text-blue-500 mx-auto mb-2" />
               <p className="text-sm font-medium text-blue-500">Lepaskan file di sini</p>
@@ -1308,99 +1384,278 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
           </div>
         )}
         
-        <div className="flex gap-2 items-end max-w-3xl mx-auto">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            onChange={handleFileSelect}
-            className="hidden"
-            accept="image/*,application/pdf,text/*,.doc,.docx,.xls,.xlsx"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2.5 rounded-xl bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-all focus:outline-none focus:ring-2 focus:ring-ring"
-            aria-label="Attach file"
-          >
-            <Paperclip className="w-4 h-4" />
-          </button>
-          <button
-            onClick={toggleMic}
-            className={cn(
-              "p-2.5 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-ring",
-              isRecording 
-                ? "bg-destructive text-destructive-foreground animate-pulse" 
-                : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
-            )}
-            aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
-            aria-pressed={isRecording}
-          >
-            <Mic className="w-4 h-4" />
-          </button>
-          <button
-            onClick={toggleCamera}
-            className={cn(
-              "p-2.5 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-ring",
-              isCameraOn 
-                ? "bg-green-600 text-white" 
-                : "bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
-            )}
-            aria-label={isCameraOn ? "Turn off camera" : "Turn on camera"}
-            aria-pressed={isCameraOn}
-          >
-            <Camera className="w-4 h-4" />
-          </button>
-          <div className={cn(
-            "flex-1 bg-secondary rounded-xl flex items-center px-4 py-2 transition-all",
-            "focus-within:ring-1 focus-within:ring-ring",
-            activeFeature === 'chat' && "ring-2 ring-blue-500 bg-blue-500/5",
-            activeFeature === 'code' && "ring-2 ring-purple-500 bg-purple-500/5",
-            activeFeature === 'analysis' && "ring-2 ring-yellow-500 bg-yellow-500/5",
-            activeFeature === 'creative' && "ring-2 ring-green-500 bg-green-500/5"
-          )}>
-            {activeFeature && (
-              <div className="mr-2 flex items-center justify-center">
-                {React.createElement(featureConfig[activeFeature].icon, {
-                  className: cn(
-                    "w-4 h-4",
-                    activeFeature === 'chat' && "text-blue-500",
-                    activeFeature === 'code' && "text-purple-500",
-                    activeFeature === 'analysis' && "text-yellow-500",
-                    activeFeature === 'creative' && "text-green-500"
-                  )
-                })}
+        {/* Input Container Wrapper */}
+        <div className={cn(
+          "w-full flex flex-col items-center",
+          isEmpty ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"
+        )}>
+          {/* Template Cards - Display Above Input (Only when empty) */}
+          {isEmpty && (
+            <div className="w-full mb-8 px-2 md:px-0 -mt-8 sm:-mt-12 md:-mt-16">
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                {[
+                  { title: "Tulis Esai", prompt: "Tolong buatkan esai tentang teknologi AI", icon: "✍️" },
+                  { title: "Jelaskan Konsep", prompt: "Jelaskan konsep machine learning dengan sederhana", icon: "💡" },
+                  { title: "Buat Kode", prompt: "Bantu saya membuat fungsi JavaScript untuk validasi form", icon: "💻" },
+                  { title: "Terjemahkan", prompt: "Terjemahkan teks ini ke bahasa Inggris", icon: "🌐" }
+                ].map((template, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setInput(template.prompt);
+                      inputRef.current?.focus();
+                    }}
+                    className="cursor-pointer transition-all duration-300 bg-background border border-border rounded-xl p-4 hover:border-[#FFD700]/50 hover:bg-secondary/50 group"
+                  >
+                    <div className="flex flex-col items-center justify-center gap-2 min-w-[120px]">
+                      <span className="text-2xl mb-1">{template.icon}</span>
+                      <p className="text-sm font-medium text-foreground text-center">
+                        {template.title}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
-              placeholder="Kirim pesan ke AI..."
-              className="flex-1 bg-transparent text-sm text-foreground placeholder-muted-foreground focus:outline-none"
-              aria-label="Message input"
-              aria-describedby="message-help"
-            />
+            </div>
+          )}
+          
+          {/* Input Container - Elegant Gold Style */}
+          <div className={cn(
+            "flex flex-col mx-2 md:mx-0 items-stretch transition-all duration-200 relative cursor-text z-40 rounded-2xl w-full",
+            "bg-gradient-to-br from-background via-background to-[#FFD700]/5",
+            "border border-[#FFD700]/20",
+            "shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/3.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.2)]",
+            "hover:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/3.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.3)]",
+            "focus-within:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/7.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.4)]",
+            "hover:focus-within:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/7.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.4)]"
+          )}>
+          <div className="flex flex-col m-3.5 gap-3.5">
+            {/* Input Text Area */}
+            <div className="relative">
+              <div className="max-h-96 w-full overflow-y-auto font-large break-words transition-opacity duration-200 min-h-[3rem]">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+                  placeholder={isEmpty ? "How can I help you today?" : "Kirim pesan..."}
+                  className={cn(
+                    "w-full bg-transparent text-foreground placeholder-muted-foreground focus:outline-none",
+                    "px-2 py-4 min-h-[3rem]",
+                    isEmpty ? "text-sm sm:text-base" : "text-xs sm:text-sm"
+                  )}
+                  aria-label="Message input"
+                  aria-describedby="message-help"
+                />
+              </div>
+            </div>
+
+            {/* Bottom Bar with Buttons */}
+            <div className="flex gap-2 w-full items-center">
+              {/* Left Side - 3 Features: Tools SVG, Microphone, File Upload */}
+              <div className="flex items-center gap-2 shrink-0">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,application/pdf,text/*,.doc,.docx,.xls,.xlsx"
+                />
+                
+                {/* Tools Button */}
+                <div className="tools-dropdown relative">
+                  <button
+                    onClick={() => setToolsMenuOpen(!toolsMenuOpen)}
+                    className="border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary active:scale-[0.98]"
+                    aria-label="Open tools menu"
+                    aria-expanded={toolsMenuOpen}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                      <path d="M40,88H73a32,32,0,0,0,62,0h81a8,8,0,0,0,0-16H135a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16Zm64-24A16,16,0,1,1,88,80,16,16,0,0,1,104,64ZM216,168H199a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16h97a32,32,0,0,0,62,0h17a8,8,0,0,0,0-16Zm-48,24a16,16,0,1,1,16-16A16,16,0,0,1,168,192Z"></path>
+                    </svg>
+                  </button>
+                  
+                  {/* Tools Dropdown Menu */}
+                  {toolsMenuOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-50" role="menu">
+                      {/* Model Selector Section */}
+                      <div className="p-2 border-b border-border">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">Model</p>
+                        <button
+                          onClick={() => {
+                            toast.info('Model Selector', {
+                              description: 'Model selection feature coming soon'
+                            });
+                            setToolsMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
+                        >
+                          <div className="flex items-center justify-center size-[18px] overflow-hidden shrink-0">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2]">
+                              <path d="M19 9C19 12.866 15.866 17 12 17C8.13398 17 4.99997 12.866 4.99997 9C4.99997 5.13401 8.13398 3 12 3C15.866 3 19 5.13401 19 9Z" className="fill-yellow-100 dark:fill-yellow-300 origin-center transition-[transform,opacity] duration-100 scale-0 opacity-0"></path>
+                              <path d="M15 16.1378L14.487 15.2794L14 15.5705V16.1378H15ZM8.99997 16.1378H9.99997V15.5705L9.51293 15.2794L8.99997 16.1378ZM18 9C18 11.4496 16.5421 14.0513 14.487 15.2794L15.5129 16.9963C18.1877 15.3979 20 12.1352 20 9H18ZM12 4C13.7598 4 15.2728 4.48657 16.3238 5.33011C17.3509 6.15455 18 7.36618 18 9H20C20 6.76783 19.082 4.97946 17.5757 3.77039C16.0931 2.58044 14.1061 2 12 2V4ZM5.99997 9C5.99997 7.36618 6.64903 6.15455 7.67617 5.33011C8.72714 4.48657 10.2401 4 12 4V2C9.89382 2 7.90681 2.58044 6.42427 3.77039C4.91791 4.97946 3.99997 6.76783 3.99997 9H5.99997ZM9.51293 15.2794C7.4578 14.0513 5.99997 11.4496 5.99997 9H3.99997C3.99997 12.1352 5.81225 15.3979 8.48701 16.9963L9.51293 15.2794ZM9.99997 19.5001V16.1378H7.99997V19.5001H9.99997ZM10.5 20.0001C10.2238 20.0001 9.99997 19.7763 9.99997 19.5001H7.99997C7.99997 20.8808 9.11926 22.0001 10.5 22.0001V20.0001ZM13.5 20.0001H10.5V22.0001H13.5V20.0001ZM14 19.5001C14 19.7763 13.7761 20.0001 13.5 20.0001V22.0001C14.8807 22.0001 16 20.8808 16 19.5001H14ZM14 16.1378V19.5001H16V16.1378H14Z" fill="currentColor"></path>
+                              <path d="M9 16.0001H15" stroke="currentColor"></path>
+                              <path d="M12 16V12" stroke="currentColor" strokeLinecap="square"></path>
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">Expert</p>
+                            <p className="text-xs text-muted-foreground">Current model</p>
+                          </div>
+                        </button>
+                      </div>
+                      
+                      {/* Tools Section */}
+                      <div className="p-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">Tools</p>
+                        <button
+                          onClick={() => {
+                            toast.info('Grounding with Google Search', {
+                              description: 'This feature will enable web search grounding'
+                            });
+                            setToolsMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
+                        >
+                          <Search className="w-4 h-4" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">Grounding with Google Search</p>
+                            <p className="text-xs text-muted-foreground">Enable web search</p>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Microphone Button */}
+                <button
+                  onClick={toggleMic}
+                  className={cn(
+                    "border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center border-border active:scale-[0.98]",
+                    isRecording 
+                      ? "bg-red-500 text-white" 
+                      : "text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary"
+                  )}
+                  aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
+                  aria-pressed={isRecording}
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+
+                {/* File Upload Button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary active:scale-[0.98]"
+                  aria-label="Attach file"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
+                  </svg>
+                </button>
+              </div>
+
+              {/* Right Side - Model Selector & Live Voice/Send */}
+              <div className="flex items-center gap-2 shrink-0 ml-auto">
+                {/* Model Selector Button - Hover to Show */}
+                <div 
+                  className="model-selector relative"
+                  onMouseEnter={() => setModelMenuOpen(true)}
+                  onMouseLeave={() => setModelMenuOpen(false)}
+                >
+                  <button
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-100 select-none hover:bg-[#FFD700]/10 disabled:hover:bg-transparent border border-[#FFD700]/20 h-10 py-1.5 text-sm rounded-full text-[#FFD700] px-3.5 focus:outline-none"
+                    type="button"
+                    id="model-select-trigger"
+                    aria-label="Model select"
+                    aria-haspopup="menu"
+                    aria-expanded={modelMenuOpen}
+                  >
+                    <div className="flex flex-row items-center gap-2">
+                      <div className="flex items-center justify-center size-[18px] overflow-hidden shrink-0">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2]">
+                          <path d="M6.5 12.5L11.5 17.5M6.5 12.5L11.8349 6.83172C13.5356 5.02464 15.9071 4 18.3887 4H20V5.61135C20 8.09292 18.9754 10.4644 17.1683 12.1651L11.5 17.5M6.5 12.5L2 11L5.12132 7.87868C5.68393 7.31607 6.44699 7 7.24264 7H11M11.5 17.5L13 22L16.1213 18.8787C16.6839 18.3161 17 17.553 17 16.7574V13" stroke="currentColor" strokeLinecap="square"></path>
+                          <path d="M4.5 16.5C4.5 16.5 4 18 4 20C6 20 7.5 19.5 7.5 19.5" stroke="currentColor"></path>
+                        </svg>
+                      </div>
+                      <div style={{ overflow: 'hidden', width: 'auto', opacity: 1, flexGrow: 0 }}>
+                        <div className="flex flex-col items-start">
+                          <span className="font-semibold text-sm shrink-0 line-clamp-1">Auto</span>
+                        </div>
+                      </div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2] size-4 text-[#FFD700] transition-transform">
+                      <path d="M6 9L12 15L18 9" stroke="currentColor" strokeLinecap="square"></path>
+                    </svg>
+                  </button>
+                  
+                  {/* Model Dropdown Menu - Show on Hover */}
+                  {modelMenuOpen && (
+                    <div className="absolute bottom-full right-0 mb-2 w-56 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-50" role="menu">
+                      {['Auto', 'Expert', 'Fast', 'Creative'].map((model) => (
+                        <button
+                          key={model}
+                          onClick={() => {
+                            toast.info('Model Selected', {
+                              description: `Switched to ${model} model`
+                            });
+                            setModelMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-secondary transition-colors text-left"
+                        >
+                          <span className="text-sm font-medium">{model}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Live Voice / Send Button */}
+                {input.trim() ? (
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={isLoading}
+                    className="inline-flex items-center justify-center relative shrink-0 select-none disabled:pointer-events-none disabled:opacity-50 font-base-bold transition-colors h-8 w-8 rounded-md active:scale-95 rounded-lg bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-black hover:opacity-90"
+                    type="button"
+                    aria-label="Send message"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                      <path d="M208.49,120.49a12,12,0,0,1-17,0L140,69V216a12,12,0,0,1-24,0V69L64.49,120.49a12,12,0,0,1-17-17l72-72a12,12,0,0,1,17,0l72,72A12,12,0,0,1,208.49,120.49Z"></path>
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setVoiceLiveActive(!voiceLiveActive);
+                      toast.info('Voice Mode', {
+                        description: voiceLiveActive ? 'Voice mode disabled' : 'Voice mode enabled'
+                      });
+                    }}
+                    className="inline-flex items-center justify-center relative shrink-0 select-none h-8 w-8 rounded-lg active:scale-95"
+                    type="button"
+                    aria-label="Enter voice mode"
+                  >
+                    <div className="h-8 relative aspect-square flex items-center justify-center gap-0.5 rounded-full ring-1 ring-inset duration-100 before:absolute before:inset-0 before:rounded-full before:bg-[#FFD700] before:ring-0 before:transition-all bg-[#FFD700] text-black ring-transparent before:[clip-path:circle(50%_at_50%_50%)]">
+                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.4rem' }}></div>
+                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.8rem' }}></div>
+                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '1.2rem' }}></div>
+                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.7rem' }}></div>
+                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '1rem' }}></div>
+                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.4rem' }}></div>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          <button
-            onClick={handleSendMessage}
-            disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
-            className={cn(
-              "p-2.5 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-ring",
-              (input.trim() || uploadedFiles.length > 0) && !isLoading
-                ? "bg-gradient-to-br from-blue-600 to-blue-500 text-white hover:opacity-90 shadow-lg shadow-blue-500/20"
-                : "bg-secondary text-muted-foreground cursor-not-allowed"
-            )}
-            aria-label="Send message"
-            aria-disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
-          >
-            <Send className="w-4 h-4" />
-          </button>
+        </div>
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderProfile = () => (
     <div className="p-8 max-w-2xl mx-auto">
@@ -1872,108 +2127,441 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     </div>
   );
 
+  // Navigation links for MorphingNavigation
+  const navLinks: MorphingNavigationLink[] = [
+    { id: 'library', label: 'Library', href: '/library', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'culture', label: 'Culture', href: '/culture', icon: <Sparkles className="w-4 h-4" /> },
+    { id: 'chat', label: 'Chat', href: '/chat', icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'creative', label: 'Creative', href: '/creative', icon: <PenTool className="w-4 h-4" /> },
+  ];
+
+  const handleNavLinkClick = (link: MorphingNavigationLink) => {
+    if (link.href === '/chat') {
+      navigate('/chat');
+    } else {
+      toast.info('Coming Soon', {
+        description: `${link.label} feature will be available soon`
+      });
+    }
+  };
+
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-background text-foreground relative overflow-hidden">
+      
+      {/* Sidebar - Mobile Responsive - Fixed bug: fully hidden on mobile when closed */}
       <div className={cn(
-        "fixed lg:relative lg:translate-x-0 z-50 bg-card border-r border-border h-full flex flex-col",
+        "fixed lg:relative lg:translate-x-0 z-[60] bg-card border-r border-border h-full flex flex-col",
         "transition-all duration-300 ease-out",
         sidebarOpen 
           ? sidebarMinimized 
-            ? "w-20 shadow-2xl lg:shadow-none" 
-            : "w-64 shadow-2xl lg:shadow-none" 
-          : "w-0 lg:w-20 -translate-x-full lg:translate-x-0"
+            ? "w-16 sm:w-20 shadow-2xl lg:shadow-none" 
+            : "w-64 sm:w-72 shadow-2xl lg:shadow-none" 
+          : isMobileView
+            ? "w-0 -translate-x-full overflow-hidden"
+            : "w-0 lg:w-20 lg:translate-x-0 overflow-hidden lg:overflow-visible"
       )}>
-        {/* Header */}
+        {/* Header - Modern Design */}
         <div className={cn(
-          "p-6 border-b border-border transition-all",
-          sidebarMinimized && "p-4"
+          "p-4 sm:p-5 md:p-6 border-b border-border/50 transition-all",
+          sidebarMinimized && "p-3 sm:p-4"
         )}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             {!sidebarMinimized && (
-              <h1 className="text-xl font-bold font-heading whitespace-nowrap">AI Chat Indonesia</h1>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold font-heading whitespace-nowrap text-[#FFD700] truncate">Orenax</h1>
             )}
             <div className="flex items-center gap-2">
               {/* Minimize button - hidden on mobile when closed */}
               {(sidebarOpen || window.innerWidth >= 1024) && (
                 <button
-                  onClick={() => setSidebarMinimized(!sidebarMinimized)}
-                  className="hidden lg:block text-muted-foreground hover:text-foreground transition-colors p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!sidebarToggleRef.current) {
+                      sidebarToggleRef.current = true;
+                      setSidebarMinimized(!sidebarMinimized);
+                      setTimeout(() => {
+                        sidebarToggleRef.current = false;
+                      }, 300);
+                    }
+                  }}
+                  className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all"
                   aria-label={sidebarMinimized ? "Expand sidebar" : "Minimize sidebar"}
                 >
                   {sidebarMinimized ? (
-                    <ChevronDown className="w-5 h-5 rotate-90" />
+                    <ChevronDown className="w-4 h-4 rotate-90" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 -rotate-90" />
+                    <ChevronDown className="w-4 h-4 -rotate-90" />
                   )}
                 </button>
               )}
               {/* Close button - only on mobile */}
               <button 
-                onClick={() => setSidebarOpen(false)} 
-                className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!sidebarToggleRef.current) {
+                    sidebarToggleRef.current = true;
+                    setSidebarOpen(false);
+                    setTimeout(() => {
+                      sidebarToggleRef.current = false;
+                    }, 300);
+                  }
+                }}
+                className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all"
                 aria-label="Close sidebar"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto" role="navigation" aria-label="Main navigation">
-          {[
-            { id: 'chat' as const, icon: MessageSquare, label: 'Chat', route: '/chat' },
-            { id: 'history' as const, icon: History, label: 'Riwayat', route: '/chat/history' },
-            { id: 'profile' as const, icon: User, label: 'Profil', route: '/chat/profile' },
-            { id: 'settings' as const, icon: Settings, label: 'Pengaturan', route: '/chat/settings' }
-          ].map(item => (
-            <button
-              key={item.id}
-              onClick={() => { 
-                navigate(item.route);
-                if (window.innerWidth < 1024) setSidebarOpen(false); 
-              }}
-              className={cn(
-                "w-full flex items-center gap-3 rounded-xl transition-all",
-                "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-                sidebarMinimized ? "px-3 py-3 justify-center" : "px-4 py-3",
-                currentView === item.id 
-                  ? "bg-secondary text-foreground" 
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              )}
-              aria-label={item.label}
-              aria-current={currentView === item.id ? "page" : undefined}
-              title={sidebarMinimized ? item.label : undefined}
-            >
-              <item.icon className="w-5 h-5 shrink-0" />
-              {!sidebarMinimized && <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>}
-            </button>
-          ))}
+        <nav className="flex-1 p-3 sm:p-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Main navigation">
+          {/* News Chat - Mobile Responsive */}
+          <button
+            onClick={() => {
+              navigate('/chat');
+              if (isMobileView) setSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
+              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              currentView === 'chat'
+                ? "bg-gradient-to-r from-[#FFD700]/20 to-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30"
+                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            )}
+            aria-label="News Chat"
+            aria-current={currentView === 'chat' ? "page" : undefined}
+            title={sidebarMinimized ? "News Chat" : undefined}
+          >
+            <Newspaper className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">News Chat</span>}
+          </button>
+
+          {/* Recent Chat - Mobile Responsive */}
+          <button
+            onClick={() => {
+              navigate('/chat/history');
+              if (isMobileView) setSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
+              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              currentView === 'history'
+                ? "bg-gradient-to-r from-[#FFD700]/20 to-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30"
+                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            )}
+            aria-label="Recent Chat"
+            aria-current={currentView === 'history' ? "page" : undefined}
+            title={sidebarMinimized ? "Recent Chat" : undefined}
+          >
+            <History className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Recent Chat</span>}
+          </button>
+
+          {/* Separator */}
+          <div className="my-2 border-t border-border" />
+
+          {/* Customize - Mobile Responsive */}
+          <button
+            onClick={() => {
+              navigate('/chat/profile');
+              if (isMobileView) setSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
+              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              currentView === 'profile'
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            )}
+            aria-label="Customize"
+            aria-current={currentView === 'profile' ? "page" : undefined}
+            title={sidebarMinimized ? "Customize" : undefined}
+          >
+            <Palette className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Customize</span>}
+          </button>
+
+          {/* Settings - Mobile Responsive */}
+          <button
+            onClick={() => {
+              navigate('/chat/settings');
+              if (isMobileView) setSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
+              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              currentView === 'settings'
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            )}
+            aria-label="Settings"
+            aria-current={currentView === 'settings' ? "page" : undefined}
+            title={sidebarMinimized ? "Settings" : undefined}
+          >
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Settings</span>}
+          </button>
+
+          {/* Subscription - Mobile Responsive */}
+          <button
+            onClick={() => {
+              toast.info('Subscription', {
+                description: 'Subscription feature coming soon'
+              });
+            }}
+            className={cn(
+              "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
+              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            )}
+            aria-label="Subscription"
+            title={sidebarMinimized ? "Subscription" : undefined}
+          >
+            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Subscription</span>}
+          </button>
+
+          {/* History - Non-clickable Header */}
+          <div
+            className={cn(
+              "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              "text-muted-foreground opacity-60"
+            )}
+            aria-label="History"
+            title={sidebarMinimized ? "History" : undefined}
+          >
+            <History className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">History</span>}
+          </div>
+
+          {/* Conversation List - Quick Access */}
+          {!sidebarMinimized && chatHistory.length > 0 && (
+            <div className="space-y-1 max-h-[300px] overflow-y-auto">
+              {chatHistory.slice(0, 10).map((chat: any) => (
+                <button
+                  key={chat.id}
+                  onClick={() => {
+                    setCurrentChatId(chat.id);
+                    setMessages(chat.messages || []);
+                    setCurrentView('chat');
+                    navigate('/chat');
+                    if (isMobileView) setSidebarOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-start gap-2 px-3 py-2 rounded-lg transition-all text-left",
+                    "hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-ring",
+                    currentChatId === chat.id && "bg-secondary"
+                  )}
+                  title={chat.title || 'Untitled Chat'}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground truncate flex-1">
+                    {chat.title || chat.messages?.[0]?.content?.substring(0, 30) || 'Untitled Chat'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
         </nav>
 
-        <div className="p-4 border-t border-border">
-          <div className="flex items-center gap-3 px-4 py-3 bg-secondary rounded-xl mb-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-foreground to-muted-foreground flex items-center justify-center text-sm font-bold text-background">
-              {profile.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{profile.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className={cn(
-              "w-full flex items-center gap-3 rounded-xl transition-all",
-              "text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-ring",
-              sidebarMinimized ? "px-3 py-3 justify-center" : "px-4 py-3"
-            )}
-            aria-label="Logout"
-            title={sidebarMinimized ? "Keluar" : undefined}
-          >
-            <LogOut className="w-5 h-5 shrink-0" />
-            {!sidebarMinimized && <span className="text-sm font-medium whitespace-nowrap">Keluar</span>}
-          </button>
+        <div className="p-2 sm:p-3 md:p-4 border-t border-border">
+          {/* Profile with Dropdown Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
+                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+                  sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-2 sm:px-3 md:px-4 py-2 sm:py-3",
+                  "bg-gradient-to-r from-[#FFD700]/10 to-[#FFD700]/5 border border-[#FFD700]/20 hover:from-[#FFD700]/15 hover:to-[#FFD700]/10"
+                )}
+                aria-label="Profile menu"
+              >
+                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] flex items-center justify-center text-xs sm:text-sm font-bold text-black flex-shrink-0">
+                  {profile.name.charAt(0).toUpperCase()}
+                </div>
+                {!sidebarMinimized && (
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-xs sm:text-sm font-medium truncate text-[#FFD700]">{profile.name}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{profile.email}</p>
+                  </div>
+                )}
+                {!sidebarMinimized && (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              align="end" 
+              side="top"
+              sideOffset={8}
+              className="w-[17rem] bg-background/95 backdrop-blur-xl border border-border/50 shadow-lg"
+              style={{ zIndex: 9999 }}
+            >
+              <DropdownMenuLabel className="text-text-500 pt-1 px-2 pb-2 overflow-ellipsis truncate">
+                {profile.email}
+              </DropdownMenuLabel>
+              
+              <DropdownMenuItem 
+                onClick={() => {
+                  navigate('/chat/settings');
+                  if (isMobileView) setSidebarOpen(false);
+                }}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2 w-full text-sm">
+                  <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                    <Settings className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 truncate">Settings</span>
+                  <span className="text-text-500 font-small px-0.5">⇧+Ctrl+,</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                onClick={() => {
+                  toast.info('Subscription', {
+                    description: 'Subscription feature coming soon'
+                  });
+                }}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2 w-full text-sm">
+                  <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 truncate">Subscription</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                onClick={() => {
+                  navigate('/chat/history');
+                  if (isMobileView) setSidebarOpen(false);
+                }}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2 w-full text-sm">
+                  <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                    <History className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 truncate">History</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer">
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7.2705 3.0498C11.1054 1.5437 15.4369 3.42942 16.9473 7.26367C18.4585 11.1003 16.5729 15.4359 12.7363 16.9473C8.89982 18.4583 4.56416 16.5736 3.05272 12.7373C1.54288 8.90435 3.42282 4.57201 7.25194 3.05663C7.25547 3.05522 7.25914 3.05413 7.26269 3.05273C7.26523 3.05172 7.26795 3.05079 7.2705 3.0498ZM8.64159 14.5283C8.05764 14.958 7.56418 15.4198 7.17772 15.8896C8.21355 16.3858 9.37633 16.6096 10.5508 16.5098C10.2224 16.2862 9.89754 16.0029 9.58202 15.6748C9.26312 15.3432 8.94744 14.9583 8.64159 14.5283ZM13.1572 12.5351C12.5305 12.6659 11.8818 12.8585 11.2275 13.1162C10.5729 13.3741 9.96666 13.6758 9.41894 14.0078C9.6946 14.3937 9.97385 14.7371 10.2539 15.0283C10.7036 15.4959 11.1332 15.8156 11.5117 15.9863C11.8879 16.1559 12.1765 16.1643 12.3935 16.0791C12.6107 15.9936 12.8179 15.7903 12.9775 15.4092C13.1379 15.0262 13.2342 14.4991 13.2441 13.8506C13.2503 13.4466 13.2187 13.0053 13.1572 12.5351ZM3.63768 8.51855C3.34594 9.76629 3.4167 11.1121 3.92186 12.3945C4.42675 13.6762 5.29203 14.7083 6.35546 15.4219C6.82009 14.8304 7.4201 14.2628 8.12694 13.748C7.6691 12.9972 7.2458 12.1466 6.88378 11.2275C6.52163 10.3082 6.25055 9.397 6.07323 8.53515C5.20566 8.64053 4.38055 8.63422 3.63768 8.51855ZM16.081 12.3828C15.4777 12.3027 14.8015 12.3016 14.081 12.3857C14.1506 12.9087 14.1838 13.4053 14.1767 13.8652C14.1698 14.3208 14.124 14.75 14.0361 15.1377C14.9636 14.4096 15.6617 13.4524 16.081 12.3828ZM11.0947 6.7705C10.4885 7.14026 9.82394 7.47239 9.11425 7.75195C8.40436 8.03157 7.69176 8.2418 6.99608 8.38476C7.16147 9.17591 7.41289 10.0225 7.75292 10.8857C8.09272 11.7483 8.48601 12.5376 8.90429 13.2285C9.51056 12.8587 10.176 12.5276 10.8857 12.248C11.5954 11.9685 12.3075 11.7572 13.0029 11.6143C12.8376 10.8236 12.5869 9.97794 12.2471 9.11523C11.907 8.25206 11.5133 7.46188 11.0947 6.7705ZM13.6426 4.57714C13.178 5.16855 12.5788 5.73625 11.8721 6.25097C12.3302 7.00222 12.754 7.85307 13.1162 8.77245C13.4782 9.69152 13.7485 10.6024 13.9258 11.4639C14.7932 11.3584 15.6185 11.3649 16.3613 11.4805C16.6528 10.233 16.5841 8.88752 16.0791 7.60546C15.5738 6.32297 14.707 5.29067 13.6426 4.57714ZM5.9619 4.86327C5.03547 5.59096 4.33712 6.54756 3.91796 7.6162C4.52106 7.69641 5.19677 7.69821 5.91698 7.61425C5.84736 7.09104 5.81616 6.59385 5.82323 6.13378C5.83026 5.679 5.87418 5.25038 5.9619 4.86327ZM8.48827 4.01367C8.11174 3.8439 7.82256 3.83644 7.60546 3.92187C7.38849 4.0075 7.182 4.20998 7.02245 4.59081C6.86212 4.97369 6.76585 5.50006 6.75585 6.14843C6.74965 6.55226 6.78027 6.99382 6.84179 7.46386C7.46863 7.33317 8.11803 7.14252 8.77245 6.88476C9.42675 6.62702 10.0316 6.32305 10.5791 5.9912C10.3036 5.6057 10.0259 5.26167 9.74608 4.9707C9.29651 4.50322 8.8667 4.18435 8.48827 4.01367ZM12.8223 4.10937C11.7866 3.61351 10.6234 3.3904 9.44921 3.49023C9.77744 3.71355 10.1026 3.99633 10.418 4.32421C10.7368 4.65579 11.0526 5.04068 11.3584 5.4707C11.9424 5.04095 12.4358 4.57931 12.8223 4.10937Z"></path>
+                      </svg>
+                    </div>
+                    <span className="flex-1 truncate">Language</span>
+                  </div>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem>English</DropdownMenuItem>
+                  <DropdownMenuItem>Bahasa Indonesia</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuItem 
+                onClick={() => {
+                  toast.info('Get help', {
+                    description: 'Contact us at support@orenax.com'
+                  });
+                }}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2 w-full font-base group">
+                  <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                    <HelpCircle className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 truncate">Get help</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem 
+                onClick={() => {
+                  toast.info('Upgrade plan', {
+                    description: 'Upgrade feature coming soon'
+                  });
+                }}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2 w-full text-sm group">
+                  <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10 2.5C14.1421 2.5 17.5 5.85786 17.5 10C17.5 14.1421 14.1421 17.5 10 17.5C5.85786 17.5 2.5 14.1421 2.5 10C2.5 5.85786 5.85786 2.5 10 2.5ZM10 3.5C6.41015 3.5 3.5 6.41015 3.5 10C3.5 13.5899 6.41015 16.5 10 16.5C13.5899 16.5 16.5 13.5899 16.5 10C16.5 6.41015 13.5899 3.5 10 3.5ZM9.64648 6.64648C9.81727 6.47572 10.0813 6.45407 10.2754 6.58203L10.3535 6.64648L12.8535 9.14648C13.0488 9.34174 13.0488 9.65825 12.8535 9.85352C12.6583 10.0488 12.3417 10.0488 12.1465 9.85352L10.5 8.20703V13L10.4902 13.1006C10.4437 13.3285 10.2416 13.4999 10 13.5C9.75851 13.4999 9.55644 13.3283 9.50977 13.1006L9.5 13V8.20703L7.85449 9.85352C7.6594 10.0486 7.34276 10.0483 7.14746 9.85352C6.9522 9.65825 6.9522 9.34175 7.14746 9.14648L9.64648 6.64648Z"></path>
+                    </svg>
+                  </div>
+                  <span className="flex-1 truncate">Upgrade plan</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                onClick={() => {
+                  toast.info('Download', {
+                    description: 'Download feature coming soon'
+                  });
+                }}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2 w-full text-sm group">
+                  <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M16.5 13C16.7761 13 17 13.2239 17 13.5V15.5C17 16.3284 16.3284 17 15.5 17H4.5C3.67157 17 3 16.3284 3 15.5V13.5C3 13.2239 3.22386 13 3.5 13C3.77614 13 4 13.2239 4 13.5V15.5C4 15.7761 4.22386 16 4.5 16H15.5C15.7761 16 16 15.7761 16 15.5V13.5C16 13.2239 16.2239 13 16.5 13ZM10 3C10.2761 3 10.5 3.22386 10.5 3.5V12.1855L13.626 8.66797C13.8094 8.46166 14.1256 8.44275 14.332 8.62598C14.5383 8.80936 14.5573 9.12563 14.374 9.33203L10.374 13.832L10.2949 13.9033C10.21 13.9654 10.107 14 10 14C9.85718 14 9.72086 13.9388 9.62598 13.832L5.62598 9.33203L5.56738 9.25C5.45079 9.04872 5.48735 8.78653 5.66797 8.62598C5.84854 8.46567 6.1127 8.46039 6.29883 8.59961L6.37402 8.66797L9.5 12.1855V3.5C9.5 3.22386 9.72386 3 10 3Z"></path>
+                    </svg>
+                  </div>
+                  <span className="flex-1 truncate">Download OrenaX for Android</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer">
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 2.5C14.1421 2.5 17.5 5.85786 17.5 10C17.5 14.1421 14.1421 17.5 10 17.5C5.85786 17.5 2.5 14.1421 2.5 10C2.5 5.85786 5.85786 2.5 10 2.5ZM10 3.5C6.41015 3.5 3.5 6.41015 3.5 10C3.5 13.5899 6.41015 16.5 10 16.5C13.5899 16.5 16.5 13.5899 16.5 10C16.5 6.41015 13.5899 3.5 10 3.5ZM10.1006 9.00977C10.3286 9.05629 10.5 9.25829 10.5 9.5V12.5H11.5C11.7761 12.5 12 12.7239 12 13C12 13.2761 11.7761 13.5 11.5 13.5H8.5C8.22386 13.5 8 13.2761 8 13C8 12.7239 8.22386 12.5 8.5 12.5H9.5V10H8.5C8.22386 10 8 9.77614 8 9.5C8 9.22386 8.22386 9 8.5 9H10L10.1006 9.00977ZM10 6.5C10.4142 6.5 10.75 6.83579 10.75 7.25C10.75 7.66421 10.4142 8 10 8C9.58579 8 9.25 7.66421 9.25 7.25C9.25 6.83579 9.58579 6.5 10 6.5Z"></path>
+                      </svg>
+                    </div>
+                    <span className="flex-1 truncate">Learn more</span>
+                  </div>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem>Documentation</DropdownMenuItem>
+                  <DropdownMenuItem>API Reference</DropdownMenuItem>
+                  <DropdownMenuItem>Community</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem 
+                onClick={handleLogout}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <div className="flex items-center gap-2 w-full text-sm group">
+                  <div className="flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                    <LogOut className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 truncate">Log out</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -1989,9 +2577,32 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm lg:hidden z-40 animate-fade-in"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm lg:hidden z-[55] animate-fade-in"
         />
       )}
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Keluar</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin keluar dari akun? Anda perlu login kembali untuk mengakses aplikasi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowLogoutDialog(false)}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmLogout}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Keluar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
