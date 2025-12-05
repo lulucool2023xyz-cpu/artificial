@@ -1,5 +1,14 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { handleError, AppError } from "@/lib/errorHandler";
+import {
+  authApi,
+  storeAuthTokens,
+  storeUser,
+  clearAuthData,
+  getAccessToken,
+  getRefreshToken,
+  getStoredUser
+} from "@/lib/api";
 
 interface User {
   id: string;
@@ -9,15 +18,10 @@ interface User {
   avatar?: string;
 }
 
-interface AuthToken {
-  token: string;
-  expiresAt: number;
-  refreshToken: string;
-}
-
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
+  accessToken: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   socialLogin: (provider: "google" | "facebook" | "github", userData: { email: string; name: string }) => Promise<{ success: boolean; error?: string }>;
@@ -29,80 +33,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Constants for token management
-const TOKEN_KEY = "auth_token";
-const REFRESH_TOKEN_KEY = "auth_refresh_token";
-const USER_KEY = "auth_user";
 const TOKEN_EXPIRY_BUFFER = 5 * 60 * 1000; // 5 minutes before expiry
-
-// Utility functions for secure token management
-const generateToken = (userId: string, expiresInHours: number = 24): AuthToken => {
-  // Simulate JWT token generation (in production, this comes from backend)
-  const token = btoa(JSON.stringify({ userId, iat: Date.now(), exp: Date.now() + expiresInHours * 60 * 60 * 1000 }));
-  const refreshToken = btoa(JSON.stringify({ userId, type: "refresh", iat: Date.now() }));
-  
-  return {
-    token,
-    expiresAt: Date.now() + expiresInHours * 60 * 60 * 1000,
-    refreshToken,
-  };
-};
-
-const isTokenValid = (tokenData: AuthToken | null): boolean => {
-  if (!tokenData) return false;
-  return Date.now() < tokenData.expiresAt - TOKEN_EXPIRY_BUFFER;
-};
-
-const getStoredToken = (): AuthToken | null => {
-  try {
-    const token = sessionStorage.getItem(TOKEN_KEY);
-    const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
-    const expiresAt = sessionStorage.getItem(`${TOKEN_KEY}_expires`);
-    
-    if (token && refreshToken && expiresAt) {
-      return {
-        token,
-        refreshToken,
-        expiresAt: parseInt(expiresAt, 10),
-      };
-    }
-  } catch (error) {
-    const errorMessage = "Error reading stored token";
-    console.error(errorMessage, error);
-    handleError(error, { component: "AuthProvider", action: "getStoredToken" });
-  }
-  return null;
-};
-
-const storeToken = (tokenData: AuthToken): void => {
-  try {
-    sessionStorage.setItem(TOKEN_KEY, tokenData.token);
-    sessionStorage.setItem(REFRESH_TOKEN_KEY, tokenData.refreshToken);
-    sessionStorage.setItem(`${TOKEN_KEY}_expires`, tokenData.expiresAt.toString());
-  } catch (error) {
-    console.error("Error storing token:", error);
-    handleError(error, { component: "AuthProvider", action: "storeToken" });
-  }
-};
-
-const clearStoredAuth = (): void => {
-  try {
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
-    sessionStorage.removeItem(`${TOKEN_KEY}_expires`);
-    sessionStorage.removeItem(USER_KEY);
-  } catch (error) {
-    console.error("Error clearing stored auth:", error);
-    handleError(error, { component: "AuthProvider", action: "clearStoredAuth" });
-  }
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-refresh token before expiry
+  // Schedule token refresh before expiry
   const scheduleTokenRefresh = useCallback((expiresAt: number) => {
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
@@ -119,21 +59,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Refresh session with refresh token
   const refreshSession = useCallback(async (): Promise<boolean> => {
     try {
-      const storedToken = getStoredToken();
-      if (!storedToken) return false;
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return false;
 
-      // Simulate API call to refresh token
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const response = await authApi.refresh(refreshToken);
 
-      const storedUser = sessionStorage.getItem(USER_KEY);
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        const newToken = generateToken(userData.id);
-        storeToken(newToken);
-        scheduleTokenRefresh(newToken.expiresAt);
+      if (response.session) {
+        const { access_token, refresh_token, expires_at } = response.session;
+        storeAuthTokens(access_token, refresh_token, expires_at);
+        setAccessToken(access_token);
+        scheduleTokenRefresh(expires_at * 1000); // Convert to ms
         return true;
       }
     } catch (error) {
+      console.error("Failed to refresh session:", error);
       handleError(
         new AppError(
           "Failed to refresh session",
@@ -146,26 +85,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   }, [scheduleTokenRefresh]);
 
-  // Check authentication on mount and validate token
+  // Logout function
+  const logout = useCallback(async () => {
+    // Clear timer
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
+    // Try to call backend logout (fire and forget)
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignore errors - we're logging out anyway
+    }
+
+    // Clear state
+    setIsAuthenticated(false);
+    setUser(null);
+    setAccessToken(null);
+
+    // Clear storage
+    clearAuthData();
+  }, []);
+
+  // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const storedToken = getStoredToken();
-        const storedUser = sessionStorage.getItem(USER_KEY);
+        const storedToken = getAccessToken();
+        const storedUser = getStoredUser();
 
-        if (storedToken && storedUser && isTokenValid(storedToken)) {
-          const userData = JSON.parse(storedUser);
-          setIsAuthenticated(true);
-          setUser(userData);
-          scheduleTokenRefresh(storedToken.expiresAt);
-        } else if (storedToken && !isTokenValid(storedToken)) {
-          // Try to refresh if token expired
-          const refreshed = await refreshSession();
-          if (!refreshed) {
-            clearStoredAuth();
+        if (storedToken && storedUser) {
+          // Verify token with backend
+          try {
+            const response = await authApi.me();
+            setUser({
+              id: response.user.id,
+              email: response.user.email,
+              name: response.user.name || response.user.fullName || '',
+              provider: 'email',
+            });
+            setAccessToken(storedToken);
+            setIsAuthenticated(true);
+          } catch {
+            // Token invalid, try refresh
+            const refreshed = await refreshSession();
+            if (!refreshed) {
+              clearAuthData();
+            }
           }
         } else {
-          clearStoredAuth();
+          clearAuthData();
         }
       } catch (error) {
         handleError(
@@ -175,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             { component: "AuthProvider", action: "checkAuth" }
           )
         );
-        clearStoredAuth();
+        clearAuthData();
       } finally {
         setIsLoading(false);
       }
@@ -189,15 +159,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, [refreshSession, scheduleTokenRefresh]);
+  }, [refreshSession]);
 
+  // Login with email and password
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    
+
     try {
-      // Simulate API call with validation
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
       // Basic validation
       if (!email || !password) {
         return { success: false, error: "Email and password are required" };
@@ -207,46 +175,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Password must be at least 6 characters" };
       }
 
-      // For demo purposes, accept any valid email/password
-      // In production, this would be an actual API call
-      const userId = btoa(email); // Generate simple user ID
+      // Call backend API
+      const response = await authApi.login({ email, password });
+
+      // Store tokens
+      const expiresAt = response.expiresAt || (Date.now() + 24 * 60 * 60 * 1000);
+      storeAuthTokens(response.accessToken, response.refreshToken, expiresAt);
+
+      // Store user
       const userData: User = {
-        id: userId,
-        email,
-        name: email.split("@")[0],
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name || response.user.fullName || email.split("@")[0],
         provider: "email",
       };
-      
-      // Generate and store token
-      const token = generateToken(userId);
-      storeToken(token);
-      sessionStorage.setItem(USER_KEY, JSON.stringify(userData));
-      
+      storeUser(userData);
+
+      // Update state
       setIsAuthenticated(true);
       setUser(userData);
-      scheduleTokenRefresh(token.expiresAt);
-      
+      setAccessToken(response.accessToken);
+      scheduleTokenRefresh(expiresAt);
+
       return { success: true };
     } catch (error) {
-      const appError = new AppError(
-        error instanceof Error ? error.message : "Login failed",
-        "An error occurred during login. Please try again.",
-        { component: "AuthProvider", action: "login", additionalData: { email } }
-      );
-      handleError(appError);
-      return { success: false, error: appError.userMessage };
+      // Better error messages for common errors
+      let errorMessage = "Login gagal";
+      if (error instanceof Error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("invalid") || msg.includes("password") || msg.includes("credentials")) {
+          errorMessage = "Email atau password salah";
+        } else if (msg.includes("not found") || msg.includes("user")) {
+          errorMessage = "Akun tidak ditemukan";
+        } else if (msg.includes("network") || msg.includes("fetch")) {
+          errorMessage = "Tidak dapat terhubung ke server";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      console.error("Login error:", error);
+      return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Register new user
   const signup = async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    
+
     try {
-      // Simulate API call with validation
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
       // Input validation
       if (!name || !email || !password) {
         return { success: false, error: "All fields are required" };
@@ -260,99 +238,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Invalid email format" };
       }
 
-      // For demo purposes, accept any valid signup
-      const userId = btoa(email);
+      // Call backend API
+      const response = await authApi.register({ email, password, name });
+
+      // Store tokens
+      const expiresAt = response.expiresAt || (Date.now() + 24 * 60 * 60 * 1000);
+      storeAuthTokens(response.accessToken, response.refreshToken, expiresAt);
+
+      // Store user
       const userData: User = {
-        id: userId,
-        email,
-        name,
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name || response.user.fullName || name,
         provider: "email",
       };
-      
-      // Generate and store token
-      const token = generateToken(userId);
-      storeToken(token);
-      sessionStorage.setItem(USER_KEY, JSON.stringify(userData));
-      
+      storeUser(userData);
+
+      // Update state
       setIsAuthenticated(true);
       setUser(userData);
-      scheduleTokenRefresh(token.expiresAt);
-      
+      setAccessToken(response.accessToken);
+      scheduleTokenRefresh(expiresAt);
+
       return { success: true };
     } catch (error) {
-      const appError = new AppError(
-        error instanceof Error ? error.message : "Signup failed",
-        "An error occurred during signup. Please try again.",
-        { component: "AuthProvider", action: "signup", additionalData: { email } }
-      );
-      handleError(appError);
-      return { success: false, error: appError.userMessage };
+      const errorMessage = error instanceof Error ? error.message : "Registration failed";
+      console.error("Signup error:", error);
+      return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
     }
   };
 
-  const socialLogin = async (provider: "google" | "facebook" | "github", userData: { email: string; name: string }): Promise<{ success: boolean; error?: string }> => {
+  // Social login (placeholder - needs OAuth implementation)
+  const socialLogin = async (
+    provider: "google" | "facebook" | "github",
+    userData: { email: string; name: string }
+  ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    
-    try {
-      // Simulate API call for social login
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      if (!userData.email || !userData.name) {
-        return { success: false, error: "Invalid social login data" };
-      }
 
-      // In production, this would verify the OAuth token with the provider
-      const userId = btoa(userData.email);
-      const userDataWithProvider: User = {
-        id: userId,
-        ...userData,
-        provider,
+    try {
+      // TODO: Implement OAuth flow via backend
+      // For now, show message that OAuth is not yet implemented
+      return {
+        success: false,
+        error: `${provider.charAt(0).toUpperCase() + provider.slice(1)} login coming soon. Please use email/password.`
       };
-      
-      // Generate and store token
-      const token = generateToken(userId);
-      storeToken(token);
-      sessionStorage.setItem(USER_KEY, JSON.stringify(userDataWithProvider));
-      
-      setIsAuthenticated(true);
-      setUser(userDataWithProvider);
-      scheduleTokenRefresh(token.expiresAt);
-      
-      return { success: true };
     } catch (error) {
-      const appError = new AppError(
-        error instanceof Error ? error.message : "Social login failed",
-        "An error occurred during social login. Please try again.",
-        { component: "AuthProvider", action: "socialLogin", additionalData: { provider } }
-      );
-      handleError(appError);
-      return { success: false, error: appError.userMessage };
+      const errorMessage = error instanceof Error ? error.message : "Social login failed";
+      return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
     }
   };
-
-  const logout = useCallback(() => {
-    // Clear timer
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-    }
-
-    // Clear state
-    setIsAuthenticated(false);
-    setUser(null);
-    
-    // Clear storage
-    clearStoredAuth();
-  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         isAuthenticated,
         user,
+        accessToken,
         login,
         signup,
         socialLogin,
@@ -373,4 +318,3 @@ export function useAuth() {
   }
   return context;
 }
-

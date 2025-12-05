@@ -28,12 +28,12 @@ const Demo = memo(function Demo() {
                     <span className="text-glow">AI Demo Center</span>
                   </h1>
                   <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-6">
-                    Eksplorasi semua fitur AI kami secara langsung. Uji kemampuan voice recognition, 
+                    Eksplorasi semua fitur AI kami secara langsung. Uji kemampuan voice recognition,
                     computer vision, dan deep learning dalam satu platform terintegrasi.
                   </p>
                   <Link
                     to="/"
-                    className="inline-flex items-center gap-2 px-6 py-3 border border-indonesian-gold/60 text-foreground font-semibold rounded-lg hover-glow transition-all">
+                    className="inline-flex items-center gap-2 px-6 py-3 border border-indonesian-gold/60 text-foreground font-semibold rounded-lg hover-glow transition-all"
                   >
                     <Home className="w-5 h-5" />
                     Kembali ke Home
@@ -45,22 +45,22 @@ const Demo = memo(function Demo() {
               <ScrollReveal delay={0.2} duration={0.7} distance={30}>
                 <Tabs defaultValue="camera" className="w-full">
                   <TabsList className="grid w-full grid-cols-3 bg-card/80 border border-indonesian-gold/20 mb-8">
-                    <TabsTrigger 
-                      value="camera" 
+                    <TabsTrigger
+                      value="camera"
                       className="data-[state=active]:bg-indonesian-gold data-[state=active]:text-black"
                     >
                       <Camera className="w-4 h-4 mr-2" />
                       Camera AI
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="voice" 
+                    <TabsTrigger
+                      value="voice"
                       className="data-[state=active]:bg-indonesian-gold data-[state=active]:text-black"
                     >
                       <Mic className="w-4 h-4 mr-2" />
                       Voice AI
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="deeplearning" 
+                    <TabsTrigger
+                      value="deeplearning"
                       className="data-[state=active]:bg-indonesian-gold data-[state=active]:text-black"
                     >
                       <Brain className="w-4 h-4 mr-2" />
@@ -76,7 +76,7 @@ const Demo = memo(function Demo() {
                           Live Camera AI Demo
                         </h2>
                         <p className="text-muted-foreground mb-6">
-                          Uji kemampuan computer vision dengan live camera. Sistem akan mendeteksi wajah, 
+                          Uji kemampuan computer vision dengan live camera. Sistem akan mendeteksi wajah,
                           objek, dan memberikan analisis real-time menggunakan teknologi AI terdepan.
                         </p>
                         <CameraAI />
@@ -92,7 +92,7 @@ const Demo = memo(function Demo() {
                           Live Voice Recognition Demo
                         </h2>
                         <p className="text-muted-foreground mb-6">
-                          Coba fitur voice recognition yang mendukung bahasa Indonesia. Sistem akan 
+                          Coba fitur voice recognition yang mendukung bahasa Indonesia. Sistem akan
                           mencatat dan memproses ucapan Anda secara real-time dengan akurasi tinggi.
                         </p>
                         <VoiceAI />
@@ -108,7 +108,7 @@ const Demo = memo(function Demo() {
                           Deep Learning Analysis Demo
                         </h2>
                         <p className="text-muted-foreground mb-6">
-                          Simulasi neural network processing dengan visualisasi real-time. Lihat bagaimana 
+                          Simulasi neural network processing dengan visualisasi real-time. Lihat bagaimana
                           AI memproses data melalui berbagai layer dan menghasilkan prediksi akurat.
                         </p>
                         <DeepLearningAI />

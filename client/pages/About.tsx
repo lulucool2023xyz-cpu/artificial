@@ -41,12 +41,12 @@ const About = memo(function About() {
                     </span>
                   </h1>
                   <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-6">
-                    Platform AI generasi berikutnya yang menggabungkan teknologi canggih dengan 
+                    Platform AI generasi berikutnya yang menggabungkan teknologi canggih dengan
                     nilai-nilai budaya Indonesia untuk menciptakan pengalaman yang unik dan bermakna.
                   </p>
                   <Link
                     to="/"
-                    className="inline-flex items-center gap-2 px-6 py-3 border border-indonesian-gold/60 text-foreground font-semibold rounded-lg hover-glow transition-all">
+                    className="inline-flex items-center gap-2 px-6 py-3 border border-indonesian-gold/60 text-foreground font-semibold rounded-lg hover-glow transition-all"
                   >
                     <Home className="w-5 h-5" />
                     Kembali ke Home
@@ -57,8 +57,8 @@ const About = memo(function About() {
               {/* Vision & Mission */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 mb-16">
                 <ScrollReveal delay={0.2} duration={0.7} distance={30}>
-                  <OrnamentFrame 
-                    variant="jawa" 
+                  <OrnamentFrame
+                    variant="jawa"
                     className="bg-gradient-to-br from-white/10 to-white/5 border border-indonesian-gold/20 rounded-xl p-6 sm:p-8 backdrop-blur-sm"
                   >
                     <div className="flex items-center gap-3 mb-4">
@@ -66,16 +66,16 @@ const About = memo(function About() {
                       <h2 className="text-2xl font-bold text-foreground">Visi</h2>
                     </div>
                     <p className="text-muted-foreground leading-relaxed">
-                      Menjadi platform AI terdepan yang menghubungkan teknologi modern dengan 
-                      kearifan lokal Indonesia, menciptakan solusi yang tidak hanya cerdas tetapi 
+                      Menjadi platform AI terdepan yang menghubungkan teknologi modern dengan
+                      kearifan lokal Indonesia, menciptakan solusi yang tidak hanya cerdas tetapi
                       juga relevan dengan konteks budaya dan kebutuhan masyarakat Indonesia.
                     </p>
                   </OrnamentFrame>
                 </ScrollReveal>
 
                 <ScrollReveal delay={0.3} duration={0.7} distance={30}>
-                  <OrnamentFrame 
-                    variant="jawa" 
+                  <OrnamentFrame
+                    variant="jawa"
                     className="bg-gradient-to-br from-white/10 to-white/5 border border-indonesian-gold/20 rounded-xl p-6 sm:p-8 backdrop-blur-sm"
                   >
                     <div className="flex items-center gap-3 mb-4">
@@ -106,8 +106,8 @@ const About = memo(function About() {
 
               {/* Project Information */}
               <ScrollReveal delay={0.4} duration={0.7} distance={30}>
-                <OrnamentFrame 
-                  variant="jawa" 
+                <OrnamentFrame
+                  variant="jawa"
                   className="bg-gradient-to-br from-white/10 to-white/5 border border-indonesian-gold/20 rounded-xl p-6 sm:p-8 backdrop-blur-sm mb-16"
                 >
                   <div className="flex items-center gap-3 mb-6">
@@ -116,17 +116,17 @@ const About = memo(function About() {
                   </div>
                   <div className="space-y-4 text-gray-300 leading-relaxed">
                     <p>
-                      Platform AI ini adalah hasil dari visi untuk menciptakan sistem AI yang 
-                      tidak hanya powerful secara teknis, tetapi juga memahami konteks budaya dan 
-                      kebutuhan lokal. Kami menggabungkan berbagai kemampuan AI modern seperti 
-                      voice recognition, computer vision, dan deep learning dalam satu platform 
+                      Platform AI ini adalah hasil dari visi untuk menciptakan sistem AI yang
+                      tidak hanya powerful secara teknis, tetapi juga memahami konteks budaya dan
+                      kebutuhan lokal. Kami menggabungkan berbagai kemampuan AI modern seperti
+                      voice recognition, computer vision, dan deep learning dalam satu platform
                       yang mudah digunakan.
                     </p>
                     <p>
-                      Dengan dukungan bahasa Indonesia dan pemahaman terhadap budaya lokal, platform 
-                      ini dirancang untuk menjadi asisten AI yang benar-benar relevan bagi pengguna 
-                      Indonesia. Setiap fitur dikembangkan dengan mempertimbangkan bagaimana teknologi 
-                      dapat memperkaya kehidupan sehari-hari sambil tetap menghormati nilai-nilai 
+                      Dengan dukungan bahasa Indonesia dan pemahaman terhadap budaya lokal, platform
+                      ini dirancang untuk menjadi asisten AI yang benar-benar relevan bagi pengguna
+                      Indonesia. Setiap fitur dikembangkan dengan mempertimbangkan bagaimana teknologi
+                      dapat memperkaya kehidupan sehari-hari sambil tetap menghormati nilai-nilai
                       budaya yang ada.
                     </p>
                   </div>
@@ -149,8 +149,8 @@ const About = memo(function About() {
                           duration={0.7}
                           distance={30}
                         >
-                          <OrnamentFrame 
-                            variant="jawa" 
+                          <OrnamentFrame
+                            variant="jawa"
                             className="bg-gradient-to-br from-white/10 to-white/5 border border-indonesian-gold/20 rounded-xl p-4 sm:p-6 backdrop-blur-sm text-center hover:scale-105 transition-transform"
                           >
                             <Icon className="w-8 h-8 text-indonesian-gold mx-auto mb-3" />
@@ -168,8 +168,8 @@ const About = memo(function About() {
 
               {/* Team/Creator */}
               <ScrollReveal delay={0.7} duration={0.7} distance={30}>
-                <OrnamentFrame 
-                  variant="jawa" 
+                <OrnamentFrame
+                  variant="jawa"
                   className="bg-gradient-to-br from-white/10 to-white/5 border border-indonesian-gold/20 rounded-xl p-6 sm:p-8 backdrop-blur-sm mb-16"
                 >
                   <div className="flex items-center gap-3 mb-6">
@@ -178,14 +178,14 @@ const About = memo(function About() {
                   </div>
                   <div className="space-y-4 text-muted-foreground">
                     <p>
-                      Platform ini dikembangkan oleh tim yang berkomitmen untuk menghadirkan teknologi 
-                      AI terbaik dengan sentuhan budaya Indonesia. Kami percaya bahwa teknologi harus 
+                      Platform ini dikembangkan oleh tim yang berkomitmen untuk menghadirkan teknologi
+                      AI terbaik dengan sentuhan budaya Indonesia. Kami percaya bahwa teknologi harus
                       dapat diakses oleh semua orang dan memberikan nilai yang berarti.
                     </p>
                     <p>
-                      Dengan latar belakang yang beragam dalam teknologi, desain, dan pemahaman budaya, 
-                      tim kami bekerja sama untuk menciptakan sesuatu yang benar-benar istimewa - sebuah 
-                      platform AI yang tidak hanya cerdas, tetapi juga memahami dan menghormati konteks 
+                      Dengan latar belakang yang beragam dalam teknologi, desain, dan pemahaman budaya,
+                      tim kami bekerja sama untuk menciptakan sesuatu yang benar-benar istimewa - sebuah
+                      platform AI yang tidak hanya cerdas, tetapi juga memahami dan menghormati konteks
                       budaya penggunanya.
                     </p>
                   </div>
@@ -194,8 +194,8 @@ const About = memo(function About() {
 
               {/* Cultural Integration */}
               <ScrollReveal delay={0.8} duration={0.7} distance={30}>
-                <OrnamentFrame 
-                  variant="jawa" 
+                <OrnamentFrame
+                  variant="jawa"
                   className="bg-gradient-to-br from-white/10 to-white/5 border border-indonesian-gold/20 rounded-xl p-6 sm:p-8 backdrop-blur-sm mb-16"
                 >
                   <div className="flex items-center gap-3 mb-6">
@@ -204,14 +204,14 @@ const About = memo(function About() {
                   </div>
                   <div className="space-y-4 text-muted-foreground leading-relaxed">
                     <p>
-                      Salah satu aspek unik dari platform ini adalah integrasi elemen-elemen budaya 
-                      Indonesia dalam desain dan pengalaman pengguna. Kami menggunakan pola batik, 
-                      ornamen wayang, dan elemen visual lainnya yang mencerminkan kekayaan budaya 
+                      Salah satu aspek unik dari platform ini adalah integrasi elemen-elemen budaya
+                      Indonesia dalam desain dan pengalaman pengguna. Kami menggunakan pola batik,
+                      ornamen wayang, dan elemen visual lainnya yang mencerminkan kekayaan budaya
                       Indonesia.
                     </p>
                     <p>
-                      Selain itu, platform ini juga dirancang untuk memahami konteks budaya Indonesia, 
-                      termasuk bahasa, nilai-nilai, dan cara berpikir yang khas. Ini memungkinkan AI 
+                      Selain itu, platform ini juga dirancang untuk memahami konteks budaya Indonesia,
+                      termasuk bahasa, nilai-nilai, dan cara berpikir yang khas. Ini memungkinkan AI
                       untuk memberikan respons yang lebih relevan dan bermakna bagi pengguna Indonesia.
                     </p>
                     <div className="mt-6 pt-6 border-t border-indonesian-gold/20">

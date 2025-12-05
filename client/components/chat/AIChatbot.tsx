@@ -10,6 +10,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from 'next-themes';
 import { MorphingNavigation, type MorphingNavigationLink } from '@/components/ui/MorphingNavigation';
+import { chatApi, modelsApi, ChatContent, ChatPart, ChatTool, ThinkingConfig, GeminiModel } from '@/lib/api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,9 +64,9 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [profile, setProfile] = useState({ 
-    name: user?.name || 'User', 
-    email: user?.email || 'user@example.com' 
+  const [profile, setProfile] = useState({
+    name: user?.name || 'User',
+    email: user?.email || 'user@example.com'
   });
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
@@ -84,7 +85,17 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [currentModel, setCurrentModel] = useState('Gemini 2.5 Pro');
+
+  // Model & Tools State
+  const [availableModels, setAvailableModels] = useState<GeminiModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+  const [currentModel, setCurrentModel] = useState('Gemini 2.5 Flash');
+
+  // Tools State
+  const [googleSearchEnabled, setGoogleSearchEnabled] = useState(false);
+  const [thinkingModeEnabled, setThinkingModeEnabled] = useState(false);
+  const [thinkingBudget, setThinkingBudget] = useState(8192);
+  const [showThoughts, setShowThoughts] = useState(true);
 
   // Detect mobile view and fix sidebar state
   useEffect(() => {
@@ -92,7 +103,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       const wasMobile = isMobileView;
       const nowMobile = window.innerWidth < 1024;
       setIsMobileView(nowMobile);
-      
+
       // Fix sidebar state when switching between mobile and desktop
       if (wasMobile !== nowMobile) {
         if (nowMobile) {
@@ -105,18 +116,18 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         }
       }
     };
-    
+
     // Initial check
     const initialMobile = window.innerWidth < 1024;
     setIsMobileView(initialMobile);
     if (initialMobile) {
       setSidebarOpen(false);
     }
-    
+
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, [isMobileView]);
-  
+
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -184,7 +195,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     if (user) {
       setProfile({ name: user.name || 'User', email: user.email || 'user@example.com' });
     }
-    
+
     // Load saved profile from localStorage
     const savedProfile = localStorage.getItem('userProfile');
     if (savedProfile) {
@@ -233,33 +244,60 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     }
   }, [chatHistory]);
 
+  // Fetch available models from backend
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await modelsApi.list();
+        setAvailableModels(response.models);
+        // Set default model
+        if (response.defaultModel) {
+          setSelectedModel(response.defaultModel);
+          const defaultModelInfo = response.models.find(m => m.name === response.defaultModel);
+          if (defaultModelInfo) {
+            setCurrentModel(defaultModelInfo.displayName);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching models:', error);
+        // Fallback to default models if backend is unavailable
+        setAvailableModels([
+          { name: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', description: 'Fast model with thinking', supportsThinking: true, thinkingType: 'budget', maxInputTokens: 1048576, maxOutputTokens: 65536, supportedFeatures: [] },
+          { name: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro', description: 'Premium model', supportsThinking: true, thinkingType: 'budget', maxInputTokens: 1048576, maxOutputTokens: 65536, supportedFeatures: [] },
+          { name: 'gemini-2.0-flash', displayName: 'Gemini 2.0 Flash', description: 'Production fast model', supportsThinking: false, thinkingType: null, maxInputTokens: 1048576, maxOutputTokens: 8192, supportedFeatures: [] },
+        ]);
+      }
+    };
+    fetchModels();
+  }, []);
+
   const modeConfig = {
-    fast: { 
-      icon: Zap, 
-      color: 'bg-yellow-500', 
+    fast: {
+      icon: Zap,
+      color: 'bg-yellow-500',
       hoverColor: 'hover:bg-yellow-600',
       textColor: 'text-yellow-500',
       bgLight: 'bg-yellow-500/10',
-      label: 'Fast', 
-      desc: 'Respon cepat untuk pertanyaan sederhana' 
+      label: 'Fast',
+      desc: 'Respon cepat untuk pertanyaan sederhana'
     },
-    balance: { 
-      icon: Gauge, 
-      color: 'bg-blue-500', 
+    balance: {
+      icon: Gauge,
+      color: 'bg-blue-500',
       hoverColor: 'hover:bg-blue-600',
       textColor: 'text-blue-500',
       bgLight: 'bg-blue-500/10',
-      label: 'Balance', 
-      desc: 'Keseimbangan kualitas dan kecepatan' 
+      label: 'Balance',
+      desc: 'Keseimbangan kualitas dan kecepatan'
     },
-    deeplearning: { 
-      icon: Brain, 
-      color: 'bg-purple-500', 
+    deeplearning: {
+      icon: Brain,
+      color: 'bg-purple-500',
       hoverColor: 'hover:bg-purple-600',
       textColor: 'text-purple-500',
       bgLight: 'bg-purple-500/10',
-      label: 'Deep Learning', 
-      desc: 'Analisis mendalam untuk topik kompleks' 
+      label: 'Deep Learning',
+      desc: 'Analisis mendalam untuk topik kompleks'
     }
   };
 
@@ -273,7 +311,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const handleFeatureClick = (featureId: string) => {
     setActiveFeature(featureId);
     inputRef.current?.focus();
-    
+
     // Clear feature highlight after 3 seconds
     setTimeout(() => {
       setActiveFeature(null);
@@ -307,7 +345,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         type: file.type,
         preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
       }));
-      
+
       setUploadedFiles(prev => [...prev, ...newFiles]);
       toast.success('File ditambahkan', {
         description: `${validFiles.length} file siap dikirim`
@@ -341,7 +379,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     handleFiles(files);
   };
@@ -369,6 +407,64 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     });
   };
 
+  // Compress image to reduce payload size
+  const compressImage = (file: File, maxWidth = 1920, maxHeight = 1920, quality = 0.8): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      // If not an image or already small, return as-is
+      if (!file.type.startsWith('image/') || file.size < 500 * 1024) {
+        resolve(file);
+        return;
+      }
+
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
+      };
+
+      img.onload = () => {
+        let { width, height } = img;
+
+        // Calculate new dimensions
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        // Create canvas and draw resized image
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Convert to blob
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              console.log(`Image compressed: ${formatFileSize(file.size)} → ${formatFileSize(compressedFile.size)}`);
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const capturePhoto = () => {
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
@@ -376,7 +472,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       canvas.height = videoRef.current.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(videoRef.current, 0, 0);
-      
+
       canvas.toBlob((blob) => {
         if (blob) {
           const file = new window.File([blob], `camera-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
@@ -390,16 +486,16 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
   const handleSendMessage = async () => {
     if ((!input.trim() && uploadedFiles.length === 0) || isLoading) return;
-    
+
     const messageText = input.trim();
     const attachedFiles = [...uploadedFiles];
-    
-    const userMessage = { 
-      id: Date.now(), 
-      type: 'user', 
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
       text: messageText || '📎 File dikirim',
       files: attachedFiles,
-      timestamp: new Date() 
+      timestamp: new Date()
     };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
@@ -425,175 +521,152 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     }
 
     try {
-      // Call OpenRouter API with Anthropic Claude Sonnet 4.5
-      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-      const model = import.meta.env.VITE_AI_MODEL || 'anthropic/claude-sonnet-4.5';
-      
-      if (!apiKey) {
-        throw new Error('API key not configured');
-      }
+      // Simplified system prompt for faster response
+      const systemPrompt = `Anda adalah OrenaX Agent, asisten AI yang dikembangkan oleh Arief Fajar, Reza Arrofi, dan Alif Ikhwan dari SMK Marhas Margahayu. Jawab dengan sopan dan informatif dalam Bahasa Indonesia.`;
 
-      // Prepare messages for API
-      const apiMessages = await Promise.all(newMessages.map(async (msg) => {
-        if (msg.type === 'user') {
-          const content: any[] = [{ type: 'text', text: msg.text }];
-          
-          if (msg.files && msg.files.length > 0) {
-            for (const fileObj of msg.files) {
-              if (fileObj.type.startsWith('image/')) {
-                const base64 = await convertFileToBase64(fileObj.file);
-                content.push({
-                  type: 'image_url',
-                  image_url: {
-                    url: base64
-                  }
-                });
-              }
+      // Build tools array
+      const tools: ChatTool[] = [];
+      if (googleSearchEnabled) {
+        tools.push({
+          googleSearch: {
+            dynamicRetrievalConfig: {
+              mode: 'MODE_DYNAMIC',
+              dynamicThreshold: 0.5
             }
           }
-          return { role: 'user', content };
-        } else {
-          return { role: 'assistant', content: msg.text };
-        }
-      }));
-
-      // Mode-specific configuration for response speed and quality
-      const modeSettings = {
-        fast: {
-          temperature: 0.5,
-          max_tokens: 300,
-          top_p: 0.7,
-          systemPrompt: 'Anda adalah asisten AI Indonesia yang cepat dan efisien. Berikan jawaban singkat, langsung ke inti, dan mudah dipahami. Fokus pada informasi penting saja.'
-        },
-        balance: {
-          temperature: 0.8,
-          max_tokens: 1000,
-          top_p: 0.9,
-          systemPrompt: 'Anda adalah asisten AI Indonesia yang ramah dan membantu. Jawab dalam bahasa Indonesia dengan sopan, informatif, dan seimbang antara detail dan kejelasan.'
-        },
-        deeplearning: {
-          temperature: 0.9,
-          max_tokens: 2500,
-          top_p: 0.95,
-          systemPrompt: 'Anda adalah asisten AI Indonesia dengan kemampuan analisis mendalam. Berikan penjelasan detail, komprehensif, dan pertimbangkan berbagai perspektif. Gunakan reasoning yang mendalam dan sertakan contoh jika relevan.'
-        }
-      };
-
-      const currentSettings = modeSettings[mode as keyof typeof modeSettings] || modeSettings.balance;
-
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'Indonesian AI Chatbot'
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            {
-              role: 'system',
-              content: currentSettings.systemPrompt
-            },
-            ...apiMessages
-          ],
-          temperature: currentSettings.temperature,
-          max_tokens: currentSettings.max_tokens,
-          top_p: currentSettings.top_p,
-          stream: true
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `API error: ${response.status}`);
+        });
       }
 
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedText = '';
-      
+      // Build thinking config
+      let thinkingConfig: ThinkingConfig | undefined;
+      const modelInfo = availableModels.find(m => m.name === selectedModel);
+      if (thinkingModeEnabled && modelInfo?.supportsThinking) {
+        thinkingConfig = {
+          thinkingBudget: thinkingBudget,
+          includeThoughts: showThoughts
+        };
+      }
+
+      // Prepare contents for Gemini API format
+      const contents: ChatContent[] = [];
+
+      for (const msg of newMessages) {
+        const parts: ChatPart[] = [];
+
+        // Add text
+        if (msg.text) {
+          parts.push({ text: msg.text });
+        }
+
+        // Add images as inlineData
+        if (msg.files && msg.files.length > 0) {
+          for (const fileObj of msg.files) {
+            if (fileObj.type.startsWith('image/')) {
+              // Compress image before sending (reduces 413 errors)
+              const compressedFile = await compressImage(fileObj.file);
+              const base64 = await convertFileToBase64(compressedFile);
+              // Remove data:image/xxx;base64, prefix
+              const base64Data = base64.replace(/^data:[^;]+;base64,/, '');
+              parts.push({
+                inlineData: {
+                  mimeType: fileObj.type,
+                  data: base64Data
+                }
+              });
+            }
+          }
+        }
+
+        if (parts.length > 0) {
+          contents.push({
+            role: msg.type === 'user' ? 'user' : 'model',
+            parts
+          });
+        }
+      }
+
       // Create initial bot message
       const botMessageId = Date.now() + 1;
       const botMessage = {
         id: botMessageId,
         type: 'bot',
         text: '',
+        thoughts: [] as string[],
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botMessage]);
 
-      if (reader) {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+      let accumulatedText = '';
+      let accumulatedThoughts: string[] = [];
 
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') continue;
-
-                try {
-                  const parsed = JSON.parse(data);
-                  const content = parsed.choices?.[0]?.delta?.content || '';
-                  
-                  if (content) {
-                    accumulatedText += content;
-                    
-                    // Update message with accumulated text
-                    setMessages(prev => 
-                      prev.map(msg => 
-                        msg.id === botMessageId 
-                          ? { ...msg, text: accumulatedText }
-                          : msg
-                      )
-                    );
-
-                    // Add delay based on mode for typing effect
-                    const typingDelay = mode === 'fast' ? 5 : mode === 'balance' ? 15 : 30;
-                    await new Promise(resolve => setTimeout(resolve, typingDelay));
-                  }
-                } catch (e) {
-                  // Skip invalid JSON
-                }
-              }
-            }
+      // Stream response from backend
+      try {
+        for await (const chunk of chatApi.streamChat({
+          contents,
+          model: selectedModel,
+          systemInstruction: systemPrompt,
+          generationConfig: {
+            temperature: mode === 'fast' ? 0.5 : mode === 'balance' ? 0.8 : 0.9,
+            maxOutputTokens: mode === 'fast' ? 1000 : mode === 'balance' ? 4000 : 8000,
+          },
+          ...(tools.length > 0 ? { tools } : {}),
+          ...(thinkingConfig ? { thinkingConfig } : {}),
+        })) {
+          if (chunk.error) {
+            throw new Error(chunk.message || 'Streaming error');
           }
-        } catch (error) {
-          console.error('Streaming error:', error);
+
+          if (chunk.thought) {
+            accumulatedThoughts.push(chunk.thought);
+          }
+
+          if (chunk.text) {
+            accumulatedText += chunk.text;
+
+            // Update message with accumulated text
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.id === botMessageId
+                  ? { ...msg, text: accumulatedText, thoughts: accumulatedThoughts }
+                  : msg
+              )
+            );
+          }
+
+          if (chunk.done) {
+            break;
+          }
         }
+      } catch (streamError) {
+        console.error('Streaming error:', streamError);
+        throw streamError;
       }
-      
+
       // Update final message
       const finalBotMessage = {
         id: botMessageId,
         type: 'bot',
         text: accumulatedText || 'Maaf, tidak ada respons dari AI.',
+        thoughts: accumulatedThoughts,
         timestamp: new Date()
       };
-      
-      setMessages(prev => 
-        prev.map(msg => 
+
+      setMessages(prev =>
+        prev.map(msg =>
           msg.id === botMessageId ? finalBotMessage : msg
         )
       );
-      
+
       // Update history with bot response
       updateChatHistory(currentChatId, [...newMessages, finalBotMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Gagal mengirim pesan', {
         description: error instanceof Error ? error.message : 'Terjadi kesalahan tidak terduga',
-        duration: 1000
+        duration: 3000
       });
-      
-      // Fallback to mock response if API fails
+
+      // Add error message
       const botMessage = {
         id: Date.now() + 1,
         type: 'bot',
@@ -601,8 +674,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botMessage]);
-      
-      // Update history with error message
+
       if (currentChatId) {
         updateChatHistory(currentChatId, [...newMessages, botMessage]);
       }
@@ -616,7 +688,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       try {
         // Check if browser supports Speech Recognition
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        
+
         if (!SpeechRecognition) {
           toast.error('Browser tidak support', {
             description: 'Browser Anda tidak mendukung speech recognition',
@@ -708,10 +780,10 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       if (chat.id === chatId) {
         // Update title with first user message if title is still default
         const firstUserMsg = newMessages.find(m => m.type === 'user');
-        const newTitle = firstUserMsg 
+        const newTitle = firstUserMsg
           ? firstUserMsg.text.substring(0, 50) + (firstUserMsg.text.length > 50 ? '...' : '')
           : chat.title;
-        
+
         return { ...chat, messages: newMessages, title: newTitle };
       }
       return chat;
@@ -856,68 +928,61 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       return;
     }
 
-    const userMessage = messages[userMessageIndex];
     setIsLoading(true);
     toast.info('Regenerating...', {
       description: 'Membuat ulang respons AI'
     });
 
     try {
-      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-      const model = import.meta.env.VITE_AI_MODEL || 'anthropic/claude-sonnet-4.5';
-      
-      if (!apiKey) throw new Error('API key not configured');
-
       // Filter messages up to the user message
       const contextMessages = messages.slice(0, userMessageIndex + 1);
-      
-      const apiMessages = await Promise.all(contextMessages.map(async (msg) => {
-        if (msg.type === 'user') {
-          const content: any[] = [{ type: 'text', text: msg.text }];
-          if (msg.files && msg.files.length > 0) {
-            for (const fileObj of msg.files) {
-              if (fileObj.type.startsWith('image/')) {
-                const base64 = await convertFileToBase64(fileObj.file);
-                content.push({
-                  type: 'image_url',
-                  image_url: { url: base64 }
-                });
-              }
+
+      // Prepare contents for Gemini API format
+      const contents: ChatContent[] = [];
+
+      for (const msg of contextMessages) {
+        const parts: ChatPart[] = [];
+
+        if (msg.text) {
+          parts.push({ text: msg.text });
+        }
+
+        if (msg.files && msg.files.length > 0) {
+          for (const fileObj of msg.files) {
+            if (fileObj.type.startsWith('image/')) {
+              const base64 = await convertFileToBase64(fileObj.file);
+              const base64Data = base64.replace(/^data:[^;]+;base64,/, '');
+              parts.push({
+                inlineData: {
+                  mimeType: fileObj.type,
+                  data: base64Data
+                }
+              });
             }
           }
-          return { role: 'user', content };
-        } else {
-          return { role: 'assistant', content: msg.text };
         }
-      }));
 
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'Indonesian AI Chatbot'
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            {
-              role: 'system',
-              content: 'Anda adalah asisten AI Indonesia yang ramah dan membantu. Jawab dalam bahasa Indonesia dengan sopan dan informatif.'
-            },
-            ...apiMessages
-          ],
+        if (parts.length > 0) {
+          contents.push({
+            role: msg.type === 'user' ? 'user' : 'model',
+            parts
+          });
+        }
+      }
+
+      // Use non-streaming for regeneration
+      const response = await chatApi.chat({
+        contents,
+        model: mode === 'fast' ? 'gemini-2.0-flash' : mode === 'balance' ? 'gemini-2.5-flash' : 'gemini-2.5-pro',
+        systemInstruction: 'Anda adalah asisten AI Indonesia yang ramah dan membantu. Jawab dalam bahasa Indonesia dengan sopan dan informatif.',
+        generationConfig: {
           temperature: mode === 'fast' ? 0.7 : mode === 'balance' ? 0.8 : 0.9,
-          max_tokens: mode === 'fast' ? 500 : mode === 'balance' ? 1000 : 2000
-        })
+          maxOutputTokens: mode === 'fast' ? 500 : mode === 'balance' ? 1000 : 2000
+        }
       });
 
-      if (!response.ok) throw new Error('Failed to regenerate');
+      const aiResponse = response.text || 'Maaf, tidak ada respons.';
 
-      const data = await response.json();
-      const aiResponse = data.choices?.[0]?.message?.content || 'Maaf, tidak ada respons.';
-      
       const newMessages = [...messages];
       newMessages[messageIndex] = {
         ...newMessages[messageIndex],
@@ -925,7 +990,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         timestamp: new Date()
       };
       setMessages(newMessages);
-      
+
       if (currentChatId) {
         updateChatHistory(currentChatId, newMessages);
       }
@@ -933,8 +998,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     } catch (error) {
       console.error('Error regenerating:', error);
       toast.error('Error', {
-        description: 'Tidak dapat membuat ulang respons',
-        duration: 1000
+        description: error instanceof Error ? error.message : 'Tidak dapat membuat ulang respons',
+        duration: 2000
       });
     } finally {
       setIsLoading(false);
@@ -952,708 +1017,878 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
   const renderChat = () => {
     const isEmpty = messages.length === 0;
-    
+
     return (
-    <div className="flex flex-col h-full relative">
-      {/* Modern Header with Navigation */}
-      {!isEmpty && (
-        <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
-          <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
-            {/* Left Side - Mobile Menu & Title */}
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-              {/* Mobile Menu Button */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!sidebarToggleRef.current) {
-                    sidebarToggleRef.current = true;
-                    setSidebarOpen(!sidebarOpen);
-                    setTimeout(() => {
-                      sidebarToggleRef.current = false;
-                    }, 300);
-                  }
-                }}
-                className="lg:hidden text-[#FFD700] hover:text-[#FFA500] transition-colors p-2 rounded-lg hover:bg-[#FFD700]/10 flex-shrink-0"
-                aria-label="Toggle sidebar menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
+      <div className="flex flex-col h-full relative">
+        {/* Modern Header with Navigation */}
+        {!isEmpty && (
+          <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+              {/* Left Side - Mobile Menu & Title */}
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                {/* Mobile Menu Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!sidebarToggleRef.current) {
+                      sidebarToggleRef.current = true;
+                      setSidebarOpen(!sidebarOpen);
+                      setTimeout(() => {
+                        sidebarToggleRef.current = false;
+                      }, 300);
+                    }
+                  }}
+                  className="lg:hidden text-[#FFD700] hover:text-[#FFA500] transition-colors p-2 rounded-lg hover:bg-[#FFD700]/10 flex-shrink-0"
+                  aria-label="Toggle sidebar menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
 
-              {/* Title - Model Name */}
-              <h1 className="text-lg sm:text-xl font-bold text-[#FFD700] truncate">{currentModel}</h1>
+                {/* Title - Model Name */}
+                <h1 className="text-lg sm:text-xl font-bold text-[#FFD700] truncate">{currentModel}</h1>
+              </div>
+
+              {/* Center - Navigation (Desktop & Mobile) */}
+              <div className="flex items-center justify-center flex-1">
+                <MorphingNavigation
+                  links={navLinks}
+                  theme="glass"
+                  scrollThreshold={50}
+                  initialTop={0}
+                  compactTop={0}
+                  onLinkClick={handleNavLinkClick}
+                  className="relative !fixed !top-0 !left-1/2 !-translate-x-1/2"
+                  disableAutoMorph={false}
+                />
+              </div>
+
+              {/* Right Side - Actions */}
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                {/* Theme Toggle */}
+                <button
+                  onClick={() => {
+                    const newTheme = theme === 'dark' ? 'light' : 'dark';
+                    setTheme(newTheme);
+                    toast.success('Theme changed', {
+                      description: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} theme`
+                    });
+                  }}
+                  className="p-2 rounded-lg transition-all duration-200 bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 text-[#FFD700] flex-shrink-0"
+                  aria-label="Toggle theme"
+                  title="Toggle theme"
+                >
+                  {theme === 'dark' ? (
+                    <Moon className="w-4 h-4" />
+                  ) : (
+                    <Sun className="w-4 h-4" />
+                  )}
+                </button>
+
+                {/* History Button */}
+                <button
+                  onClick={() => navigate('/chat/history')}
+                  className="p-2 rounded-lg transition-all duration-200 bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 text-[#FFD700] flex-shrink-0"
+                  aria-label="Recent chat history"
+                  title="Recent Chat History"
+                >
+                  <Clock className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+          </header>
+        )}
 
-            {/* Center - Navigation (Desktop & Mobile) */}
-            <div className="flex items-center justify-center flex-1">
-              <MorphingNavigation
-                links={navLinks}
-                theme="glass"
-                scrollThreshold={50}
-                initialTop={0}
-                compactTop={0}
-                onLinkClick={handleNavLinkClick}
-                className="relative !fixed !top-0 !left-1/2 !-translate-x-1/2"
-                disableAutoMorph={false}
-              />
-            </div>
-
-            {/* Right Side - Actions */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              {/* Theme Toggle */}
-              <button
-                onClick={() => {
-                  const newTheme = theme === 'dark' ? 'light' : 'dark';
-                  setTheme(newTheme);
-                  toast.success('Theme changed', {
-                    description: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} theme`
-                  });
-                }}
-                className="p-2 rounded-lg transition-all duration-200 bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 text-[#FFD700] flex-shrink-0"
-                aria-label="Toggle theme"
-                title="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <Moon className="w-4 h-4" />
-                ) : (
-                  <Sun className="w-4 h-4" />
-                )}
-              </button>
-
-              {/* History Button */}
-              <button
-                onClick={() => navigate('/chat/history')}
-                className="p-2 rounded-lg transition-all duration-200 bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 text-[#FFD700] flex-shrink-0"
-                aria-label="Recent chat history"
-                title="Recent Chat History"
-              >
-                <Clock className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </header>
-      )}
-
-      {/* Messages Container - Mobile Responsive */}
-      {!isEmpty ? (
-      <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-background" role="log" aria-live="polite" aria-atomic="false">
-        <div className="space-y-6 max-w-3xl mx-auto pt-4">
-          {messages.map((msg, index) => (
-              <div key={msg.id} className={cn(
-                "flex group",
-                msg.type === 'user' ? 'justify-end animate-slide-in-right' : 'justify-start animate-slide-in-left'
-              )}>
-                <div className={cn(
-                  "max-w-[75%]",
-                  msg.type === 'user' ? '' : 'flex flex-col gap-2'
+        {/* Messages Container - Mobile Responsive */}
+        {!isEmpty ? (
+          <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-background" role="log" aria-live="polite" aria-atomic="false">
+            <div className="space-y-6 max-w-3xl mx-auto pt-4">
+              {messages.map((msg, index) => (
+                <div key={msg.id} className={cn(
+                  "flex group",
+                  msg.type === 'user' ? 'justify-end animate-slide-in-right' : 'justify-start animate-slide-in-left'
                 )}>
                   <div className={cn(
-                    "px-4 py-3 rounded-2xl",
-                    msg.type === 'user'
-                      ? "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tr-sm"
-                      : msg.type === 'error'
-                      ? "bg-red-500/10 border border-red-500/30 text-foreground rounded-tl-sm"
-                      : "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tl-sm"
+                    "max-w-[75%]",
+                    msg.type === 'user' ? '' : 'flex flex-col gap-2'
                   )}>
-                    {msg.type === 'error' ? (
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-start gap-2">
-                          <span className="text-red-500">⚠️</span>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-red-500 mb-1">Terjadi Kesalahan</p>
-                            <p className={cn(
-                              "leading-relaxed",
-                              fontSize === 'small' && "text-xs",
-                              fontSize === 'medium' && "text-sm",
-                              fontSize === 'large' && "text-base"
-                            )}>{msg.text}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : msg.type === 'bot' ? (
-                      <div className="prose prose-sm prose-invert max-w-none">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            code({node, className, children, ...props}: any) {
-                              const match = /language-(\w+)/.exec(className || '');
-                              const language = match ? match[1] : '';
-                              const isInline = !className;
-                              
-                              return !isInline && language ? (
-                                <div className="relative group my-3">
-                                  <div className="absolute right-2 top-2 z-10">
-                                    <button
-                                      onClick={() => copyToClipboard(String(children).trim())}
-                                      className="p-1.5 rounded bg-black/50 hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
-                                      title="Copy code"
-                                    >
-                                      <Copy className="w-3.5 h-3.5 text-white" />
-                                    </button>
-                                  </div>
-                                  <SyntaxHighlighter
-                                    language={language}
-                                    style={vscDarkPlus}
-                                    customStyle={{
-                                      margin: 0,
-                                      borderRadius: '0.5rem',
-                                      fontSize: '0.75rem',
-                                      padding: '1rem',
-                                    }}
-                                    showLineNumbers={true}
-                                  >
-                                    {String(children).replace(/\n$/, '')}
-                                  </SyntaxHighlighter>
-                                </div>
-                              ) : isInline ? (
-                                <code className="bg-black/30 px-1.5 py-0.5 rounded text-xs" {...props}>
-                                  {children}
-                                </code>
-                              ) : (
-                                <code className="block bg-black/50 p-3 rounded-lg text-xs overflow-x-auto" {...props}>
-                                  {children}
-                                </code>
-                              );
-                            },
-                            a({node, children, ...props}: any) {
-                              return (
-                                <a className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer" {...props}>
-                                  {children}
-                                </a>
-                              );
-                            },
-                            p({node, children, ...props}: any) {
-                              return <p className={cn(
-                                "leading-relaxed mb-2 last:mb-0",
+                    <div className={cn(
+                      "px-4 py-3 rounded-2xl",
+                      msg.type === 'user'
+                        ? "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tr-sm"
+                        : msg.type === 'error'
+                          ? "bg-red-500/10 border border-red-500/30 text-foreground rounded-tl-sm"
+                          : "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tl-sm"
+                    )}>
+                      {msg.type === 'error' ? (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-start gap-2">
+                            <span className="text-red-500">⚠️</span>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-red-500 mb-1">Terjadi Kesalahan</p>
+                              <p className={cn(
+                                "leading-relaxed",
                                 fontSize === 'small' && "text-xs",
                                 fontSize === 'medium' && "text-sm",
                                 fontSize === 'large' && "text-base"
-                              )} {...props}>{children}</p>;
-                            },
-                            ul({node, children, ...props}: any) {
-                              return <ul className={cn(
-                                "list-disc list-inside space-y-1 my-2",
-                                fontSize === 'small' && "text-xs",
-                                fontSize === 'medium' && "text-sm",
-                                fontSize === 'large' && "text-base"
-                              )} {...props}>{children}</ul>;
-                            },
-                            ol({node, children, ...props}: any) {
-                              return <ol className={cn(
-                                "list-decimal list-inside space-y-1 my-2",
-                                fontSize === 'small' && "text-xs",
-                                fontSize === 'medium' && "text-sm",
-                                fontSize === 'large' && "text-base"
-                              )} {...props}>{children}</ol>;
-                            },
-                            strong({node, children, ...props}: any) {
-                              return <strong className="font-semibold" {...props}>{children}</strong>;
-                            }
-                          }}
-                        >
-                          {msg.text}
-                        </ReactMarkdown>
-                      </div>
-                    ) : (
-                      <p className={cn(
-                        "leading-relaxed whitespace-pre-wrap",
-                        fontSize === 'small' && "text-xs",
-                        fontSize === 'medium' && "text-sm",
-                        fontSize === 'large' && "text-base"
-                      )}>{msg.text}</p>
-                    )}
-                    
-                    {/* Display attached files */}
-                    {msg.files && msg.files.length > 0 && (
-                      <div className="mt-2 space-y-2">
-                        {msg.files.map((file) => (
-                          <div key={file.id} className="flex items-center gap-2 p-2 bg-black/20 rounded-lg">
-                            {file.preview ? (
-                              <img src={file.preview} alt={file.name} className="w-12 h-12 object-cover rounded" />
-                            ) : (
-                              <div className="w-12 h-12 flex items-center justify-center bg-black/30 rounded">
-                                {React.createElement(getFileIcon(file.type), { className: "w-6 h-6" })}
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">{file.name}</p>
-                              <p className="text-xs opacity-70">{formatFileSize(file.size)}</p>
+                              )}>{msg.text}</p>
                             </div>
                           </div>
-                        ))}
+                        </div>
+                      ) : msg.type === 'bot' ? (
+                        <div className="flex flex-col gap-2">
+                          {/* Thinking Thoughts Display */}
+                          {msg.thoughts && msg.thoughts.length > 0 && (
+                            <div className="mb-2">
+                              <button
+                                onClick={() => setShowThoughts(!showThoughts)}
+                                className="flex items-center gap-2 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                              >
+                                <Brain className="w-4 h-4" />
+                                <span>{showThoughts ? 'Sembunyikan' : 'Lihat'} proses berpikir ({msg.thoughts.length})</span>
+                                <ChevronDown className={cn("w-3 h-3 transition-transform", showThoughts && "rotate-180")} />
+                              </button>
+                              {showThoughts && (
+                                <div className="mt-2 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs text-purple-200 space-y-2 max-h-60 overflow-y-auto">
+                                  {msg.thoughts.map((thought, i) => (
+                                    <p key={i} className="leading-relaxed opacity-80">{thought}</p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="prose prose-sm prose-invert max-w-none">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code({ node, className, children, ...props }: any) {
+                                  const match = /language-(\w+)/.exec(className || '');
+                                  const language = match ? match[1] : '';
+                                  const isInline = !className;
+
+                                  return !isInline && language ? (
+                                    <div className="relative group my-3">
+                                      <div className="absolute right-2 top-2 z-10">
+                                        <button
+                                          onClick={() => copyToClipboard(String(children).trim())}
+                                          className="p-1.5 rounded bg-black/50 hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+                                          title="Copy code"
+                                        >
+                                          <Copy className="w-3.5 h-3.5 text-white" />
+                                        </button>
+                                      </div>
+                                      <SyntaxHighlighter
+                                        language={language}
+                                        style={vscDarkPlus}
+                                        customStyle={{
+                                          margin: 0,
+                                          borderRadius: '0.5rem',
+                                          fontSize: '0.75rem',
+                                          padding: '1rem',
+                                        }}
+                                        showLineNumbers={true}
+                                      >
+                                        {String(children).replace(/\n$/, '')}
+                                      </SyntaxHighlighter>
+                                    </div>
+                                  ) : isInline ? (
+                                    <code className="bg-black/30 px-1.5 py-0.5 rounded text-xs" {...props}>
+                                      {children}
+                                    </code>
+                                  ) : (
+                                    <code className="block bg-black/50 p-3 rounded-lg text-xs overflow-x-auto" {...props}>
+                                      {children}
+                                    </code>
+                                  );
+                                },
+                                a({ node, children, ...props }: any) {
+                                  return (
+                                    <a className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer" {...props}>
+                                      {children}
+                                    </a>
+                                  );
+                                },
+                                p({ node, children, ...props }: any) {
+                                  return <p className={cn(
+                                    "leading-relaxed mb-2 last:mb-0",
+                                    fontSize === 'small' && "text-xs",
+                                    fontSize === 'medium' && "text-sm",
+                                    fontSize === 'large' && "text-base"
+                                  )} {...props}>{children}</p>;
+                                },
+                                ul({ node, children, ...props }: any) {
+                                  return <ul className={cn(
+                                    "list-disc list-inside space-y-1 my-2",
+                                    fontSize === 'small' && "text-xs",
+                                    fontSize === 'medium' && "text-sm",
+                                    fontSize === 'large' && "text-base"
+                                  )} {...props}>{children}</ul>;
+                                },
+                                ol({ node, children, ...props }: any) {
+                                  return <ol className={cn(
+                                    "list-decimal list-inside space-y-1 my-2",
+                                    fontSize === 'small' && "text-xs",
+                                    fontSize === 'medium' && "text-sm",
+                                    fontSize === 'large' && "text-base"
+                                  )} {...props}>{children}</ol>;
+                                },
+                                strong({ node, children, ...props }: any) {
+                                  return <strong className="font-semibold" {...props}>{children}</strong>;
+                                }
+                              }}
+                            >
+                              {msg.text}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className={cn(
+                          "leading-relaxed whitespace-pre-wrap",
+                          fontSize === 'small' && "text-xs",
+                          fontSize === 'medium' && "text-sm",
+                          fontSize === 'large' && "text-base"
+                        )}>{msg.text}</p>
+                      )}
+
+                      {/* Display attached files */}
+                      {msg.files && msg.files.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {msg.files.map((file) => (
+                            <div key={file.id} className="flex items-center gap-2 p-2 bg-black/20 rounded-lg">
+                              {file.preview ? (
+                                <img src={file.preview} alt={file.name} className="w-12 h-12 object-cover rounded" />
+                              ) : (
+                                <div className="w-12 h-12 flex items-center justify-center bg-black/30 rounded">
+                                  {React.createElement(getFileIcon(file.type), { className: "w-6 h-6" })}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate">{file.name}</p>
+                                <p className="text-xs opacity-70">{formatFileSize(file.size)}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <span className="text-xs opacity-60 mt-2 block">
+                        {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons for Bot Messages - Calm Design */}
+                    {msg.type === 'bot' && (
+                      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/50">
+                        <button
+                          onClick={() => copyToClipboard(msg.text)}
+                          className="p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool"
+                          title="Salin teks"
+                        >
+                          <Copy className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (navigator.share) {
+                              navigator.share({
+                                title: 'AI Response',
+                                text: msg.text
+                              }).catch(() => { });
+                            } else {
+                              copyToClipboard(msg.text);
+                              toast.success('Link copied to clipboard');
+                            }
+                          }}
+                          className="p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool"
+                          title="Share"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                            <polyline points="16 6 12 2 8 6"></polyline>
+                            <line x1="12" y1="2" x2="12" y2="15"></line>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => {
+                            const utterance = new SpeechSynthesisUtterance(msg.text);
+                            utterance.lang = 'id-ID';
+                            if (playingAudio === msg.id) {
+                              window.speechSynthesis.cancel();
+                              setPlayingAudio(null);
+                            } else {
+                              window.speechSynthesis.cancel();
+                              window.speechSynthesis.speak(utterance);
+                              setPlayingAudio(msg.id);
+                              utterance.onend = () => setPlayingAudio(null);
+                            }
+                          }}
+                          className={cn(
+                            "p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool",
+                            playingAudio === msg.id && "bg-secondary"
+                          )}
+                          title="Dengarkan"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors">
+                            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => {
+                            const newLiked = new Set(likedMessages);
+                            if (newLiked.has(msg.id)) {
+                              newLiked.delete(msg.id);
+                            } else {
+                              newLiked.add(msg.id);
+                            }
+                            setLikedMessages(newLiked);
+                          }}
+                          className={cn(
+                            "p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool",
+                            likedMessages.has(msg.id) && "bg-secondary"
+                          )}
+                          title="Like"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={likedMessages.has(msg.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn(
+                            "w-4 h-4 transition-colors",
+                            likedMessages.has(msg.id) ? "text-foreground" : "text-muted-foreground group-hover/tool:text-foreground"
+                          )}>
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                          </svg>
+                        </button>
                       </div>
                     )}
-                    
-                    <span className="text-xs opacity-60 mt-2 block">
-                      {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
                   </div>
-                  
-                  {/* Action Buttons for Bot Messages - Calm Design */}
-                  {msg.type === 'bot' && (
-                    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/50">
-                      <button
-                        onClick={() => copyToClipboard(msg.text)}
-                        className="p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool"
-                        title="Salin teks"
-                      >
-                        <Copy className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (navigator.share) {
-                            navigator.share({
-                              title: 'AI Response',
-                              text: msg.text
-                            }).catch(() => {});
-                          } else {
-                            copyToClipboard(msg.text);
-                            toast.success('Link copied to clipboard');
-                          }
-                        }}
-                        className="p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool"
-                        title="Share"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors">
-                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-                          <polyline points="16 6 12 2 8 6"></polyline>
-                          <line x1="12" y1="2" x2="12" y2="15"></line>
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => {
-                          const utterance = new SpeechSynthesisUtterance(msg.text);
-                          utterance.lang = 'id-ID';
-                          if (playingAudio === msg.id) {
-                            window.speechSynthesis.cancel();
-                            setPlayingAudio(null);
-                          } else {
-                            window.speechSynthesis.cancel();
-                            window.speechSynthesis.speak(utterance);
-                            setPlayingAudio(msg.id);
-                            utterance.onend = () => setPlayingAudio(null);
-                          }
-                        }}
-                        className={cn(
-                          "p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool",
-                          playingAudio === msg.id && "bg-secondary"
-                        )}
-                        title="Dengarkan"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted-foreground group-hover/tool:text-foreground transition-colors">
-                          <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
-                          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => {
-                          const newLiked = new Set(likedMessages);
-                          if (newLiked.has(msg.id)) {
-                            newLiked.delete(msg.id);
-                          } else {
-                            newLiked.add(msg.id);
-                          }
-                          setLikedMessages(newLiked);
-                        }}
-                        className={cn(
-                          "p-2 rounded-lg hover:bg-secondary/50 transition-colors group/tool",
-                          likedMessages.has(msg.id) && "bg-secondary"
-                        )}
-                        title="Like"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={likedMessages.has(msg.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn(
-                          "w-4 h-4 transition-colors",
-                          likedMessages.has(msg.id) ? "text-foreground" : "text-muted-foreground group-hover/tool:text-foreground"
-                        )}>
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start animate-slide-in-left">
-                <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-secondary text-foreground rounded-tl-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1.5">
-                      <div className="w-2 h-2 rounded-full bg-foreground animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }}></div>
-                      <div className="w-2 h-2 rounded-full bg-foreground animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1s' }}></div>
-                      <div className="w-2 h-2 rounded-full bg-foreground animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1s' }}></div>
-                    </div>
-                    <span className="text-xs text-muted-foreground animate-pulse-glow">AI sedang berpikir...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-      ) : (
-        /* Empty State - Welcome Screen */
-        <div className="flex-1 flex items-start justify-center px-3 sm:px-4 md:px-6 pt-16 sm:pt-20 md:pt-24 relative z-0 pointer-events-auto">
-          <div className="w-full max-w-2xl mx-auto text-center space-y-4">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground select-text">
-              Selamat Datang di Orenax Chat
-            </h2>
-            <p className="text-sm sm:text-base text-muted-foreground select-text">
-              Mulai percakapan dengan AI asisten Anda. Tanyakan apa saja!
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Camera Preview */}
-      {isCameraOn && (
-        <div className="px-6 pb-3">
-          <div className="relative rounded-xl overflow-hidden bg-black max-w-3xl mx-auto border border-border">
-            <video ref={videoRef} autoPlay playsInline className="w-full max-h-40 object-cover" />
-            <button
-              onClick={capturePhoto}
-              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white text-black px-4 py-2 rounded-full font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
-            >
-              <Camera className="w-4 h-4" />
-              Ambil Foto
-            </button>
-            <button
-              onClick={toggleCamera}
-              className="absolute top-2 right-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground p-1.5 rounded-lg transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Input Area - Centered when empty, Sticky when has messages - Mobile Responsive */}
-      <div 
-        className={cn(
-          isEmpty 
-            ? "absolute bottom-0 left-0 right-0 flex items-center justify-center px-3 sm:px-4 md:px-6 pb-8 sm:pb-12 md:pb-16 z-40" 
-            : "sticky bottom-0 bg-background/80 backdrop-blur-sm border-t border-border/50 py-4 z-40 flex items-center justify-center",
-          isDragging && "bg-blue-500/10"
-        )}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {/* Uploaded Files Preview */}
-        {uploadedFiles.length > 0 && (
-          <div className={cn(
-            "mb-3 w-full",
-            isEmpty ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"
-          )}>
-            <div className={cn(
-              "flex items-center gap-2 flex-wrap",
-              isEmpty ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"
-            )}>
-              {uploadedFiles.map((file) => (
-                <div key={file.id} className="relative group">
-                  <div className="flex items-center gap-2 bg-secondary border border-border rounded-lg p-2 pr-8">
-                    {file.preview ? (
-                      <img src={file.preview} alt={file.name} className="w-10 h-10 object-cover rounded" />
-                    ) : (
-                      <div className="w-10 h-10 flex items-center justify-center bg-muted rounded">
-                        {React.createElement(getFileIcon(file.type), { className: "w-5 h-5 text-muted-foreground" })}
-                      </div>
-                    )}
-                    <div className="flex flex-col min-w-0">
-                      <p className="text-xs font-medium truncate max-w-[150px]">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => removeFile(file.id)}
-                    className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Drag & Drop Overlay */}
-        {isDragging && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500 rounded-2xl flex items-center justify-center pointer-events-none z-10">
-            <div className="text-center">
-              <Paperclip className="w-12 h-12 text-blue-500 mx-auto mb-2" />
-              <p className="text-sm font-medium text-blue-500">Lepaskan file di sini</p>
-            </div>
-          </div>
-        )}
-        
-        {/* Input Container Wrapper */}
-        <div className={cn(
-          "w-full flex flex-col items-center",
-          isEmpty ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"
-        )}>
-          {/* Template Cards - Display Above Input (Only when empty) */}
-          {isEmpty && (
-            <div className="w-full mb-8 px-2 md:px-0 -mt-8 sm:-mt-12 md:-mt-16">
-              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-                {[
-                  { title: "Tulis Esai", prompt: "Tolong buatkan esai tentang teknologi AI", icon: "✍️" },
-                  { title: "Jelaskan Konsep", prompt: "Jelaskan konsep machine learning dengan sederhana", icon: "💡" },
-                  { title: "Buat Kode", prompt: "Bantu saya membuat fungsi JavaScript untuk validasi form", icon: "💻" },
-                  { title: "Terjemahkan", prompt: "Terjemahkan teks ini ke bahasa Inggris", icon: "🌐" }
-                ].map((template, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      setInput(template.prompt);
-                      inputRef.current?.focus();
-                    }}
-                    className="cursor-pointer transition-all duration-300 bg-background border border-border rounded-xl p-4 hover:border-[#FFD700]/50 hover:bg-secondary/50 group"
-                  >
-                    <div className="flex flex-col items-center justify-center gap-2 min-w-[120px]">
-                      <span className="text-2xl mb-1">{template.icon}</span>
-                      <p className="text-sm font-medium text-foreground text-center">
-                        {template.title}
-                      </p>
+              {isLoading && (
+                <div className="flex justify-start animate-slide-in-left">
+                  <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-secondary text-foreground rounded-tl-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-foreground animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-foreground animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1s' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-foreground animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1s' }}></div>
+                      </div>
+                      <span className="text-xs text-muted-foreground animate-pulse-glow">AI sedang berpikir...</span>
                     </div>
                   </div>
-                ))}
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+        ) : (
+          /* Empty State - Welcome Screen */
+          <div className="flex-1 flex items-start justify-center px-3 sm:px-4 md:px-6 pt-16 sm:pt-20 md:pt-24 relative z-0 pointer-events-auto">
+            <div className="w-full max-w-2xl mx-auto text-center space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground select-text">
+                Selamat Datang di Orenax Chat
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground select-text">
+                Mulai percakapan dengan AI asisten Anda. Tanyakan apa saja!
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Camera Preview */}
+        {isCameraOn && (
+          <div className="px-6 pb-3">
+            <div className="relative rounded-xl overflow-hidden bg-black max-w-3xl mx-auto border border-border">
+              <video ref={videoRef} autoPlay playsInline className="w-full max-h-40 object-cover" />
+              <button
+                onClick={capturePhoto}
+                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white text-black px-4 py-2 rounded-full font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
+              >
+                <Camera className="w-4 h-4" />
+                Ambil Foto
+              </button>
+              <button
+                onClick={toggleCamera}
+                className="absolute top-2 right-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground p-1.5 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Input Area - Centered when empty, Sticky when has messages - Mobile Responsive */}
+        <div
+          className={cn(
+            isEmpty
+              ? "absolute bottom-0 left-0 right-0 flex items-center justify-center px-3 sm:px-4 md:px-6 pb-8 sm:pb-12 md:pb-16 z-40"
+              : "sticky bottom-0 bg-background/80 backdrop-blur-sm border-t border-border/50 py-4 z-40 flex items-center justify-center",
+            isDragging && "bg-blue-500/10"
+          )}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+
+
+          {/* Drag & Drop Overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500 rounded-2xl flex items-center justify-center pointer-events-none z-10">
+              <div className="text-center">
+                <Paperclip className="w-12 h-12 text-blue-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-blue-500">Lepaskan file di sini</p>
               </div>
             </div>
           )}
-          
-          {/* Input Container - Elegant Gold Style */}
-          <div className={cn(
-            "flex flex-col mx-2 md:mx-0 items-stretch transition-all duration-200 relative cursor-text z-40 rounded-2xl w-full",
-            "bg-gradient-to-br from-background via-background to-[#FFD700]/5",
-            "border border-[#FFD700]/20",
-            "shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/3.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.2)]",
-            "hover:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/3.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.3)]",
-            "focus-within:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/7.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.4)]",
-            "hover:focus-within:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/7.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.4)]"
-          )}>
-          <div className="flex flex-col m-3.5 gap-3.5">
-            {/* Input Text Area */}
-            <div className="relative">
-              <div className="max-h-96 w-full overflow-y-auto font-large break-words transition-opacity duration-200 min-h-[3rem]">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
-                  placeholder={isEmpty ? "How can I help you today?" : "Kirim pesan..."}
-                  className={cn(
-                    "w-full bg-transparent text-foreground placeholder-muted-foreground focus:outline-none",
-                    "px-2 py-4 min-h-[3rem]",
-                    isEmpty ? "text-sm sm:text-base" : "text-xs sm:text-sm"
-                  )}
-                  aria-label="Message input"
-                  aria-describedby="message-help"
-                />
-              </div>
-            </div>
 
-            {/* Bottom Bar with Buttons */}
-            <div className="flex gap-2 w-full items-center">
-              {/* Left Side - 3 Features: Tools SVG, Microphone, File Upload */}
-              <div className="flex items-center gap-2 shrink-0">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  accept="image/*,application/pdf,text/*,.doc,.docx,.xls,.xlsx"
-                />
-                
-                {/* Tools Button */}
-                <div className="tools-dropdown relative">
-                  <button
-                    onClick={() => setToolsMenuOpen(!toolsMenuOpen)}
-                    className="border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary active:scale-[0.98]"
-                    aria-label="Open tools menu"
-                    aria-expanded={toolsMenuOpen}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M40,88H73a32,32,0,0,0,62,0h81a8,8,0,0,0,0-16H135a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16Zm64-24A16,16,0,1,1,88,80,16,16,0,0,1,104,64ZM216,168H199a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16h97a32,32,0,0,0,62,0h17a8,8,0,0,0,0-16Zm-48,24a16,16,0,1,1,16-16A16,16,0,0,1,168,192Z"></path>
-                    </svg>
-                  </button>
-                  
-                  {/* Tools Dropdown Menu */}
-                  {toolsMenuOpen && (
-                    <div className="absolute bottom-full left-0 mb-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-50" role="menu">
-                      {/* Model Selector Section */}
-                      <div className="p-2 border-b border-border">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">Model</p>
+          {/* Input Container Wrapper */}
+          <div className={cn(
+            "w-full flex flex-col items-center",
+            isEmpty ? "max-w-4xl mx-auto" : "max-w-3xl mx-auto"
+          )}>
+            {/* Template Cards - Display Above Input (Only when empty) */}
+            {isEmpty && (
+              <div className="w-full mb-8 px-2 md:px-0 -mt-8 sm:-mt-12 md:-mt-16">
+                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                  {[
+                    { title: "Tulis Esai", prompt: "Tolong buatkan esai tentang teknologi AI", icon: "✍️", color: "from-purple-500/20 to-pink-500/20", borderColor: "hover:border-purple-400/50" },
+                    { title: "Jelaskan Konsep", prompt: "Jelaskan konsep machine learning dengan sederhana", icon: "💡", color: "from-yellow-500/20 to-orange-500/20", borderColor: "hover:border-yellow-400/50" },
+                    { title: "Buat Kode", prompt: "Bantu saya membuat fungsi JavaScript untuk validasi form", icon: "💻", color: "from-blue-500/20 to-cyan-500/20", borderColor: "hover:border-blue-400/50" },
+                    { title: "Terjemahkan", prompt: "Terjemahkan teks ini ke bahasa Inggris", icon: "🌐", color: "from-green-500/20 to-teal-500/20", borderColor: "hover:border-green-400/50" }
+                  ].map((template, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setInput(template.prompt);
+                        inputRef.current?.focus();
+                      }}
+                      className={cn(
+                        "cursor-pointer transition-all duration-300 ease-out",
+                        "bg-gradient-to-br", template.color,
+                        "border border-border/50 rounded-xl p-4",
+                        template.borderColor,
+                        "hover:scale-105 hover:shadow-lg hover:shadow-[#FFD700]/10",
+                        "group relative overflow-hidden",
+                        "animate-pulse-slow"
+                      )}
+                      style={{
+                        animationDelay: `${idx * 150}ms`
+                      }}
+                    >
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full"
+                        style={{ transition: 'transform 0.8s ease-in-out' }}
+                      />
+                      <div className="flex flex-col items-center justify-center gap-2 min-w-[100px] sm:min-w-[120px] relative z-10">
+                        <span className="text-2xl sm:text-3xl mb-1 group-hover:scale-110 transition-transform duration-300">{template.icon}</span>
+                        <p className="text-xs sm:text-sm font-medium text-foreground text-center group-hover:text-[#FFD700] transition-colors duration-300">
+                          {template.title}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Input Container - Elegant Gold Style */}
+            <div className={cn(
+              "flex flex-col mx-2 md:mx-0 items-stretch transition-all duration-200 relative cursor-text z-40 rounded-2xl w-full",
+              "bg-gradient-to-br from-background via-background to-[#FFD700]/5",
+              "border border-[#FFD700]/20",
+              "shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/3.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.2)]",
+              "hover:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/3.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.3)]",
+              "focus-within:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/7.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.4)]",
+              "hover:focus-within:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/7.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.4)]"
+            )}>
+              <div className="flex flex-col m-3.5 gap-2">
+                {/* Uploaded Files Preview - Inside Input Container */}
+                {uploadedFiles.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-border/30">
+                    {uploadedFiles.map((file) => (
+                      <div key={file.id} className="relative group">
+                        <div className="flex items-center gap-2 bg-secondary/50 border border-border/50 rounded-lg p-1.5 pr-6">
+                          {file.preview ? (
+                            <img src={file.preview} alt={file.name} className="w-8 h-8 object-cover rounded" />
+                          ) : (
+                            <div className="w-8 h-8 flex items-center justify-center bg-muted rounded">
+                              {React.createElement(getFileIcon(file.type), { className: "w-4 h-4 text-muted-foreground" })}
+                            </div>
+                          )}
+                          <div className="flex flex-col min-w-0">
+                            <p className="text-xs font-medium truncate max-w-[100px]">{file.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{formatFileSize(file.size)}</p>
+                          </div>
+                        </div>
                         <button
-                          onClick={() => {
-                            toast.info('Model Selector', {
-                              description: 'Model selection feature coming soon'
-                            });
-                            setToolsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
+                          onClick={() => removeFile(file.id)}
+                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Input Text Area */}
+                <div className="relative">
+                  <div className="max-h-96 w-full overflow-y-auto font-large break-words transition-opacity duration-200 min-h-[3rem]">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+                      placeholder={isEmpty ? "How can I help you today?" : "Kirim pesan..."}
+                      className={cn(
+                        "w-full bg-transparent text-foreground placeholder-muted-foreground focus:outline-none",
+                        "px-2 py-2 min-h-[2.5rem]",
+                        isEmpty ? "text-sm sm:text-base" : "text-xs sm:text-sm"
+                      )}
+                      aria-label="Message input"
+                      aria-describedby="message-help"
+                    />
+                  </div>
+                </div>
+
+                {/* Bottom Bar with Buttons */}
+                <div className="flex gap-2 w-full items-center">
+                  {/* Left Side - 3 Features: Tools SVG, Microphone, File Upload */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      accept="image/*,application/pdf,text/*,.doc,.docx,.xls,.xlsx"
+                    />
+
+                    {/* Tools Button */}
+                    <div className="tools-dropdown relative">
+                      <button
+                        onClick={() => setToolsMenuOpen(!toolsMenuOpen)}
+                        className="border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary active:scale-[0.98]"
+                        aria-label="Open tools menu"
+                        aria-expanded={toolsMenuOpen}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                          <path d="M40,88H73a32,32,0,0,0,62,0h81a8,8,0,0,0,0-16H135a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16Zm64-24A16,16,0,1,1,88,80,16,16,0,0,1,104,64ZM216,168H199a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16h97a32,32,0,0,0,62,0h17a8,8,0,0,0,0-16Zm-48,24a16,16,0,1,1,16-16A16,16,0,0,1,168,192Z"></path>
+                        </svg>
+                      </button>
+
+                      {/* Tools Dropdown Menu */}
+                      {toolsMenuOpen && (
+                        <div className="absolute bottom-full left-0 mb-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-50" role="menu">
+                          {/* Model Selector Section */}
+                          <div className="p-2 border-b border-border">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">Model</p>
+                            <button
+                              onClick={() => {
+                                toast.info('Model Selector', {
+                                  description: 'Model selection feature coming soon'
+                                });
+                                setToolsMenuOpen(false);
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
+                            >
+                              <div className="flex items-center justify-center size-[18px] overflow-hidden shrink-0">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2]">
+                                  <path d="M19 9C19 12.866 15.866 17 12 17C8.13398 17 4.99997 12.866 4.99997 9C4.99997 5.13401 8.13398 3 12 3C15.866 3 19 5.13401 19 9Z" className="fill-yellow-100 dark:fill-yellow-300 origin-center transition-[transform,opacity] duration-100 scale-0 opacity-0"></path>
+                                  <path d="M15 16.1378L14.487 15.2794L14 15.5705V16.1378H15ZM8.99997 16.1378H9.99997V15.5705L9.51293 15.2794L8.99997 16.1378ZM18 9C18 11.4496 16.5421 14.0513 14.487 15.2794L15.5129 16.9963C18.1877 15.3979 20 12.1352 20 9H18ZM12 4C13.7598 4 15.2728 4.48657 16.3238 5.33011C17.3509 6.15455 18 7.36618 18 9H20C20 6.76783 19.082 4.97946 17.5757 3.77039C16.0931 2.58044 14.1061 2 12 2V4ZM5.99997 9C5.99997 7.36618 6.64903 6.15455 7.67617 5.33011C8.72714 4.48657 10.2401 4 12 4V2C9.89382 2 7.90681 2.58044 6.42427 3.77039C4.91791 4.97946 3.99997 6.76783 3.99997 9H5.99997ZM9.51293 15.2794C7.4578 14.0513 5.99997 11.4496 5.99997 9H3.99997C3.99997 12.1352 5.81225 15.3979 8.48701 16.9963L9.51293 15.2794ZM9.99997 19.5001V16.1378H7.99997V19.5001H9.99997ZM10.5 20.0001C10.2238 20.0001 9.99997 19.7763 9.99997 19.5001H7.99997C7.99997 20.8808 9.11926 22.0001 10.5 22.0001V20.0001ZM13.5 20.0001H10.5V22.0001H13.5V20.0001ZM14 19.5001C14 19.7763 13.7761 20.0001 13.5 20.0001V22.0001C14.8807 22.0001 16 20.8808 16 19.5001H14ZM14 16.1378V19.5001H16V16.1378H14Z" fill="currentColor"></path>
+                                  <path d="M9 16.0001H15" stroke="currentColor"></path>
+                                  <path d="M12 16V12" stroke="currentColor" strokeLinecap="square"></path>
+                                </svg>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Expert</p>
+                                <p className="text-xs text-muted-foreground">Current model</p>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* Tools Section */}
+                          <div className="p-2">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">Tools</p>
+                            <button
+                              onClick={() => {
+                                toast.info('Grounding with Google Search', {
+                                  description: 'This feature will enable web search grounding'
+                                });
+                                setToolsMenuOpen(false);
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
+                            >
+                              <Search className="w-4 h-4" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Grounding with Google Search</p>
+                                <p className="text-xs text-muted-foreground">Enable web search</p>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Microphone Button */}
+                    <button
+                      onClick={toggleMic}
+                      className={cn(
+                        "border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center border-border active:scale-[0.98]",
+                        isRecording
+                          ? "bg-red-500 text-white"
+                          : "text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary"
+                      )}
+                      aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
+                      aria-pressed={isRecording}
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
+
+                    {/* File Upload Button */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary active:scale-[0.98]"
+                      aria-label="Attach file"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                        <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Right Side - Model Selector & Live Voice/Send */}
+                  <div className="flex items-center gap-2 shrink-0 ml-auto">
+                    {/* Tools Active Indicator */}
+                    {(googleSearchEnabled || thinkingModeEnabled) && (
+                      <div className="flex items-center gap-1">
+                        {googleSearchEnabled && (
+                          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full flex items-center gap-1">
+                            <Search className="w-3 h-3" />
+                            Search
+                          </span>
+                        )}
+                        {thinkingModeEnabled && (
+                          <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full flex items-center gap-1">
+                            <Brain className="w-3 h-3" />
+                            Think
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Model Selector Button - Click to Toggle */}
+                    <div className="model-selector relative">
+                      <button
+                        onClick={() => setModelMenuOpen(!modelMenuOpen)}
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-100 select-none hover:bg-[#FFD700]/10 disabled:hover:bg-transparent border border-[#FFD700]/20 h-10 py-1.5 text-sm rounded-full text-[#FFD700] px-3.5 focus:outline-none"
+                        type="button"
+                        id="model-select-trigger"
+                        aria-label="Model select"
+                        aria-haspopup="menu"
+                        aria-expanded={modelMenuOpen}
+                      >
+                        <div className="flex flex-row items-center gap-2">
                           <div className="flex items-center justify-center size-[18px] overflow-hidden shrink-0">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2]">
-                              <path d="M19 9C19 12.866 15.866 17 12 17C8.13398 17 4.99997 12.866 4.99997 9C4.99997 5.13401 8.13398 3 12 3C15.866 3 19 5.13401 19 9Z" className="fill-yellow-100 dark:fill-yellow-300 origin-center transition-[transform,opacity] duration-100 scale-0 opacity-0"></path>
-                              <path d="M15 16.1378L14.487 15.2794L14 15.5705V16.1378H15ZM8.99997 16.1378H9.99997V15.5705L9.51293 15.2794L8.99997 16.1378ZM18 9C18 11.4496 16.5421 14.0513 14.487 15.2794L15.5129 16.9963C18.1877 15.3979 20 12.1352 20 9H18ZM12 4C13.7598 4 15.2728 4.48657 16.3238 5.33011C17.3509 6.15455 18 7.36618 18 9H20C20 6.76783 19.082 4.97946 17.5757 3.77039C16.0931 2.58044 14.1061 2 12 2V4ZM5.99997 9C5.99997 7.36618 6.64903 6.15455 7.67617 5.33011C8.72714 4.48657 10.2401 4 12 4V2C9.89382 2 7.90681 2.58044 6.42427 3.77039C4.91791 4.97946 3.99997 6.76783 3.99997 9H5.99997ZM9.51293 15.2794C7.4578 14.0513 5.99997 11.4496 5.99997 9H3.99997C3.99997 12.1352 5.81225 15.3979 8.48701 16.9963L9.51293 15.2794ZM9.99997 19.5001V16.1378H7.99997V19.5001H9.99997ZM10.5 20.0001C10.2238 20.0001 9.99997 19.7763 9.99997 19.5001H7.99997C7.99997 20.8808 9.11926 22.0001 10.5 22.0001V20.0001ZM13.5 20.0001H10.5V22.0001H13.5V20.0001ZM14 19.5001C14 19.7763 13.7761 20.0001 13.5 20.0001V22.0001C14.8807 22.0001 16 20.8808 16 19.5001H14ZM14 16.1378V19.5001H16V16.1378H14Z" fill="currentColor"></path>
-                              <path d="M9 16.0001H15" stroke="currentColor"></path>
-                              <path d="M12 16V12" stroke="currentColor" strokeLinecap="square"></path>
+                              <path d="M6.5 12.5L11.5 17.5M6.5 12.5L11.8349 6.83172C13.5356 5.02464 15.9071 4 18.3887 4H20V5.61135C20 8.09292 18.9754 10.4644 17.1683 12.1651L11.5 17.5M6.5 12.5L2 11L5.12132 7.87868C5.68393 7.31607 6.44699 7 7.24264 7H11M11.5 17.5L13 22L16.1213 18.8787C16.6839 18.3161 17 17.553 17 16.7574V13" stroke="currentColor" strokeLinecap="square"></path>
+                              <path d="M4.5 16.5C4.5 16.5 4 18 4 20C6 20 7.5 19.5 7.5 19.5" stroke="currentColor"></path>
                             </svg>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">Expert</p>
-                            <p className="text-xs text-muted-foreground">Current model</p>
+                          <div style={{ overflow: 'hidden', width: 'auto', opacity: 1, flexGrow: 0 }}>
+                            <div className="flex flex-col items-start">
+                              <span className="font-semibold text-sm shrink-0 line-clamp-1">{currentModel}</span>
+                            </div>
                           </div>
-                        </button>
-                      </div>
-                      
-                      {/* Tools Section */}
-                      <div className="p-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">Tools</p>
-                        <button
-                          onClick={() => {
-                            toast.info('Grounding with Google Search', {
-                              description: 'This feature will enable web search grounding'
-                            });
-                            setToolsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
-                        >
-                          <Search className="w-4 h-4" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">Grounding with Google Search</p>
-                            <p className="text-xs text-muted-foreground">Enable web search</p>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Microphone Button */}
-                <button
-                  onClick={toggleMic}
-                  className={cn(
-                    "border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center border-border active:scale-[0.98]",
-                    isRecording 
-                      ? "bg-red-500 text-white" 
-                      : "text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary"
-                  )}
-                  aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
-                  aria-pressed={isRecording}
-                >
-                  <Mic className="w-4 h-4" />
-                </button>
-
-                {/* File Upload Button */}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary active:scale-[0.98]"
-                  aria-label="Attach file"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
-                  </svg>
-                </button>
-              </div>
-
-              {/* Right Side - Model Selector & Live Voice/Send */}
-              <div className="flex items-center gap-2 shrink-0 ml-auto">
-                {/* Model Selector Button - Hover to Show */}
-                <div 
-                  className="model-selector relative"
-                  onMouseEnter={() => setModelMenuOpen(true)}
-                  onMouseLeave={() => setModelMenuOpen(false)}
-                >
-                  <button
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-100 select-none hover:bg-[#FFD700]/10 disabled:hover:bg-transparent border border-[#FFD700]/20 h-10 py-1.5 text-sm rounded-full text-[#FFD700] px-3.5 focus:outline-none"
-                    type="button"
-                    id="model-select-trigger"
-                    aria-label="Model select"
-                    aria-haspopup="menu"
-                    aria-expanded={modelMenuOpen}
-                  >
-                    <div className="flex flex-row items-center gap-2">
-                      <div className="flex items-center justify-center size-[18px] overflow-hidden shrink-0">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2]">
-                          <path d="M6.5 12.5L11.5 17.5M6.5 12.5L11.8349 6.83172C13.5356 5.02464 15.9071 4 18.3887 4H20V5.61135C20 8.09292 18.9754 10.4644 17.1683 12.1651L11.5 17.5M6.5 12.5L2 11L5.12132 7.87868C5.68393 7.31607 6.44699 7 7.24264 7H11M11.5 17.5L13 22L16.1213 18.8787C16.6839 18.3161 17 17.553 17 16.7574V13" stroke="currentColor" strokeLinecap="square"></path>
-                          <path d="M4.5 16.5C4.5 16.5 4 18 4 20C6 20 7.5 19.5 7.5 19.5" stroke="currentColor"></path>
-                        </svg>
-                      </div>
-                      <div style={{ overflow: 'hidden', width: 'auto', opacity: 1, flexGrow: 0 }}>
-                        <div className="flex flex-col items-start">
-                          <span className="font-semibold text-sm shrink-0 line-clamp-1">Auto</span>
                         </div>
-                      </div>
-                    </div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2] size-4 text-[#FFD700] transition-transform">
-                      <path d="M6 9L12 15L18 9" stroke="currentColor" strokeLinecap="square"></path>
-                    </svg>
-                  </button>
-                  
-                  {/* Model Dropdown Menu - Show on Hover */}
-                  {modelMenuOpen && (
-                    <div className="absolute bottom-full right-0 mb-2 w-56 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-50" role="menu">
-                      {['Auto', 'Expert', 'Fast', 'Creative'].map((model) => (
-                        <button
-                          key={model}
-                          onClick={() => {
-                            toast.info('Model Selected', {
-                              description: `Switched to ${model} model`
-                            });
-                            setModelMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-secondary transition-colors text-left"
-                        >
-                          <span className="text-sm font-medium">{model}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`stroke-[2] size-4 text-[#FFD700] transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`}>
+                          <path d="M6 9L12 15L18 9" stroke="currentColor" strokeLinecap="square"></path>
+                        </svg>
+                      </button>
 
-                {/* Live Voice / Send Button */}
-                {input.trim() ? (
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={isLoading}
-                    className="inline-flex items-center justify-center relative shrink-0 select-none disabled:pointer-events-none disabled:opacity-50 font-base-bold transition-colors h-8 w-8 rounded-md active:scale-95 rounded-lg bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-black hover:opacity-90"
-                    type="button"
-                    aria-label="Send message"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M208.49,120.49a12,12,0,0,1-17,0L140,69V216a12,12,0,0,1-24,0V69L64.49,120.49a12,12,0,0,1-17-17l72-72a12,12,0,0,1,17,0l72,72A12,12,0,0,1,208.49,120.49Z"></path>
-                    </svg>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setVoiceLiveActive(!voiceLiveActive);
-                      toast.info('Voice Mode', {
-                        description: voiceLiveActive ? 'Voice mode disabled' : 'Voice mode enabled'
-                      });
-                    }}
-                    className="inline-flex items-center justify-center relative shrink-0 select-none h-8 w-8 rounded-lg active:scale-95"
-                    type="button"
-                    aria-label="Enter voice mode"
-                  >
-                    <div className="h-8 relative aspect-square flex items-center justify-center gap-0.5 rounded-full ring-1 ring-inset duration-100 before:absolute before:inset-0 before:rounded-full before:bg-[#FFD700] before:ring-0 before:transition-all bg-[#FFD700] text-black ring-transparent before:[clip-path:circle(50%_at_50%_50%)]">
-                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.4rem' }}></div>
-                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.8rem' }}></div>
-                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '1.2rem' }}></div>
-                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.7rem' }}></div>
-                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '1rem' }}></div>
-                      <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.4rem' }}></div>
+                      {/* Model Dropdown Menu - Show on Click */}
+                      {modelMenuOpen && (
+                        <>
+                          {/* Backdrop to close on click outside */}
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setModelMenuOpen(false)}
+                          />
+                          <div className="absolute bottom-full right-0 mb-2 w-72 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-50" role="menu">
+                            {/* Model List */}
+                            <div className="p-2 border-b border-border">
+                              <span className="text-xs text-muted-foreground px-2">AI Model</span>
+                            </div>
+                            <div className="max-h-64 overflow-y-auto">
+                              {availableModels.map((model) => (
+                                <button
+                                  key={model.name}
+                                  onClick={() => {
+                                    setSelectedModel(model.name);
+                                    setCurrentModel(model.displayName);
+                                    toast.success('Model Selected', {
+                                      description: `Switched to ${model.displayName}`
+                                    });
+                                    setModelMenuOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full flex items-start gap-3 px-3 py-2.5 hover:bg-secondary transition-colors text-left",
+                                    selectedModel === model.name && "bg-[#FFD700]/10"
+                                  )}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium">{model.displayName}</span>
+                                      {selectedModel === model.name && (
+                                        <span className="text-[#FFD700]">✓</span>
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-muted-foreground line-clamp-1">{model.description}</span>
+                                    <div className="flex gap-1 mt-1 flex-wrap">
+                                      {model.supportsThinking && (
+                                        <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">Thinking</span>
+                                      )}
+                                      {model.supportedFeatures.includes('google-search') && (
+                                        <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">Search</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Tools Section */}
+                            <div className="p-2 border-t border-border">
+                              <span className="text-xs text-muted-foreground px-2">Tools & Features</span>
+                            </div>
+                            <div className="px-3 pb-3 space-y-2">
+                              {/* Google Search Toggle */}
+                              <label className="flex items-center justify-between cursor-pointer hover:bg-secondary/50 px-2 py-1.5 rounded">
+                                <div className="flex items-center gap-2">
+                                  <Search className="w-4 h-4 text-blue-400" />
+                                  <span className="text-sm">Google Search</span>
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setGoogleSearchEnabled(!googleSearchEnabled);
+                                    toast.info(googleSearchEnabled ? 'Google Search disabled' : 'Google Search enabled');
+                                  }}
+                                  className={cn(
+                                    "w-10 h-5 rounded-full transition-colors",
+                                    googleSearchEnabled ? "bg-[#FFD700]" : "bg-gray-600"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-4 h-4 rounded-full bg-white shadow transition-transform mx-0.5",
+                                    googleSearchEnabled ? "translate-x-5" : "translate-x-0"
+                                  )} />
+                                </button>
+                              </label>
+
+                              {/* Thinking Mode Toggle */}
+                              <label className="flex items-center justify-between cursor-pointer hover:bg-secondary/50 px-2 py-1.5 rounded">
+                                <div className="flex items-center gap-2">
+                                  <Brain className="w-4 h-4 text-purple-400" />
+                                  <span className="text-sm">Thinking Mode</span>
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const modelInfo = availableModels.find(m => m.name === selectedModel);
+                                    if (!modelInfo?.supportsThinking) {
+                                      toast.error('This model does not support thinking mode');
+                                      return;
+                                    }
+                                    setThinkingModeEnabled(!thinkingModeEnabled);
+                                    toast.info(thinkingModeEnabled ? 'Thinking Mode disabled' : 'Thinking Mode enabled');
+                                  }}
+                                  className={cn(
+                                    "w-10 h-5 rounded-full transition-colors",
+                                    thinkingModeEnabled ? "bg-purple-500" : "bg-gray-600"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-4 h-4 rounded-full bg-white shadow transition-transform mx-0.5",
+                                    thinkingModeEnabled ? "translate-x-5" : "translate-x-0"
+                                  )} />
+                                </button>
+                              </label>
+
+                              {/* Thinking Budget Slider (when thinking enabled) */}
+                              {thinkingModeEnabled && (
+                                <div className="px-2 py-1">
+                                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                    <span>Thinking Budget</span>
+                                    <span>{thinkingBudget} tokens</span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="24576"
+                                    step="1024"
+                                    value={thinkingBudget}
+                                    onChange={(e) => setThinkingBudget(Number(e.target.value))}
+                                    className="w-full h-1.5 bg-gray-600 rounded-full appearance-none cursor-pointer accent-purple-500"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </button>
-                )}
+
+                    {/* Send / Stop Button */}
+                    {isLoading ? (
+                      <button
+                        onClick={() => {
+                          setIsLoading(false);
+                          toast.info('Generation stopped');
+                        }}
+                        className="inline-flex items-center justify-center relative shrink-0 select-none font-base-bold transition-all h-8 w-8 rounded-lg active:scale-95 bg-red-500 hover:bg-red-600 text-white"
+                        type="button"
+                        aria-label="Stop generation"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    ) : input.trim() ? (
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={isLoading}
+                        className="inline-flex items-center justify-center relative shrink-0 select-none disabled:pointer-events-none disabled:opacity-50 font-base-bold transition-colors h-8 w-8 rounded-md active:scale-95 rounded-lg bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-black hover:opacity-90"
+                        type="button"
+                        aria-label="Send message"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                          <path d="M208.49,120.49a12,12,0,0,1-17,0L140,69V216a12,12,0,0,1-24,0V69L64.49,120.49a12,12,0,0,1-17-17l72-72a12,12,0,0,1,17,0l72,72A12,12,0,0,1,208.49,120.49Z"></path>
+                        </svg>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setVoiceLiveActive(!voiceLiveActive);
+                          toast.info('Voice Mode', {
+                            description: voiceLiveActive ? 'Voice mode disabled' : 'Voice mode enabled'
+                          });
+                        }}
+                        className="inline-flex items-center justify-center relative shrink-0 select-none h-8 w-8 rounded-lg active:scale-95"
+                        type="button"
+                        aria-label="Enter voice mode"
+                      >
+                        <div className="h-8 relative aspect-square flex items-center justify-center gap-0.5 rounded-full ring-1 ring-inset duration-100 before:absolute before:inset-0 before:rounded-full before:bg-[#FFD700] before:ring-0 before:transition-all bg-[#FFD700] text-black ring-transparent before:[clip-path:circle(50%_at_50%_50%)]">
+                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.4rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.8rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '1.2rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.7rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '1rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.4rem' }}></div>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-        </div>
       </div>
-    </div>
     );
   };
 
@@ -1689,7 +1924,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
           />
         </div>
         <div className="pt-4">
-          <button 
+          <button
             onClick={saveProfile}
             className="w-full bg-foreground hover:opacity-90 text-background py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
           >
@@ -1745,7 +1980,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               if (modes.length === 0) {
                 return <p className="text-sm text-muted-foreground text-center py-4">Belum ada data penggunaan mode</p>;
               }
-              
+
               const modeCount = modes.reduce((acc, m) => {
                 acc[m] = (acc[m] || 0) + 1;
                 return acc;
@@ -1758,7 +1993,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 const countNum = count as number;
                 const percentage = Math.round((countNum / total) * 100);
                 const config = modeConfig[modeKey as keyof typeof modeConfig];
-                
+
                 return (
                   <div key={modeKey} className="bg-card border border-border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
@@ -1777,7 +2012,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                       </div>
                     </div>
                     <div className="w-full bg-secondary rounded-full h-2">
-                      <div 
+                      <div
                         className={cn(
                           "h-2 rounded-full transition-all",
                           modeKey === 'fast' && "bg-yellow-500",
@@ -1799,7 +2034,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
   const renderHistory = () => {
     // Filter chat history based on search query
-    const filteredHistory = chatHistory.filter(chat => 
+    const filteredHistory = chatHistory.filter(chat =>
       chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       chat.messages.some(msg => msg.text.toLowerCase().includes(searchQuery.toLowerCase()))
     );
@@ -1808,11 +2043,11 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     const groupedHistory = filteredHistory.reduce((groups, chat) => {
       const chatDate = new Date(chat.timestamp);
       const now = new Date();
-      
+
       // Reset time to compare dates only
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const chatDay = new Date(chatDate.getFullYear(), chatDate.getMonth(), chatDate.getDate());
-      
+
       const diffTime = today.getTime() - chatDay.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
@@ -1900,7 +2135,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                     const firstUserMsg = chat.messages?.find(m => m.type === 'user');
                     const preview = firstUserMsg ? firstUserMsg.text.substring(0, 80) : 'Percakapan kosong';
                     const messageCount = chat.messages?.length || 0;
-                    
+
                     return (
                       <div
                         key={chat.id}
@@ -1928,15 +2163,15 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                             <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                               <span>{messageCount} pesan</span>
                               <span>•</span>
-                              <span>{new Date(chat.timestamp).toLocaleDateString('id-ID', { 
-                                day: 'numeric', 
-                                month: 'short', 
-                                year: 'numeric' 
+                              <span>{new Date(chat.timestamp).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
                               })}</span>
                               <span>•</span>
-                              <span>{new Date(chat.timestamp).toLocaleTimeString('id-ID', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
+                              <span>{new Date(chat.timestamp).toLocaleTimeString('id-ID', {
+                                hour: '2-digit',
+                                minute: '2-digit'
                               })}</span>
                             </div>
                           </div>
@@ -1975,8 +2210,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               onClick={() => setFontSize('small')}
               className={cn(
                 "flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors",
-                fontSize === 'small' 
-                  ? "border-foreground bg-secondary" 
+                fontSize === 'small'
+                  ? "border-foreground bg-secondary"
                   : "border-border hover:border-muted-foreground"
               )}
             >
@@ -1987,8 +2222,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               onClick={() => setFontSize('medium')}
               className={cn(
                 "flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors",
-                fontSize === 'medium' 
-                  ? "border-foreground bg-secondary" 
+                fontSize === 'medium'
+                  ? "border-foreground bg-secondary"
                   : "border-border hover:border-muted-foreground"
               )}
             >
@@ -1999,8 +2234,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               onClick={() => setFontSize('large')}
               className={cn(
                 "flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors",
-                fontSize === 'large' 
-                  ? "border-foreground bg-secondary" 
+                fontSize === 'large'
+                  ? "border-foreground bg-secondary"
                   : "border-border hover:border-muted-foreground"
               )}
             >
@@ -2081,7 +2316,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         </div>
 
         {/* Save Settings Button */}
-        <button 
+        <button
           onClick={saveSettings}
           className="w-full bg-foreground hover:opacity-90 text-background py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
           aria-label="Save settings"
@@ -2103,8 +2338,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 Total {chatHistory.reduce((acc, chat) => acc + chat.messages.length, 0)} pesan tersimpan
               </p>
             </div>
-            
-            <button 
+
+            <button
               onClick={clearAllData}
               className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
               aria-label="Delete all data"
@@ -2147,15 +2382,15 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
   return (
     <div className="flex h-screen bg-background text-foreground relative overflow-hidden">
-      
+
       {/* Sidebar - Mobile Responsive - Fixed bug: fully hidden on mobile when closed */}
       <div className={cn(
         "fixed lg:relative lg:translate-x-0 z-[60] bg-card border-r border-border h-full flex flex-col",
         "transition-all duration-300 ease-out",
-        sidebarOpen 
-          ? sidebarMinimized 
-            ? "w-16 sm:w-20 shadow-2xl lg:shadow-none" 
-            : "w-64 sm:w-72 shadow-2xl lg:shadow-none" 
+        sidebarOpen
+          ? sidebarMinimized
+            ? "w-16 sm:w-20 shadow-2xl lg:shadow-none"
+            : "w-64 sm:w-72 shadow-2xl lg:shadow-none"
           : isMobileView
             ? "w-0 -translate-x-full overflow-hidden"
             : "w-0 lg:w-20 lg:translate-x-0 overflow-hidden lg:overflow-visible"
@@ -2194,7 +2429,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 </button>
               )}
               {/* Close button - only on mobile */}
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!sidebarToggleRef.current) {
@@ -2398,8 +2633,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              align="end" 
+            <DropdownMenuContent
+              align="end"
               side="top"
               sideOffset={8}
               className="w-[17rem] bg-background/95 backdrop-blur-xl border border-border/50 shadow-lg"
@@ -2408,8 +2643,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               <DropdownMenuLabel className="text-text-500 pt-1 px-2 pb-2 overflow-ellipsis truncate">
                 {profile.email}
               </DropdownMenuLabel>
-              
-              <DropdownMenuItem 
+
+              <DropdownMenuItem
                 onClick={() => {
                   navigate('/chat/settings');
                   if (isMobileView) setSidebarOpen(false);
@@ -2425,7 +2660,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 </div>
               </DropdownMenuItem>
 
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => {
                   toast.info('Subscription', {
                     description: 'Subscription feature coming soon'
@@ -2441,7 +2676,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 </div>
               </DropdownMenuItem>
 
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => {
                   navigate('/chat/history');
                   if (isMobileView) setSidebarOpen(false);
@@ -2475,7 +2710,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
 
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => {
                   toast.info('Get help', {
                     description: 'Contact us at support@orenax.com'
@@ -2493,7 +2728,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => {
                   toast.info('Upgrade plan', {
                     description: 'Upgrade feature coming soon'
@@ -2511,7 +2746,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 </div>
               </DropdownMenuItem>
 
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => {
                   toast.info('Download', {
                     description: 'Download feature coming soon'
@@ -2549,7 +2784,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={handleLogout}
                 className="cursor-pointer text-destructive focus:text-destructive"
               >

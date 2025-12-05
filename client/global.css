@@ -24,6 +24,7 @@
 @tailwind utilities;
 
 @layer base {
+
   /**
    * Tailwind CSS theme - Black & White Monochrome with Futuristic Styling
    * tailwind.config.ts expects the following color variables to be expressed as HSL values.
@@ -73,55 +74,66 @@
     --glow: 0 0% 100%;
 
     /* Indonesian Cultural Colors - Elegant Gold Theme */
-    --indonesian-earth: 28 45% 35%;      /* Coklat tanah */
-    --indonesian-gold: 43 96% 70%;       /* Emas terang untuk dark theme */
-    --indonesian-gold-dark: 43 96% 56%; /* Emas untuk kontras */
-    --indonesian-brick: 12 76% 45%;      /* Merah bata */
-    --indonesian-leaf: 142 52% 35%;      /* Hijau daun */
-    --indonesian-terracotta: 12 76% 61%; /* Terracotta */
-    --indonesian-amber: 43 96% 70%;      /* Amber/Emas terang */
+    --indonesian-earth: 28 45% 35%;
+    /* Coklat tanah */
+    --indonesian-gold: 43 96% 70%;
+    /* Emas terang untuk dark theme */
+    --indonesian-gold-dark: 43 96% 56%;
+    /* Emas untuk kontras */
+    --indonesian-brick: 12 76% 45%;
+    /* Merah bata */
+    --indonesian-leaf: 142 52% 35%;
+    /* Hijau daun */
+    --indonesian-terracotta: 12 76% 61%;
+    /* Terracotta */
+    --indonesian-amber: 43 96% 70%;
+    /* Amber/Emas terang */
   }
 
   .light {
-    /* Light Theme - White & Gray */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    /* Light Theme - Soft Cream (Eye-friendly) */
+    --background: 40 20% 96%;
+    --foreground: 40 10% 15%;
 
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 0%;
+    --card: 40 15% 94%;
+    --card-foreground: 40 10% 15%;
 
-    --popover: 0 0% 98%;
-    --popover-foreground: 0 0% 0%;
+    --popover: 40 15% 94%;
+    --popover-foreground: 40 10% 15%;
 
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 40 10% 20%;
+    --primary-foreground: 40 20% 96%;
 
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 40 15% 90%;
+    --secondary-foreground: 40 10% 20%;
 
-    --muted: 0 0% 90%;
-    --muted-foreground: 0 0% 30%;
+    --muted: 40 10% 85%;
+    --muted-foreground: 40 10% 40%;
 
-    --accent: 0 0% 95%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 40 15% 88%;
+    --accent-foreground: 40 10% 20%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 85%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 0%;
+    --border: 40 10% 80%;
+    --input: 40 15% 88%;
+    --ring: 43 96% 50%;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 0%;
-    --sidebar-primary: 0 0% 0%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 95%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 85%;
-    --sidebar-ring: 0 0% 0%;
+    --sidebar-background: 40 15% 94%;
+    --sidebar-foreground: 40 10% 15%;
+    --sidebar-primary: 40 10% 20%;
+    --sidebar-primary-foreground: 40 20% 96%;
+    --sidebar-accent: 40 15% 88%;
+    --sidebar-accent-foreground: 40 10% 20%;
+    --sidebar-border: 40 10% 80%;
+    --sidebar-ring: 43 96% 50%;
 
-    --glow: 0 0% 0%;
+    --glow: 43 96% 50%;
+
+    /* Indonesian Gold - adjusted for light theme */
+    --indonesian-gold: 43 96% 45%;
+    --indonesian-gold-dark: 43 96% 35%;
   }
 }
 
@@ -136,6 +148,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -155,7 +168,12 @@
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Space Grotesk', sans-serif;
     letter-spacing: -0.5px;
   }
@@ -197,18 +215,24 @@
 
   /* Deep Thinking Mode Animation */
   @keyframes deep-thinking-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
       box-shadow: 0 0 20px rgba(139, 92, 246, 0.3), 0 0 40px rgba(139, 92, 246, 0.2);
     }
+
     50% {
       box-shadow: 0 0 30px rgba(139, 92, 246, 0.5), 0 0 60px rgba(139, 92, 246, 0.3);
     }
   }
 
   @keyframes deep-thinking-glow {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 0.5;
     }
+
     50% {
       opacity: 1;
     }
@@ -243,10 +267,13 @@
   }
 
   @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
       transform: scale(1);
     }
+
     50% {
       opacity: 0.7;
       transform: scale(1.1);
@@ -276,24 +303,22 @@
 
   /* Indonesian Cultural Patterns */
   .batik-pattern-parang {
-    background-image: repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 20px,
-      rgba(217, 119, 6, 0.03) 20px,
-      rgba(217, 119, 6, 0.03) 40px
-    );
+    background-image: repeating-linear-gradient(45deg,
+        transparent,
+        transparent 20px,
+        rgba(217, 119, 6, 0.03) 20px,
+        rgba(217, 119, 6, 0.03) 40px);
   }
 
   .batik-pattern-kawung {
-    background-image: 
+    background-image:
       radial-gradient(circle at 25% 25%, rgba(217, 119, 6, 0.05) 2px, transparent 2px),
       radial-gradient(circle at 75% 75%, rgba(217, 119, 6, 0.05) 2px, transparent 2px);
     background-size: 40px 40px;
   }
 
   .batik-pattern-mega-mendung {
-    background-image: 
+    background-image:
       radial-gradient(ellipse at center, rgba(217, 119, 6, 0.04) 0%, transparent 50%);
     background-size: 100px 100px;
   }
@@ -309,12 +334,10 @@
     position: absolute;
     width: 100%;
     height: 2px;
-    background: linear-gradient(
-      to right,
-      transparent,
-      hsl(var(--indonesian-gold)),
-      transparent
-    );
+    background: linear-gradient(to right,
+        transparent,
+        hsl(var(--indonesian-gold)),
+        transparent);
     opacity: 0.3;
   }
 
@@ -336,13 +359,11 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 10px,
-      rgba(217, 119, 6, 0.1) 10px,
-      rgba(217, 119, 6, 0.1) 20px
-    );
+    background-image: repeating-linear-gradient(45deg,
+        transparent,
+        transparent 10px,
+        rgba(217, 119, 6, 0.1) 10px,
+        rgba(217, 119, 6, 0.1) 20px);
     opacity: 0;
     transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
@@ -395,12 +416,15 @@
     top: 0%;
     opacity: 0;
   }
+
   10% {
     opacity: 1;
   }
+
   90% {
     opacity: 1;
   }
+
   100% {
     top: 100%;
     opacity: 0;
@@ -409,21 +433,28 @@
 
 /* Indonesian Cultural Animations */
 @keyframes batik-float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0) translateX(0);
   }
+
   33% {
     transform: translateY(-10px) translateX(5px);
   }
+
   66% {
     transform: translateY(5px) translateX(-5px);
   }
 }
 
 @keyframes wayang-move {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0) rotate(0deg);
   }
+
   50% {
     transform: translateX(10px) rotate(2deg);
   }
@@ -434,6 +465,7 @@
     opacity: 0;
     transform: scale(0.8);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -445,12 +477,15 @@
     transform: translateY(100vh) rotate(0deg);
     opacity: 0;
   }
+
   10% {
     opacity: 0.3;
   }
+
   90% {
     opacity: 0.3;
   }
+
   100% {
     transform: translateY(-100vh) rotate(360deg);
     opacity: 0;
@@ -459,13 +494,24 @@
 
 /* Auth Page Animations */
 @keyframes shake {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0);
   }
-  10%, 30%, 50%, 70%, 90% {
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
     transform: translateX(-5px);
   }
-  20%, 40%, 60%, 80% {
+
+  20%,
+  40%,
+  60%,
+  80% {
     transform: translateX(5px);
   }
 }
@@ -475,6 +521,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -495,6 +542,7 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -515,6 +563,7 @@
     opacity: 0;
     transform: translateX(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -526,6 +575,7 @@
     opacity: 0;
     transform: translateX(20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -533,9 +583,12 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -551,6 +604,25 @@
 
 .animate-pulse-glow {
   animation: pulse-glow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Slow subtle pulse for template cards */
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.95;
+    transform: scale(1.01);
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Accessibility - Focus Indicators */
@@ -595,11 +667,9 @@ textarea:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(
-    180deg,
-    hsl(var(--indonesian-gold) / 0.3),
-    hsl(var(--indonesian-gold) / 0.5)
-  );
+  background: linear-gradient(180deg,
+      hsl(var(--indonesian-gold) / 0.3),
+      hsl(var(--indonesian-gold) / 0.5));
   border-radius: 10px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -607,25 +677,21 @@ textarea:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(
-    180deg,
-    hsl(var(--indonesian-gold) / 0.5),
-    hsl(var(--indonesian-gold) / 0.7)
-  );
+  background: linear-gradient(180deg,
+      hsl(var(--indonesian-gold) / 0.5),
+      hsl(var(--indonesian-gold) / 0.7));
   background-clip: padding-box;
-  box-shadow: 
+  box-shadow:
     0 0 10px hsl(var(--indonesian-gold) / 0.3),
     inset 0 0 5px hsl(var(--indonesian-gold) / 0.2);
 }
 
 ::-webkit-scrollbar-thumb:active {
-  background: linear-gradient(
-    180deg,
-    hsl(var(--indonesian-gold) / 0.7),
-    hsl(var(--indonesian-gold))
-  );
+  background: linear-gradient(180deg,
+      hsl(var(--indonesian-gold) / 0.7),
+      hsl(var(--indonesian-gold)));
   background-clip: padding-box;
-  box-shadow: 
+  box-shadow:
     0 0 15px hsl(var(--indonesian-gold) / 0.5),
     inset 0 0 8px hsl(var(--indonesian-gold) / 0.3);
 }
@@ -647,7 +713,7 @@ textarea:focus-visible {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--indonesian-gold) / 0.5) rgba(0, 0, 0, 0.1);
   }
-  
+
   *:hover {
     scrollbar-color: hsl(var(--indonesian-gold) / 0.7) rgba(0, 0, 0, 0.15);
   }
@@ -670,22 +736,18 @@ textarea:focus-visible {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(
-    180deg,
-    hsl(var(--indonesian-gold) / 0.4),
-    hsl(var(--indonesian-gold) / 0.6)
-  );
+  background: linear-gradient(180deg,
+      hsl(var(--indonesian-gold) / 0.4),
+      hsl(var(--indonesian-gold) / 0.6));
   border-radius: 8px;
   border: 1px solid transparent;
   background-clip: padding-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(
-    180deg,
-    hsl(var(--indonesian-gold) / 0.6),
-    hsl(var(--indonesian-gold) / 0.8)
-  );
+  background: linear-gradient(180deg,
+      hsl(var(--indonesian-gold) / 0.6),
+      hsl(var(--indonesian-gold) / 0.8));
   background-clip: padding-box;
 }
 
@@ -706,19 +768,25 @@ textarea:focus-visible {
 
 /* Hide scrollbar but keep functionality */
 .hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 .hide-scrollbar::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari, Opera */
+  display: none;
+  /* Chrome, Safari, Opera */
 }
 
 /* Scrollbar glow effect on active scroll */
 @keyframes scrollbar-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 5px hsl(var(--indonesian-gold) / 0.3);
   }
+
   50% {
     box-shadow: 0 0 15px hsl(var(--indonesian-gold) / 0.6);
   }
@@ -727,5 +795,3 @@ textarea:focus-visible {
 ::-webkit-scrollbar-thumb:active {
   animation: scrollbar-glow 1s ease-in-out infinite;
 }
-
-
