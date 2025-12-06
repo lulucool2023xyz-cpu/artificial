@@ -623,17 +623,20 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             accumulatedThoughts.push(chunk.thought);
           }
 
+
           if (chunk.text) {
             accumulatedText += chunk.text;
 
-            // Update message with accumulated text
-            setMessages(prev =>
-              prev.map(msg =>
-                msg.id === botMessageId
-                  ? { ...msg, text: accumulatedText, thoughts: accumulatedThoughts }
-                  : msg
-              )
-            );
+            // Use requestAnimationFrame for smoother updates
+            requestAnimationFrame(() => {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === botMessageId
+                    ? { ...msg, text: accumulatedText, thoughts: accumulatedThoughts }
+                    : msg
+                )
+              );
+            });
           }
 
           if (chunk.done) {
@@ -688,6 +691,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
   const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef<string>('');
+  const isRecordingRef = useRef<boolean>(false);
 
   const toggleMic = async () => {
     if (!isRecording) {
@@ -707,9 +711,11 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         recognition.lang = 'id-ID'; // Indonesian
         recognition.continuous = true; // Keep recording until manually stopped
         recognition.interimResults = true; // Show interim results
+        recognition.maxAlternatives = 1;
 
         transcriptRef.current = ''; // Reset transcript
         recognitionRef.current = recognition;
+        isRecordingRef.current = true;
 
         recognition.onstart = () => {
           setIsRecording(true);
@@ -719,39 +725,36 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         };
 
         recognition.onresult = (event: any) => {
-          let finalTranscript = '';
-          let interimTranscript = '';
+          let fullTranscript = '';
 
+          // Collect all results (both final and interim)
           for (let i = 0; i < event.results.length; i++) {
-            const result = event.results[i];
-            if (result.isFinal) {
-              finalTranscript += result[0].transcript + ' ';
-            } else {
-              interimTranscript += result[0].transcript;
-            }
+            fullTranscript += event.results[i][0].transcript;
           }
 
-          // Store the accumulated transcript
-          transcriptRef.current = finalTranscript.trim();
+          // Store the full transcript (including interim results)
+          transcriptRef.current = fullTranscript.trim();
+          console.log('Current transcript:', transcriptRef.current); // Debug log
         };
 
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
-          if (event.error !== 'no-speech') {
+          if (event.error !== 'no-speech' && event.error !== 'aborted') {
             toast.error('Error merekam suara', {
-              description: event.error === 'aborted' ? 'Rekaman dihentikan' : 'Terjadi kesalahan',
-              duration: 1000
+              description: event.error,
+              duration: 2000
             });
           }
         };
 
         recognition.onend = () => {
           // If still supposed to be recording (browser auto-stopped), restart
-          if (isRecording && recognitionRef.current) {
+          if (isRecordingRef.current && recognitionRef.current) {
             try {
+              console.log('Restarting recognition...');
               recognition.start();
             } catch (e) {
-              // Recognition already ended, that's fine
+              console.log('Recognition restart failed:', e);
             }
           }
         };
@@ -765,7 +768,9 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         });
       }
     } else {
-      // Stop recording and insert transcript
+      // Stop recording
+      isRecordingRef.current = false;
+
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
@@ -773,14 +778,24 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
       setIsRecording(false);
 
-      // Insert the accumulated transcript
-      if (transcriptRef.current.trim()) {
-        setInput(prev => prev + (prev ? ' ' : '') + transcriptRef.current.trim());
+      // Get the final transcript
+      const finalText = transcriptRef.current.trim();
+      console.log('Final transcript to insert:', finalText); // Debug log
+
+      // Insert the accumulated transcript into input
+      if (finalText) {
+        setInput(prev => {
+          const newValue = prev + (prev ? ' ' : '') + finalText;
+          console.log('New input value:', newValue); // Debug log
+          return newValue;
+        });
         toast.success('Transkripsi selesai!', {
-          description: `"${transcriptRef.current.trim().substring(0, 50)}${transcriptRef.current.length > 50 ? '...' : ''}"`
+          description: `"${finalText.substring(0, 50)}${finalText.length > 50 ? '...' : ''}"`
         });
       } else {
-        toast.info('Tidak ada suara terdeteksi');
+        toast.info('Tidak ada suara terdeteksi', {
+          description: 'Coba bicara lebih jelas atau lebih dekat ke mikrofon'
+        });
       }
 
       transcriptRef.current = '';
