@@ -103,7 +103,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = "100%";
-      
+
       // Scroll to top smoothly
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -138,7 +138,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
 
     // Validate with Zod
     const validation = validateData(loginSchema, loginData);
-    
+
     if (!validation.success) {
       setLoginErrors(validation.errors || {});
       setIsLoginLoading(false);
@@ -148,7 +148,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
     // Proceed with sanitized data
     const sanitizedData = validation.data!;
     const result = await login(sanitizedData.email, sanitizedData.password);
-    
+
     if (result.success) {
       // Redirect will be handled by useEffect watching isAuthenticated
     } else {
@@ -164,7 +164,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
 
     // Validate with Zod
     const validation = validateData(signupSchema, signupData);
-    
+
     if (!validation.success) {
       setSignupErrors(validation.errors || {});
       setIsSignupLoading(false);
@@ -178,7 +178,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
       sanitizedData.email,
       sanitizedData.password
     );
-    
+
     if (result.success) {
       // Redirect will be handled by useEffect watching isAuthenticated
     } else {
@@ -208,7 +208,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
   return (
     <div
       className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto"
-      style={{ 
+      style={{
         position: 'fixed',
         top: 0,
         left: 0,
@@ -223,7 +223,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" style={{ zIndex: 99998 }} />
 
       {/* Modal */}
-      <div 
+      <div
         className="relative w-full max-w-md bg-black/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 my-auto"
         style={{ zIndex: 99999, maxHeight: '90vh', overflowY: 'auto' }}
       >
@@ -483,8 +483,8 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
                       signupData.confirmPassword && signupData.password === signupData.confirmPassword && !signupErrors.confirmPassword
                         ? "border-green-500"
                         : signupErrors.confirmPassword
-                        ? "border-red-500 shake"
-                        : "border-white/10"
+                          ? "border-red-500 shake"
+                          : "border-white/10"
                     )}
                     placeholder="Confirm your password"
                     disabled={isSignupLoading}
@@ -518,7 +518,30 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
                     disabled={isSignupLoading}
                   />
                   <span className="text-sm text-gray-300">
-                    I agree to the Terms of Service and Privacy Policy
+                    I agree to the{" "}
+                    <Link
+                      to="/company/terms"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onClose();
+                        setTimeout(() => navigate('/company/terms'), 100);
+                      }}
+                      className="text-indonesian-gold hover:text-white transition-colors"
+                    >
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      to="/company/privacy"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onClose();
+                        setTimeout(() => navigate('/company/privacy'), 100);
+                      }}
+                      className="text-indonesian-gold hover:text-white transition-colors"
+                    >
+                      Privacy Policy
+                    </Link>
                   </span>
                 </label>
                 {signupErrors.agreeToTerms && (

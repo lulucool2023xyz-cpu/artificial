@@ -10,7 +10,10 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from 'next-themes';
 import { MorphingNavigation, type MorphingNavigationLink } from '@/components/ui/MorphingNavigation';
+import { ToggleTheme } from '@/components/ui/ToggleTheme';
 import { chatApi, modelsApi, ChatContent, ChatPart, ChatTool, ThinkingConfig, GeminiModel } from '@/lib/api';
+import { VoiceLiveModal } from './VoiceLiveModal';
+import { ModelSelectorPopup } from './ModelSelectorPopup';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -683,6 +686,9 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     }
   };
 
+  const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef<string>('');
+
   const toggleMic = async () => {
     if (!isRecording) {
       try {
@@ -699,33 +705,55 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
         const recognition = new SpeechRecognition();
         recognition.lang = 'id-ID'; // Indonesian
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        recognition.continuous = true; // Keep recording until manually stopped
+        recognition.interimResults = true; // Show interim results
+
+        transcriptRef.current = ''; // Reset transcript
+        recognitionRef.current = recognition;
 
         recognition.onstart = () => {
           setIsRecording(true);
-          toast.info('Sedang merekam...', {
-            description: 'Silakan berbicara'
+          toast.info('Merekam...', {
+            description: 'Klik tombol lagi untuk berhenti dan transcribe'
           });
         };
 
         recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setInput(prev => prev + (prev ? ' ' : '') + transcript);
-          toast.success('Suara berhasil dikenali!');
+          let finalTranscript = '';
+          let interimTranscript = '';
+
+          for (let i = 0; i < event.results.length; i++) {
+            const result = event.results[i];
+            if (result.isFinal) {
+              finalTranscript += result[0].transcript + ' ';
+            } else {
+              interimTranscript += result[0].transcript;
+            }
+          }
+
+          // Store the accumulated transcript
+          transcriptRef.current = finalTranscript.trim();
         };
 
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
-          toast.error('Error merekam suara', {
-            description: event.error === 'no-speech' ? 'Tidak ada suara terdeteksi' : 'Terjadi kesalahan',
-            duration: 1000
-          });
-          setIsRecording(false);
+          if (event.error !== 'no-speech') {
+            toast.error('Error merekam suara', {
+              description: event.error === 'aborted' ? 'Rekaman dihentikan' : 'Terjadi kesalahan',
+              duration: 1000
+            });
+          }
         };
 
         recognition.onend = () => {
-          setIsRecording(false);
+          // If still supposed to be recording (browser auto-stopped), restart
+          if (isRecording && recognitionRef.current) {
+            try {
+              recognition.start();
+            } catch (e) {
+              // Recognition already ended, that's fine
+            }
+          }
         };
 
         recognition.start();
@@ -737,7 +765,25 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         });
       }
     } else {
+      // Stop recording and insert transcript
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+
       setIsRecording(false);
+
+      // Insert the accumulated transcript
+      if (transcriptRef.current.trim()) {
+        setInput(prev => prev + (prev ? ' ' : '') + transcriptRef.current.trim());
+        toast.success('Transkripsi selesai!', {
+          description: `"${transcriptRef.current.trim().substring(0, 50)}${transcriptRef.current.length > 50 ? '...' : ''}"`
+        });
+      } else {
+        toast.info('Tidak ada suara terdeteksi');
+      }
+
+      transcriptRef.current = '';
     }
   };
 
@@ -1112,7 +1158,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                     msg.type === 'user' ? '' : 'flex flex-col gap-2'
                   )}>
                     <div className={cn(
-                      "px-4 py-3 rounded-2xl",
+                      "px-5 py-4 sm:px-6 sm:py-5 rounded-2xl",
                       msg.type === 'user'
                         ? "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tr-sm"
                         : msg.type === 'error'
@@ -1156,7 +1202,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                               )}
                             </div>
                           )}
-                          <div className="prose prose-sm prose-invert max-w-none">
+                          <div className="prose prose-invert max-w-none prose-p:leading-relaxed prose-p:mb-4 prose-li:my-1 prose-ul:my-3 prose-ol:my-3 prose-headings:mb-3 prose-headings:mt-4 prose-pre:my-4">
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
@@ -1209,7 +1255,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                                 },
                                 p({ node, children, ...props }: any) {
                                   return <p className={cn(
-                                    "leading-relaxed mb-2 last:mb-0",
+                                    "leading-relaxed mb-4 last:mb-0",
                                     fontSize === 'small' && "text-xs",
                                     fontSize === 'medium' && "text-sm",
                                     fontSize === 'large' && "text-base"
@@ -1217,7 +1263,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                                 },
                                 ul({ node, children, ...props }: any) {
                                   return <ul className={cn(
-                                    "list-disc list-inside space-y-1 my-2",
+                                    "list-disc list-inside space-y-2 my-4 pl-2",
                                     fontSize === 'small' && "text-xs",
                                     fontSize === 'medium' && "text-sm",
                                     fontSize === 'large' && "text-base"
@@ -1225,7 +1271,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                                 },
                                 ol({ node, children, ...props }: any) {
                                   return <ol className={cn(
-                                    "list-decimal list-inside space-y-1 my-2",
+                                    "list-decimal list-inside space-y-2 my-4 pl-2",
                                     fontSize === 'small' && "text-xs",
                                     fontSize === 'medium' && "text-sm",
                                     fontSize === 'large' && "text-base"
@@ -1446,41 +1492,52 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               <div className="w-full mb-8 px-2 md:px-0 -mt-8 sm:-mt-12 md:-mt-16">
                 <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                   {[
-                    { title: "Tulis Esai", prompt: "Tolong buatkan esai tentang teknologi AI", icon: "✍️", color: "from-purple-500/20 to-pink-500/20", borderColor: "hover:border-purple-400/50" },
-                    { title: "Jelaskan Konsep", prompt: "Jelaskan konsep machine learning dengan sederhana", icon: "💡", color: "from-yellow-500/20 to-orange-500/20", borderColor: "hover:border-yellow-400/50" },
-                    { title: "Buat Kode", prompt: "Bantu saya membuat fungsi JavaScript untuk validasi form", icon: "💻", color: "from-blue-500/20 to-cyan-500/20", borderColor: "hover:border-blue-400/50" },
-                    { title: "Terjemahkan", prompt: "Terjemahkan teks ini ke bahasa Inggris", icon: "🌐", color: "from-green-500/20 to-teal-500/20", borderColor: "hover:border-green-400/50" }
+                    { title: "Tulis Esai", prompt: "Tolong buatkan esai tentang teknologi AI", icon: "✍️", gradient: "from-violet-500 to-purple-600" },
+                    { title: "Jelaskan Konsep", prompt: "Jelaskan konsep machine learning dengan sederhana", icon: "💡", gradient: "from-amber-500 to-orange-600" },
+                    { title: "Buat Kode", prompt: "Bantu saya membuat fungsi JavaScript untuk validasi form", icon: "💻", gradient: "from-blue-500 to-cyan-600" },
+                    { title: "Terjemahkan", prompt: "Terjemahkan teks ini ke bahasa Inggris", icon: "🌐", gradient: "from-emerald-500 to-teal-600" }
                   ].map((template, idx) => (
-                    <div
+                    <button
                       key={idx}
                       onClick={() => {
                         setInput(template.prompt);
                         inputRef.current?.focus();
                       }}
                       className={cn(
-                        "cursor-pointer transition-all duration-300 ease-out",
-                        "bg-gradient-to-br", template.color,
-                        "border border-border/50 rounded-xl p-4",
-                        template.borderColor,
-                        "hover:scale-105 hover:shadow-lg hover:shadow-[#FFD700]/10",
                         "group relative overflow-hidden",
-                        "animate-pulse-slow"
+                        "bg-card/50 dark:bg-white/5 backdrop-blur-sm",
+                        "border border-border/50 dark:border-white/10 rounded-2xl",
+                        "p-4 sm:p-5 min-w-[110px] sm:min-w-[130px]",
+                        "transition-all duration-300 ease-out",
+                        "hover:bg-card/80 dark:hover:bg-white/10",
+                        "hover:border-[#FFD700]/50 dark:hover:border-[#FFD700]/40",
+                        "hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-[#FFD700]/10",
+                        "hover:-translate-y-1",
+                        "focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50"
                       )}
-                      style={{
-                        animationDelay: `${idx * 150}ms`
-                      }}
+                      style={{ animationDelay: `${idx * 100}ms` }}
                     >
-                      {/* Glow effect */}
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full"
-                        style={{ transition: 'transform 0.8s ease-in-out' }}
-                      />
-                      <div className="flex flex-col items-center justify-center gap-2 min-w-[100px] sm:min-w-[120px] relative z-10">
-                        <span className="text-2xl sm:text-3xl mb-1 group-hover:scale-110 transition-transform duration-300">{template.icon}</span>
-                        <p className="text-xs sm:text-sm font-medium text-foreground text-center group-hover:text-[#FFD700] transition-colors duration-300">
+                      {/* Gradient border glow on hover */}
+                      <div className={cn(
+                        "absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+                        "bg-gradient-to-br", template.gradient,
+                        "blur-xl -z-10 scale-110"
+                      )} style={{ opacity: 0.15 }} />
+
+                      {/* Content */}
+                      <div className="flex flex-col items-center justify-center gap-2 relative z-10">
+                        <div className={cn(
+                          "w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center",
+                          "bg-gradient-to-br", template.gradient,
+                          "shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+                        )}>
+                          <span className="text-xl sm:text-2xl">{template.icon}</span>
+                        </div>
+                        <span className="text-xs sm:text-sm font-medium text-foreground/80 dark:text-white/80 text-center group-hover:text-foreground dark:group-hover:text-white transition-colors duration-300">
                           {template.title}
-                        </p>
+                        </span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1630,15 +1687,34 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                     <button
                       onClick={toggleMic}
                       className={cn(
-                        "border transition-all h-8 flex items-center group outline-offset-1 overflow-hidden px-1.5 min-w-8 rounded-lg justify-center border-border active:scale-[0.98]",
+                        "border transition-all flex items-center group outline-offset-1 overflow-hidden rounded-lg justify-center active:scale-[0.98]",
                         isRecording
-                          ? "bg-red-500 text-white"
-                          : "text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary"
+                          ? "bg-red-500 text-white px-3 h-8 gap-1 animate-pulse border-red-400"
+                          : "text-muted-foreground border-border hover:text-foreground/90 hover:bg-secondary px-1.5 min-w-8 h-8"
                       )}
                       aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
                       aria-pressed={isRecording}
                     >
-                      <Mic className="w-4 h-4" />
+                      {isRecording ? (
+                        <>
+                          {/* Animated Wave Bars */}
+                          <div className="flex items-center gap-[2px] h-4">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                              <div
+                                key={i}
+                                className="w-[3px] bg-white rounded-full animate-[voiceWave_0.5s_ease-in-out_infinite]"
+                                style={{
+                                  height: `${8 + Math.random() * 8}px`,
+                                  animationDelay: `${i * 0.1}s`
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs font-medium ml-1">REC</span>
+                        </>
+                      ) : (
+                        <Mic className="w-4 h-4" />
+                      )}
                     </button>
 
                     {/* File Upload Button */}
@@ -1868,18 +1944,27 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                             description: voiceLiveActive ? 'Voice mode disabled' : 'Voice mode enabled'
                           });
                         }}
-                        className="inline-flex items-center justify-center relative shrink-0 select-none h-8 w-8 rounded-lg active:scale-95"
+                        className="inline-flex items-center justify-center relative shrink-0 select-none h-8 w-8 rounded-lg active:scale-95 group"
                         type="button"
                         aria-label="Enter voice mode"
                       >
-                        <div className="h-8 relative aspect-square flex items-center justify-center gap-0.5 rounded-full ring-1 ring-inset duration-100 before:absolute before:inset-0 before:rounded-full before:bg-[#FFD700] before:ring-0 before:transition-all bg-[#FFD700] text-black ring-transparent before:[clip-path:circle(50%_at_50%_50%)]">
-                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.4rem' }}></div>
-                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.8rem' }}></div>
-                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '1.2rem' }}></div>
-                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.7rem' }}></div>
-                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '1rem' }}></div>
-                          <div className="w-0.5 relative z-10 rounded-full bg-black" style={{ height: '0.4rem' }}></div>
+                        <div className="h-8 relative aspect-square flex items-center justify-center gap-0.5 rounded-full ring-1 ring-inset duration-100 before:absolute before:inset-0 before:rounded-full before:bg-[#FFD700] before:ring-0 before:transition-all bg-[#FFD700] text-black ring-transparent before:[clip-path:circle(50%_at_50%_50%)] group-hover:shadow-[0_0_15px_rgba(255,215,0,0.5)]">
+                          {/* Animated Audio Wave Bars */}
+                          <div className="w-0.5 relative z-10 rounded-full bg-black animate-[voiceWave_0.8s_ease-in-out_infinite_0s]" style={{ height: '0.4rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black animate-[voiceWave_0.8s_ease-in-out_infinite_0.1s]" style={{ height: '0.8rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black animate-[voiceWave_0.8s_ease-in-out_infinite_0.2s]" style={{ height: '1.2rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black animate-[voiceWave_0.8s_ease-in-out_infinite_0.3s]" style={{ height: '0.7rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black animate-[voiceWave_0.8s_ease-in-out_infinite_0.4s]" style={{ height: '1rem' }}></div>
+                          <div className="w-0.5 relative z-10 rounded-full bg-black animate-[voiceWave_0.8s_ease-in-out_infinite_0.5s]" style={{ height: '0.4rem' }}></div>
                         </div>
+                        {/* CSS Keyframes for Voice Wave Animation */}
+                        <style dangerouslySetInnerHTML={{
+                          __html: `
+                          @keyframes voiceWave {
+                            0%, 100% { transform: scaleY(1); }
+                            50% { transform: scaleY(1.5); }
+                          }
+                        `}} />
                       </button>
                     )}
                   </div>
@@ -2199,6 +2284,20 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     <div className="p-8 max-w-2xl mx-auto">
       <h2 className="text-2xl font-semibold mb-8 font-heading">Pengaturan</h2>
       <div className="space-y-6">
+        {/* Theme Toggle */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium mb-1 flex items-center gap-2">
+                <Palette className="w-4 h-4" />
+                Tema Tampilan
+              </h3>
+              <p className="text-sm text-muted-foreground">Ganti antara mode terang dan gelap</p>
+            </div>
+            <ToggleTheme />
+          </div>
+        </div>
+
         {/* Font Size Control */}
         <div className="bg-card border border-border rounded-xl p-5">
           <div>
@@ -2838,6 +2937,12 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Voice Live Modal */}
+      <VoiceLiveModal
+        isOpen={voiceLiveActive}
+        onClose={() => setVoiceLiveActive(false)}
+      />
     </div>
   );
 }

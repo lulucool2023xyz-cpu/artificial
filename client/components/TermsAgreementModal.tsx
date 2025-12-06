@@ -49,9 +49,9 @@ export function TermsAgreementModal({ isOpen, onAccept, onDecline }: TermsAgreem
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent 
-        className="max-w-4xl max-h-[90vh] bg-gradient-to-b from-[#0A0A0A] to-[#1A1A1A] border-2 border-[#FFD700]/20 p-0 overflow-hidden"
+    <Dialog open={isOpen} onOpenChange={() => { }}>
+      <DialogContent
+        className="max-w-4xl max-h-[85vh] sm:max-h-[90vh] bg-gradient-to-b from-[#0A0A0A] to-[#1A1A1A] border-2 border-[#FFD700]/20 p-0 overflow-hidden flex flex-col"
         aria-describedby="terms-description"
       >
         <div className="relative">
@@ -74,17 +74,17 @@ export function TermsAgreementModal({ isOpen, onAccept, onDecline }: TermsAgreem
             </DialogHeader>
           </div>
 
-          {/* Content */}
-          <ScrollArea 
-            className="h-[60vh] px-6 py-4"
+          {/* Content - Reduced height for mobile */}
+          <ScrollArea
+            className="h-[40vh] sm:h-[50vh] px-6 py-4 flex-1"
             onScrollCapture={handleScroll}
           >
             <div className="space-y-6 text-[#E0E0E0]">
               <div>
                 <h2 className="text-xl font-bold text-[#FFD700] mb-3">1. Acceptance of Terms</h2>
                 <p className="text-sm leading-relaxed">
-                  By accessing and using Orenax platform, you accept and agree to be bound by the terms and 
-                  provision of this agreement. If you do not agree to abide by the above, please do not 
+                  By accessing and using Orenax platform, you accept and agree to be bound by the terms and
+                  provision of this agreement. If you do not agree to abide by the above, please do not
                   use this service.
                 </p>
               </div>
@@ -92,8 +92,8 @@ export function TermsAgreementModal({ isOpen, onAccept, onDecline }: TermsAgreem
               <div>
                 <h2 className="text-xl font-bold text-[#FFD700] mb-3">2. Use License</h2>
                 <p className="text-sm leading-relaxed">
-                  Permission is granted to temporarily use our services for personal, non-commercial 
-                  transitory viewing only. This is the grant of a license, not a transfer of title, and 
+                  Permission is granted to temporarily use our services for personal, non-commercial
+                  transitory viewing only. This is the grant of a license, not a transfer of title, and
                   under this license you may not modify or copy the materials.
                 </p>
               </div>
@@ -101,8 +101,8 @@ export function TermsAgreementModal({ isOpen, onAccept, onDecline }: TermsAgreem
               <div>
                 <h2 className="text-xl font-bold text-[#FFD700] mb-3">3. Restrictions</h2>
                 <p className="text-sm leading-relaxed">
-                  You may not modify, copy, distribute, transmit, display, perform, reproduce, publish, 
-                  license, create derivative works from, transfer, or sell any information obtained from 
+                  You may not modify, copy, distribute, transmit, display, perform, reproduce, publish,
+                  license, create derivative works from, transfer, or sell any information obtained from
                   our services without prior written consent.
                 </p>
               </div>
@@ -110,8 +110,8 @@ export function TermsAgreementModal({ isOpen, onAccept, onDecline }: TermsAgreem
               <div>
                 <h2 className="text-xl font-bold text-[#FFD700] mb-3">4. Privacy Policy</h2>
                 <p className="text-sm leading-relaxed">
-                  We respect your privacy and are committed to protecting your personal data. We collect 
-                  only necessary information to provide and improve our services. Your data is encrypted 
+                  We respect your privacy and are committed to protecting your personal data. We collect
+                  only necessary information to provide and improve our services. Your data is encrypted
                   and stored securely. We do not sell your personal information to third parties.
                 </p>
               </div>
@@ -119,8 +119,8 @@ export function TermsAgreementModal({ isOpen, onAccept, onDecline }: TermsAgreem
               <div>
                 <h2 className="text-xl font-bold text-[#FFD700] mb-3">5. Disclaimer</h2>
                 <p className="text-sm leading-relaxed">
-                  The materials on our platform are provided on an 'as is' basis. We make no warranties, 
-                  expressed or implied, and hereby disclaim and negate all other warranties including, 
+                  The materials on our platform are provided on an 'as is' basis. We make no warranties,
+                  expressed or implied, and hereby disclaim and negate all other warranties including,
                   without limitation, implied warranties or conditions of merchantability.
                 </p>
               </div>
@@ -128,8 +128,8 @@ export function TermsAgreementModal({ isOpen, onAccept, onDecline }: TermsAgreem
               <div>
                 <h2 className="text-xl font-bold text-[#FFD700] mb-3">6. Limitations</h2>
                 <p className="text-sm leading-relaxed">
-                  In no event shall Orenax or its suppliers be liable for any damages (including, 
-                  without limitation, damages for loss of data or profit, or due to business interruption) 
+                  In no event shall Orenax or its suppliers be liable for any damages (including,
+                  without limitation, damages for loss of data or profit, or due to business interruption)
                   arising out of the use or inability to use our services.
                 </p>
               </div>
@@ -168,8 +168,8 @@ export function TermsAgreementModal({ isOpen, onAccept, onDecline }: TermsAgreem
                   agreeToTerms && "ring-2 ring-[#FFD700]/50"
                 )}
               />
-              <label 
-                htmlFor="agree-terms" 
+              <label
+                htmlFor="agree-terms"
                 className="text-sm text-[#E0E0E0] cursor-pointer flex-1"
               >
                 I have read and agree to the{" "}

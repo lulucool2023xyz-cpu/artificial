@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown, LogOut, User, Settings, LayoutDashboard, Moon, Sun } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
+import { ToggleTheme } from '@/components/ui/ToggleTheme';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
@@ -74,9 +75,7 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+  // Theme toggle is now handled by ToggleTheme component
 
   const handleGetStarted = () => {
     if (onGetStartedClick) {
@@ -160,9 +159,9 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
             className="flex items-center gap-2 text-xl sm:text-2xl font-bold font-heading hover:text-glow transition-all"
             aria-label="Go to homepage"
           >
-            <img 
-              src="/logo/erasebg-transformed (1).png" 
-              alt="Orenax Logo" 
+            <img
+              src="/logo/erasebg-transformed (1).png"
+              alt="Orenax Logo"
               className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
             />
             <span className={cn(
@@ -193,7 +192,7 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                       className={cn(
                         "flex items-center gap-1 px-3 py-2 font-medium rounded-md transition-all duration-300 cursor-pointer",
                         itemIsActive
-                          ? theme === 'dark' 
+                          ? theme === 'dark'
                             ? "text-white bg-white/10"
                             : "text-black bg-gray-100"
                           : theme === 'dark'
@@ -230,7 +229,7 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                         {item.children?.map((child) => {
                           const childIsActive = location.pathname === child.path;
                           const isHashLink = child.path.startsWith('/#');
-                          
+
                           return (
                             <Link
                               key={child.path}
@@ -421,23 +420,15 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
             )}
 
             {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
+            <ToggleTheme
               className={cn(
                 "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-300 cursor-pointer",
                 theme === 'dark'
                   ? "text-gray-300 hover:text-white hover:bg-white/5"
                   : "text-gray-700 hover:text-black hover:bg-gray-100"
               )}
-              aria-label="Toggle theme"
               style={{ pointerEvents: 'auto' }}
-            >
-              {theme === "dark" ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-            </button>
+            />
           </div>
 
           {/* Mobile Menu Button */}
@@ -587,33 +578,20 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
               "mt-2 border-t pt-2",
               theme === 'dark' ? "border-white/10" : "border-gray-200/50"
             )}>
-              <button
-                onClick={() => {
-                  toggleTheme();
-                  setIsMobileMenuOpen(false);
-                }}
+              <div
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={cn(
-                  "flex items-center gap-2 w-full text-left px-4 py-3 rounded-lg transition-all duration-300 cursor-pointer",
+                  "flex items-center gap-2 w-full text-left px-4 py-3 rounded-lg transition-all duration-300",
                   theme === 'dark'
                     ? "text-gray-300 hover:text-white hover:bg-white/5"
                     : "text-gray-700 hover:text-black hover:bg-gray-100"
                 )}
                 role="menuitem"
-                aria-label="Toggle theme"
                 style={{ pointerEvents: 'auto' }}
               >
-                {theme === "dark" ? (
-                  <>
-                    <Sun className="w-4 h-4" />
-                    <span>Light Mode</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="w-4 h-4" />
-                    <span>Dark Mode</span>
-                  </>
-                )}
-              </button>
+                <ToggleTheme className="p-0" />
+                <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              </div>
             </div>
 
             {/* User Menu / Get Started Button */}
@@ -666,17 +644,17 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                 </button>
               </div>
             ) : (
-                <button
-                  onClick={() => {
-                    handleGetStarted();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={cn(
-                    "block w-full text-left px-4 py-3 mt-2 font-semibold rounded-lg transition-all duration-300 cursor-pointer",
-                    theme === 'dark'
-                      ? "bg-white text-black hover:bg-gray-100"
-                      : "bg-black text-white hover:bg-gray-900"
-                  )}
+              <button
+                onClick={() => {
+                  handleGetStarted();
+                  setIsMobileMenuOpen(false);
+                }}
+                className={cn(
+                  "block w-full text-left px-4 py-3 mt-2 font-semibold rounded-lg transition-all duration-300 cursor-pointer",
+                  theme === 'dark'
+                    ? "bg-white text-black hover:bg-gray-100"
+                    : "bg-black text-white hover:bg-gray-900"
+                )}
                 style={{
                   transform: 'scale(1)',
                   willChange: 'transform, background-color',

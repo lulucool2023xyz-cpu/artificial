@@ -625,6 +625,16 @@
   animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Voice Wave Animation for Recording */
+@keyframes voiceWave {
+  0%, 100% {
+    transform: scaleY(0.6);
+  }
+  50% {
+    transform: scaleY(1.4);
+  }
+}
+
 /* Accessibility - Focus Indicators */
 *:focus-visible {
   outline: 2px solid hsl(var(--ring));

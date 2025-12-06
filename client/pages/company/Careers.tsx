@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Briefcase, MapPin, Clock, Users } from "lucide-react";
 import { NavigationBar } from "@/components/landing/NavigationBar";
 import { Footer } from "@/components/landing/Footer";
@@ -9,6 +9,7 @@ import { BackgroundGrid } from "@/components/landing/BackgroundGrid";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { BatikPattern } from "@/components/landing/BatikPattern";
 import { OrnamentFrame } from "@/components/landing/OrnamentFrame";
+import { toast } from "@/hooks/use-toast";
 
 const jobOpenings = [
   {
@@ -50,10 +51,10 @@ const Careers = memo(function Careers() {
           <section className="section-container section-padding relative overflow-hidden">
             <BackgroundGrid opacity="opacity-[0.02]" size="100px" />
             <BatikPattern variant="parang" opacity="opacity-[0.02]" speed={30} />
-            
+
             <div className="relative z-10 max-w-7xl mx-auto">
               <Breadcrumb className="mb-8" />
-              
+
               <ScrollReveal delay={0.1} duration={0.7} distance={30}>
                 <div className="text-center mb-16 sm:mb-20">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold font-heading mb-4 sm:mb-6">
@@ -132,7 +133,16 @@ const Careers = memo(function Careers() {
                           </div>
                         </div>
                         <p className="text-muted-foreground mb-4">{job.description}</p>
-                        <button className="w-full px-4 py-2 bg-white text-black font-semibold rounded-lg hover:bg-gray-100 transition-all">
+                        <button
+                          onClick={() => {
+                            toast({
+                              title: "Posisi Belum Dibuka",
+                              description: "Mohon maaf, kami belum membuka lowongan saat ini. Tim kami sedang fokus mengejar target juara dalam perlombaan. Pantau terus halaman ini untuk update terbaru!",
+                              duration: 5000,
+                            });
+                          }}
+                          className="w-full px-4 py-2 bg-white text-black font-semibold rounded-lg hover:bg-gray-100 transition-all"
+                        >
                           Apply Now
                         </button>
                       </OrnamentFrame>

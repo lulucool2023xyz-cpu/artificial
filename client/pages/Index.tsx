@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from "react";
+import { memo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavigationBar } from "@/components/landing/NavigationBar";
 import { BackToTop } from "@/components/landing/BackToTop";
@@ -18,14 +18,15 @@ const Index = memo(function Index() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<"login" | "signup">("login");
 
-  // Redirect to chat if already authenticated
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      navigate("/chat", { replace: true });
-    }
-  }, [isAuthenticated, isLoading, navigate]);
+  // Note: We no longer auto-redirect authenticated users to chat
+  // Users should be able to view the landing page even when logged in
 
   const handleGetStarted = (tab: "login" | "signup" = "login") => {
+    // If user is already authenticated, go directly to chat instead of opening modal
+    if (isAuthenticated && !isLoading) {
+      navigate("/chat");
+      return;
+    }
     setAuthModalTab(tab);
     setIsAuthModalOpen(true);
   };

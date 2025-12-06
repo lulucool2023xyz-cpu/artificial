@@ -1,5 +1,5 @@
 import { memo, useState, useEffect } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Mail, Phone, MapPin, ExternalLink } from "lucide-react";
 import { NavigationBar } from "@/components/landing/NavigationBar";
 import { Footer } from "@/components/landing/Footer";
 import { BackToTop } from "@/components/landing/BackToTop";
@@ -29,11 +29,11 @@ const Privacy = memo(function Privacy() {
   useEffect(() => {
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 400);
-      
+
       // Update active section based on scroll position
       const sectionElements = sections.map(s => document.getElementById(s.id)).filter(Boolean);
       const scrollPosition = window.scrollY + 200;
-      
+
       for (let i = sectionElements.length - 1; i >= 0; i--) {
         const element = sectionElements[i];
         if (element && element.offsetTop <= scrollPosition) {
@@ -67,7 +67,7 @@ const Privacy = memo(function Privacy() {
           <section className="section-container section-padding relative overflow-hidden">
             <BackgroundGrid opacity="opacity-[0.02]" size="100px" />
             <BatikPattern variant="parang" opacity="opacity-[0.02]" speed={30} />
-            
+
             <div className="relative z-10 max-w-7xl mx-auto">
               <div className="flex flex-col lg:flex-row gap-8">
                 {/* Sidebar - Table of Contents (Desktop) */}
@@ -98,13 +98,13 @@ const Privacy = memo(function Privacy() {
                 {/* Main Content */}
                 <div className="flex-1 max-w-4xl">
                   <Breadcrumb className="mb-8" />
-                  
+
                   <ScrollReveal delay={0.1} duration={0.7} distance={30}>
                     <div className="text-center mb-12">
                       <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold font-heading mb-4">
                         <span className="text-glow">Privacy Policy</span>
                       </h1>
-                      <p className="text-muted-foreground">Last updated: January 2024</p>
+                      <p className="text-muted-foreground">Terakhir diperbarui: 5 Desember 2025</p>
                     </div>
                   </ScrollReveal>
 
@@ -115,12 +115,12 @@ const Privacy = memo(function Privacy() {
                           <h2 className="text-2xl font-bold text-foreground mb-4 font-heading">1. Introduction</h2>
                           <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed space-y-4">
                             <p>
-                              Kami menghormati privasi Anda dan berkomitmen untuk melindungi informasi pribadi Anda. 
-                              Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi 
+                              Kami menghormati privasi Anda dan berkomitmen untuk melindungi informasi pribadi Anda.
+                              Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi
                               informasi Anda saat menggunakan platform AI kami.
                             </p>
                             <p>
-                              Dengan menggunakan layanan kami, Anda menyetujui praktik yang dijelaskan dalam kebijakan ini. 
+                              Dengan menggunakan layanan kami, Anda menyetujui praktik yang dijelaskan dalam kebijakan ini.
                               Jika Anda tidak setuju dengan kebijakan ini, mohon untuk tidak menggunakan layanan kami.
                             </p>
                           </div>
@@ -169,7 +169,7 @@ const Privacy = memo(function Privacy() {
                           <h2 className="text-2xl font-bold text-foreground mb-4 font-heading">4. Data Security</h2>
                           <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed space-y-4">
                             <p>
-                              Kami menerapkan langkah-langkah keamanan yang sesuai untuk melindungi informasi pribadi Anda 
+                              Kami menerapkan langkah-langkah keamanan yang sesuai untuk melindungi informasi pribadi Anda
                               dari akses tidak sah, perubahan, pengungkapan, atau penghancuran. Ini termasuk:
                             </p>
                             <ul className="list-disc list-inside space-y-2 ml-4">
@@ -179,7 +179,7 @@ const Privacy = memo(function Privacy() {
                               <li>Pelatihan staf tentang praktik keamanan data</li>
                             </ul>
                             <p className="text-muted-foreground text-sm mt-4">
-                              Namun, tidak ada metode transmisi melalui Internet yang 100% aman. Meskipun kami berusaha 
+                              Namun, tidak ada metode transmisi melalui Internet yang 100% aman. Meskipun kami berusaha
                               melindungi informasi Anda, kami tidak dapat menjamin keamanan absolut.
                             </p>
                           </div>
@@ -193,7 +193,7 @@ const Privacy = memo(function Privacy() {
                           <h2 className="text-2xl font-bold text-foreground mb-4 font-heading">5. Cookies & Tracking</h2>
                           <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed space-y-4">
                             <p>
-                              Kami menggunakan cookies dan teknologi pelacakan serupa untuk meningkatkan pengalaman Anda. 
+                              Kami menggunakan cookies dan teknologi pelacakan serupa untuk meningkatkan pengalaman Anda.
                               Cookies adalah file teks kecil yang disimpan di perangkat Anda.
                             </p>
                             <p>Jenis cookies yang kami gunakan:</p>
@@ -203,7 +203,7 @@ const Privacy = memo(function Privacy() {
                               <li><strong>Preference Cookies:</strong> Mengingat preferensi dan pengaturan Anda</li>
                             </ul>
                             <p>
-                              Anda dapat mengontrol cookies melalui pengaturan browser Anda, namun ini dapat mempengaruhi 
+                              Anda dapat mengontrol cookies melalui pengaturan browser Anda, namun ini dapat mempengaruhi
                               fungsionalitas platform.
                             </p>
                           </div>
@@ -217,12 +217,12 @@ const Privacy = memo(function Privacy() {
                           <h2 className="text-2xl font-bold text-foreground mb-4 font-heading">6. Third-Party Services</h2>
                           <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed space-y-4">
                             <p>
-                              Kami dapat menggunakan layanan pihak ketiga untuk membantu mengoperasikan platform dan 
-                              melayani pengguna. Layanan ini mungkin memiliki akses ke informasi Anda untuk melakukan 
+                              Kami dapat menggunakan layanan pihak ketiga untuk membantu mengoperasikan platform dan
+                              melayani pengguna. Layanan ini mungkin memiliki akses ke informasi Anda untuk melakukan
                               tugas atas nama kami.
                             </p>
                             <p>
-                              Kami memastikan bahwa semua pihak ketiga mematuhi standar privasi yang sama dan hanya 
+                              Kami memastikan bahwa semua pihak ketiga mematuhi standar privasi yang sama dan hanya
                               menggunakan informasi untuk tujuan yang ditentukan.
                             </p>
                           </div>
@@ -258,13 +258,51 @@ const Privacy = memo(function Privacy() {
                           <h2 className="text-2xl font-bold text-foreground mb-4 font-heading">8. Contact Us</h2>
                           <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed space-y-4">
                             <p>
-                              Jika Anda memiliki pertanyaan, kekhawatiran, atau permintaan terkait Kebijakan Privasi ini, 
+                              Jika Anda memiliki pertanyaan, kekhawatiran, atau permintaan terkait Kebijakan Privasi ini,
                               silakan hubungi kami:
                             </p>
-                            <div className="bg-accent rounded-lg p-4 space-y-2 border border-border">
-                              <p><strong>Email:</strong> privacy@aiplatform.com</p>
-                              <p><strong>Alamat:</strong> [Alamat Perusahaan]</p>
-                              <p><strong>Waktu Respon:</strong> 1-3 hari kerja</p>
+                            <div className="bg-black/30 rounded-lg p-4 space-y-3 border border-indonesian-gold/20">
+                              <div className="flex items-center gap-3">
+                                <Mail className="w-5 h-5 text-indonesian-gold" />
+                                <div>
+                                  <p className="font-medium text-foreground">Email</p>
+                                  <p className="text-muted-foreground">arieffajarmarhas@gmail.com</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <Phone className="w-5 h-5 text-indonesian-gold" />
+                                <div>
+                                  <p className="font-medium text-foreground">WhatsApp</p>
+                                  <p className="text-muted-foreground">+62-881-4554-581</p>
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <MapPin className="w-5 h-5 text-indonesian-gold mt-1" />
+                                <div>
+                                  <p className="font-medium text-foreground">Alamat</p>
+                                  <p className="text-muted-foreground text-sm">Jl. Terusan Kopo No.385/299, Margahayu Sel., Kec. Margahayu, Kabupaten Bandung, Jawa Barat 40226</p>
+                                </div>
+                              </div>
+                              <p className="text-sm text-muted-foreground pt-2 border-t border-border"><strong>Waktu Respon:</strong> 1-3 hari kerja</p>
+                            </div>
+                            <div className="flex flex-wrap gap-3 pt-4">
+                              <a
+                                href="https://wa.me/628814554581"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                              >
+                                <Phone className="w-4 h-4" />
+                                WhatsApp
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                              <a
+                                href="mailto:arieffajarmarhas@gmail.com"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-indonesian-gold hover:bg-indonesian-gold/90 text-black rounded-lg transition-colors"
+                              >
+                                <Mail className="w-4 h-4" />
+                                Email
+                              </a>
                             </div>
                           </div>
                         </div>

@@ -42,6 +42,7 @@ const ProductPlayground = lazy(() => import("./pages/product/Playground"));
 const ResourcesDocumentation = lazy(() => import("./pages/resources/Documentation"));
 const ResourcesBlog = lazy(() => import("./pages/resources/Blog"));
 const ResourcesStatus = lazy(() => import("./pages/resources/Status"));
+const ResourcesSupport = lazy(() => import("./pages/resources/Support"));
 
 // Research page
 const Research = lazy(() => import("./pages/Research"));
@@ -119,101 +120,102 @@ const App = () => (
     }}
   >
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-        <GlobalErrorHandler />
-        <Toaster />
-        <Sonner position="top-left" />
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-            <ConditionalSmokeyCursor />
-            <ScrollToTop />
-            <Suspense fallback={<PageLoader />}>
-          <Routes>
-                {/* Auth Routes - Public */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/auth/login" element={<Login />} /> {/* Backward compatibility */}
-                <Route path="/auth/signup" element={<SignUp />} />
-                <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-                
-                {/* Chat Routes - Protected */}
-                <Route
-                  path="/chat"
-                  element={
-                    <ProtectedRoute>
-                      <Chat />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/chat/history"
-                  element={
-                    <ProtectedRoute>
-                      <ChatHistory />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/chat/settings"
-                  element={
-                    <ProtectedRoute>
-                      <ChatSettings />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/chat/profile"
-                  element={
-                    <ProtectedRoute>
-                      <ChatProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                {/* Public Routes - No Authentication Required */}
-                <Route path="/" element={<Index />} />
-                <Route path="/get-started" element={<GetStarted />} />
-                
-                {/* Product Routes - Public Preview */}
-                <Route path="/product/features" element={<ProductFeatures />} />
-                <Route path="/product/demo" element={<ProductDemo />} />
-                <Route path="/product/use-cases" element={<ProductUseCases />} />
-                <Route
-                  path="/product/playground"
-                  element={
-                    <ProtectedRoute>
-                      <ProductPlayground />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                {/* Resources Routes - Public */}
-                <Route path="/resources/documentation" element={<ResourcesDocumentation />} />
-                <Route path="/resources/blog" element={<ResourcesBlog />} />
-                <Route path="/resources/status" element={<ResourcesStatus />} />
-                
-                {/* Research Route - Public */}
-                <Route path="/research" element={<Research />} />
-                
-                {/* Company Routes - Public */}
-                <Route path="/company/about" element={<CompanyAbout />} />
-                <Route path="/company/careers" element={<CompanyCareers />} />
-                <Route path="/company/privacy" element={<CompanyPrivacy />} />
-                <Route path="/company/terms" element={<CompanyTerms />} />
-                
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-            </Suspense>
-        </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
+            <GlobalErrorHandler />
+            <Toaster />
+            <Sonner position="top-left" />
+            <BrowserRouter
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+              }}
+            >
+              <ConditionalSmokeyCursor />
+              <ScrollToTop />
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* Auth Routes - Public */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/auth/login" element={<Login />} /> {/* Backward compatibility */}
+                  <Route path="/auth/signup" element={<SignUp />} />
+                  <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+
+                  {/* Chat Routes - Protected */}
+                  <Route
+                    path="/chat"
+                    element={
+                      <ProtectedRoute>
+                        <Chat />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chat/history"
+                    element={
+                      <ProtectedRoute>
+                        <ChatHistory />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chat/settings"
+                    element={
+                      <ProtectedRoute>
+                        <ChatSettings />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chat/profile"
+                    element={
+                      <ProtectedRoute>
+                        <ChatProfile />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Public Routes - No Authentication Required */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/get-started" element={<GetStarted />} />
+
+                  {/* Product Routes - Public Preview */}
+                  <Route path="/product/features" element={<ProductFeatures />} />
+                  <Route path="/product/demo" element={<ProductDemo />} />
+                  <Route path="/product/use-cases" element={<ProductUseCases />} />
+                  <Route
+                    path="/product/playground"
+                    element={
+                      <ProtectedRoute>
+                        <ProductPlayground />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Resources Routes - Public */}
+                  <Route path="/resources/documentation" element={<ResourcesDocumentation />} />
+                  <Route path="/resources/blog" element={<ResourcesBlog />} />
+                  <Route path="/resources/status" element={<ResourcesStatus />} />
+                  <Route path="/resources/support" element={<ResourcesSupport />} />
+
+                  {/* Research Route - Public */}
+                  <Route path="/research" element={<Research />} />
+
+                  {/* Company Routes - Public */}
+                  <Route path="/company/about" element={<CompanyAbout />} />
+                  <Route path="/company/careers" element={<CompanyCareers />} />
+                  <Route path="/company/privacy" element={<CompanyPrivacy />} />
+                  <Route path="/company/terms" element={<CompanyTerms />} />
+
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   </ErrorBoundary>
 );
