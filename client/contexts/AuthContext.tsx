@@ -86,27 +86,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   }, [scheduleTokenRefresh]);
 
-  // Logout function
-  const logout = useCallback(async () => {
+  // Logout function - clears state immediately, calls backend in background
+  const logout = useCallback(() => {
     // Clear timer
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
     }
 
-    // Try to call backend logout (fire and forget)
-    try {
-      await authApi.logout();
-    } catch {
-      // Ignore errors - we're logging out anyway
-    }
-
-    // Clear state
+    // Clear state immediately (don't wait for backend)
     setIsAuthenticated(false);
     setUser(null);
     setAccessToken(null);
 
     // Clear storage
     clearAuthData();
+
+    // Try to call backend logout in background (fire and forget)
+    authApi.logout().catch(() => {
+      // Ignore errors - we already logged out locally
+    });
   }, []);
 
   // Check authentication on mount
