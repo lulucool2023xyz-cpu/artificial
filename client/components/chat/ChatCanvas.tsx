@@ -99,19 +99,21 @@ export const ChatCanvas = memo(function ChatCanvas() {
   return (
     <div className="flex-1 flex flex-col bg-background overflow-hidden transition-colors duration-300 relative">
       {/* Main Chat Area */}
-      <div 
+      <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto overscroll-contain pb-4"
       >
         {error && (
           <ChatErrorDisplay
-            error={error}
+            error={{
+              ...error,
+              retry: error.retry || handleRetry
+            }}
             onDismiss={() => setError(null)}
-            retry={error.retry || handleRetry}
           />
         )}
-        
+
         {messages.length === 0 && !isLoading ? (
           <ChatEmptyState onPromptSelect={handlePromptSelect} />
         ) : (

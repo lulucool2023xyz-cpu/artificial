@@ -8,6 +8,7 @@ import { BackgroundGrid } from "@/components/landing/BackgroundGrid";
 import { BatikPattern } from "@/components/landing/BatikPattern";
 import { OrnamentFrame } from "@/components/landing/OrnamentFrame";
 import { cn } from "@/lib/utils";
+import { authApi } from "@/lib/api";
 
 const ForgotPassword = memo(function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -18,12 +19,12 @@ const ForgotPassword = memo(function ForgotPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
+
     if (!email) {
       setError("Email is required");
       return;
     }
-    
+
     if (!/\S+@\S+\.\S+/.test(email)) {
       setError("Email is invalid");
       return;
@@ -31,11 +32,18 @@ const ForgotPassword = memo(function ForgotPassword() {
 
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    setIsLoading(false);
-    setIsSuccess(true);
+    try {
+      // Call the real forgot password API
+      const redirectUrl = `${window.location.origin}/auth/reset-password`;
+      await authApi.forgotPassword(email, redirectUrl);
+      setIsSuccess(true);
+    } catch (err) {
+      // Don't show specific error for security (don't reveal if email exists)
+      // Still show success for security reasons
+      setIsSuccess(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSuccess) {
@@ -47,7 +55,7 @@ const ForgotPassword = memo(function ForgotPassword() {
             <section className="section-container section-padding relative overflow-hidden">
               <BackgroundGrid opacity="opacity-[0.02]" size="100px" />
               <BatikPattern variant="parang" opacity="opacity-[0.02]" speed={30} />
-              
+
               <div className="relative z-10 max-w-2xl mx-auto">
                 <OrnamentFrame variant="jawa" className="border rounded-2xl p-8 sm:p-12 backdrop-blur-sm bg-card/80 text-center">
                   <div className="mb-6 animate-fade-in">
@@ -64,7 +72,7 @@ const ForgotPassword = memo(function ForgotPassword() {
                       {email}
                     </p>
                     <p className="text-muted-foreground mb-8">
-                      Please check your inbox and click on the reset link to create a new password. 
+                      Please check your inbox and click on the reset link to create a new password.
                       The link will expire in 1 hour.
                     </p>
                     <div className="space-y-4">
@@ -104,7 +112,7 @@ const ForgotPassword = memo(function ForgotPassword() {
           <section className="section-container section-padding relative overflow-hidden">
             <BackgroundGrid opacity="opacity-[0.02]" size="100px" />
             <BatikPattern variant="parang" opacity="opacity-[0.02]" speed={30} />
-            
+
             <div className="relative z-10 max-w-6xl mx-auto">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                 {/* Left Side - Illustration */}

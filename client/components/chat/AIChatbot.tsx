@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Camera, Settings, User, History, Menu, X, Zap, Brain, Gauge, Trash2, ChevronDown, Plus, LogOut, MessageSquare, Search, Save, Bell, Copy, RotateCcw, Sun, Moon, Monitor, Paperclip, File, Image as ImageIcon, FileText, Newspaper, Sparkles, HelpCircle, Clock, Palette, CreditCard, AlignJustify, BookOpen, PenTool } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Mic, Camera, Settings, User, History, Menu, X, Zap, Brain, Gauge, Trash2, ChevronDown, Plus, LogOut, MessageSquare, Search, Save, Bell, Copy, RotateCcw, Sun, Moon, Monitor, Paperclip, File as FileIcon, Image as ImageIcon, FileText, Newspaper, Sparkles, HelpCircle, Clock, Palette, CreditCard, AlignJustify, BookOpen, PenTool, ExternalLink } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -100,6 +100,11 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const [thinkingBudget, setThinkingBudget] = useState(8192);
   const [showThoughts, setShowThoughts] = useState(true);
 
+  // Scroll management - prevents auto-scroll from interrupting user reading
+  const [userIsScrolling, setUserIsScrolling] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollTop = useRef(0);
+
   // Detect mobile view and fix sidebar state
   useEffect(() => {
     const checkMobile = () => {
@@ -150,9 +155,56 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     }
   }, [location.pathname]);
 
+  // Smart auto-scroll: only scroll to bottom if user is near bottom
+  // This prevents interrupting users who are reading previous messages during streaming
+  const isUserNearBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return true;
+    const threshold = 150; // pixels from bottom to consider "at bottom"
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  }, []);
+
+  // Handle scroll events to detect user scrolling
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const isScrollingUp = container.scrollTop < lastScrollTop.current - 10;
+      lastScrollTop.current = container.scrollTop;
+
+      // If user scrolls up during loading, mark as user scrolling
+      if (isScrollingUp && isLoading) {
+        setUserIsScrolling(true);
+      }
+
+      // If user scrolls back to bottom, reset the flag
+      if (isUserNearBottom()) {
+        setUserIsScrolling(false);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isLoading, isUserNearBottom]);
+
+  // Auto-scroll to bottom only when appropriate
+  useEffect(() => {
+    // Don't auto-scroll if user is manually scrolling during streaming
+    if (userIsScrolling) return;
+
+    // Only auto-scroll if near bottom
+    if (isUserNearBottom()) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, userIsScrolling, isUserNearBottom]);
+
+  // Reset userIsScrolling when loading completes
+  useEffect(() => {
+    if (!isLoading) {
+      setUserIsScrolling(false);
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     return () => {
@@ -327,7 +379,16 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   };
 
   const handleFiles = (files: File[]) => {
+    // Guard against null/undefined files
+    if (!files || files.length === 0) return;
+
     const validFiles = files.filter(file => {
+      // Validate file object exists
+      if (!file || typeof file.size !== 'number' || typeof file.type !== 'string') {
+        console.warn('Invalid file object:', file);
+        return false;
+      }
+
       const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
         toast.error('File terlalu besar', {
@@ -340,19 +401,26 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     });
 
     if (validFiles.length > 0) {
-      const newFiles = validFiles.map(file => ({
-        id: Date.now() + Math.random(),
-        file: file,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-      }));
+      try {
+        const newFiles = validFiles.map(file => ({
+          id: Date.now() + Math.random(),
+          file: file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+        }));
 
-      setUploadedFiles(prev => [...prev, ...newFiles]);
-      toast.success('File ditambahkan', {
-        description: `${validFiles.length} file siap dikirim`
-      });
+        setUploadedFiles(prev => [...prev, ...newFiles]);
+        toast.success('File ditambahkan', {
+          description: `${validFiles.length} file siap dikirim`
+        });
+      } catch (error) {
+        console.error('Error processing files:', error);
+        toast.error('Gagal memproses file', {
+          description: 'Silakan coba lagi'
+        });
+      }
     }
   };
 
@@ -390,7 +458,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) return ImageIcon;
     if (fileType.startsWith('text/') || fileType.includes('document')) return FileText;
-    return File;
+    return FileIcon;
   };
 
   const formatFileSize = (bytes: number) => {
@@ -470,20 +538,40 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
   const capturePhoto = () => {
     if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(videoRef.current, 0, 0);
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(videoRef.current, 0, 0);
 
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new window.File([blob], `camera-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
-          handleFiles([file]);
-          toast.success('Foto diambil!');
-          toggleCamera(); // Close camera after capture
-        }
-      }, 'image/jpeg');
+        canvas.toBlob((blob) => {
+          if (blob) {
+            try {
+              // Use File constructor properly with all required properties
+              const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              handleFiles([file]);
+              toast.success('Foto diambil!');
+              toggleCamera(); // Close camera after capture
+            } catch (fileError) {
+              console.error('Failed to create file from blob:', fileError);
+              toast.error('Gagal menyimpan foto', {
+                description: 'Browser tidak mendukung fitur ini'
+              });
+            }
+          } else {
+            toast.error('Gagal mengambil foto');
+          }
+        }, 'image/jpeg', 0.9);
+      } catch (error) {
+        console.error('Error capturing photo:', error);
+        toast.error('Gagal mengambil foto', {
+          description: 'Terjadi kesalahan saat mengakses kamera'
+        });
+      }
     }
   };
 
@@ -595,12 +683,14 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         type: 'bot',
         text: '',
         thoughts: [] as string[],
+        groundingMetadata: null as any,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botMessage]);
 
       let accumulatedText = '';
       let accumulatedThoughts: string[] = [];
+      let accumulatedGroundingMetadata: any = null;
 
       // Stream response from backend
       try {
@@ -621,6 +711,11 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
           if (chunk.thought) {
             accumulatedThoughts.push(chunk.thought);
+          }
+
+          // Capture grounding metadata from Google Search
+          if (chunk.groundingMetadata) {
+            accumulatedGroundingMetadata = chunk.groundingMetadata;
           }
 
 
@@ -648,12 +743,13 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         throw streamError;
       }
 
-      // Update final message
+      // Update final message with grounding metadata
       const finalBotMessage = {
         id: botMessageId,
         type: 'bot',
         text: accumulatedText || 'Maaf, tidak ada respons dari AI.',
         thoughts: accumulatedThoughts,
+        groundingMetadata: accumulatedGroundingMetadata,
         timestamp: new Date()
       };
 
@@ -748,14 +844,23 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         };
 
         recognition.onend = () => {
-          // If still supposed to be recording (browser auto-stopped), restart
+          // If still supposed to be recording (browser auto-stopped due to silence or timeout)
+          // Restart with a small delay to prevent rapid cycling
           if (isRecordingRef.current && recognitionRef.current) {
-            try {
-              console.log('Restarting recognition...');
-              recognition.start();
-            } catch (e) {
-              console.log('Recognition restart failed:', e);
-            }
+            // Add a small delay before restarting to prevent rapid cycling
+            setTimeout(() => {
+              if (isRecordingRef.current && recognitionRef.current) {
+                try {
+                  console.log('Restarting recognition after browser auto-stop...');
+                  recognitionRef.current.start();
+                } catch (e) {
+                  console.log('Recognition restart failed:', e);
+                  // If restart fails, stop recording gracefully
+                  isRecordingRef.current = false;
+                  setIsRecording(false);
+                }
+              }
+            }, 100);
           }
         };
 
@@ -1081,8 +1186,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
     return (
       <div className="flex flex-col h-full relative">
-        {/* Modern Header with Navigation */}
-        {!isEmpty && (
+        {/* Modern Header with Navigation - Always visible */}
+        {(
           <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
             <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
               {/* Left Side - Mobile Menu & Title */}
@@ -1161,7 +1266,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
         {/* Messages Container - Mobile Responsive */}
         {!isEmpty ? (
-          <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-background" role="log" aria-live="polite" aria-atomic="false">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-background" role="log" aria-live="polite" aria-atomic="false">
             <div className="space-y-6 max-w-3xl mx-auto pt-4">
               {messages.map((msg, index) => (
                 <div key={msg.id} className={cn(
@@ -1169,16 +1274,16 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                   msg.type === 'user' ? 'justify-end animate-slide-in-right' : 'justify-start animate-slide-in-left'
                 )}>
                   <div className={cn(
-                    "max-w-[75%]",
+                    "max-w-full sm:max-w-[85%] lg:max-w-[75%]",
                     msg.type === 'user' ? '' : 'flex flex-col gap-2'
                   )}>
                     <div className={cn(
                       "px-5 py-4 sm:px-6 sm:py-5 rounded-2xl",
                       msg.type === 'user'
-                        ? "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tr-sm"
+                        ? "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-foreground border border-[#FFD700]/50 rounded-tr-sm"
                         : msg.type === 'error'
                           ? "bg-red-500/10 border border-red-500/30 text-foreground rounded-tl-sm"
-                          : "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-white border border-[#FFD700]/50 rounded-tl-sm"
+                          : "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-foreground border border-[#FFD700]/50 rounded-tl-sm"
                     )}>
                       {msg.type === 'error' ? (
                         <div className="flex flex-col gap-2">
@@ -1199,25 +1304,32 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                         <div className="flex flex-col gap-2">
                           {/* Thinking Thoughts Display */}
                           {msg.thoughts && msg.thoughts.length > 0 && (
-                            <div className="mb-2">
+                            <div className="mb-3">
                               <button
                                 onClick={() => setShowThoughts(!showThoughts)}
-                                className="flex items-center gap-2 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                                className="flex items-center gap-2 text-xs text-purple-400 hover:text-purple-300 transition-colors bg-purple-500/10 px-3 py-1.5 rounded-full border border-purple-500/20"
                               >
                                 <Brain className="w-4 h-4" />
                                 <span>{showThoughts ? 'Sembunyikan' : 'Lihat'} proses berpikir ({msg.thoughts.length})</span>
                                 <ChevronDown className={cn("w-3 h-3 transition-transform", showThoughts && "rotate-180")} />
                               </button>
                               {showThoughts && (
-                                <div className="mt-2 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs text-purple-200 space-y-2 max-h-60 overflow-y-auto">
+                                <div className="mt-3 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl text-sm text-purple-200 space-y-3 max-h-80 overflow-y-auto">
+                                  <div className="text-xs text-purple-400 font-medium uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <Brain className="w-3 h-3" />
+                                    AI Thinking Process
+                                  </div>
                                   {msg.thoughts.map((thought, i) => (
-                                    <p key={i} className="leading-relaxed opacity-80">{thought}</p>
+                                    <div key={i} className="flex gap-3">
+                                      <span className="text-purple-400 font-medium shrink-0">{i + 1}.</span>
+                                      <p className="leading-relaxed opacity-90">{thought}</p>
+                                    </div>
                                   ))}
                                 </div>
                               )}
                             </div>
                           )}
-                          <div className="prose prose-invert max-w-none prose-p:leading-relaxed prose-p:mb-4 prose-li:my-1 prose-ul:my-3 prose-ol:my-3 prose-headings:mb-3 prose-headings:mt-4 prose-pre:my-4">
+                          <div className="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:mb-4 prose-li:my-1 prose-ul:my-3 prose-ol:my-3 prose-headings:mb-3 prose-headings:mt-4 prose-pre:my-4 prose-sm sm:prose-base prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
@@ -1300,6 +1412,32 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                               {msg.text}
                             </ReactMarkdown>
                           </div>
+
+                          {/* Google Search Grounding Sources */}
+                          {msg.groundingMetadata?.groundingChunks && msg.groundingMetadata.groundingChunks.length > 0 && (
+                            <div className="mt-4 pt-3 border-t border-border/30">
+                              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                                <Search className="w-3.5 h-3.5" />
+                                <span>Google Search Sources:</span>
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {msg.groundingMetadata.groundingChunks.map((chunk, i) => (
+                                  chunk.web && (
+                                    <a
+                                      key={i}
+                                      href={chunk.web.uri}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs bg-blue-500/10 text-blue-400 hover:text-blue-300 px-2.5 py-1.5 rounded-lg border border-blue-500/20 hover:border-blue-500/40 transition-colors inline-flex items-center gap-1.5 max-w-[200px]"
+                                    >
+                                      <span className="truncate">{chunk.web.title || 'Source'}</span>
+                                      <ExternalLink className="w-3 h-3 shrink-0" />
+                                    </a>
+                                  )
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <p className={cn(
@@ -1647,54 +1785,133 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
                       {/* Tools Dropdown Menu */}
                       {toolsMenuOpen && (
-                        <div className="absolute bottom-full left-0 mb-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-50" role="menu">
-                          {/* Model Selector Section */}
-                          <div className="p-2 border-b border-border">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">Model</p>
-                            <button
-                              onClick={() => {
-                                toast.info('Model Selector', {
-                                  description: 'Model selection feature coming soon'
-                                });
-                                setToolsMenuOpen(false);
-                              }}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
-                            >
-                              <div className="flex items-center justify-center size-[18px] overflow-hidden shrink-0">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2]">
-                                  <path d="M19 9C19 12.866 15.866 17 12 17C8.13398 17 4.99997 12.866 4.99997 9C4.99997 5.13401 8.13398 3 12 3C15.866 3 19 5.13401 19 9Z" className="fill-yellow-100 dark:fill-yellow-300 origin-center transition-[transform,opacity] duration-100 scale-0 opacity-0"></path>
-                                  <path d="M15 16.1378L14.487 15.2794L14 15.5705V16.1378H15ZM8.99997 16.1378H9.99997V15.5705L9.51293 15.2794L8.99997 16.1378ZM18 9C18 11.4496 16.5421 14.0513 14.487 15.2794L15.5129 16.9963C18.1877 15.3979 20 12.1352 20 9H18ZM12 4C13.7598 4 15.2728 4.48657 16.3238 5.33011C17.3509 6.15455 18 7.36618 18 9H20C20 6.76783 19.082 4.97946 17.5757 3.77039C16.0931 2.58044 14.1061 2 12 2V4ZM5.99997 9C5.99997 7.36618 6.64903 6.15455 7.67617 5.33011C8.72714 4.48657 10.2401 4 12 4V2C9.89382 2 7.90681 2.58044 6.42427 3.77039C4.91791 4.97946 3.99997 6.76783 3.99997 9H5.99997ZM9.51293 15.2794C7.4578 14.0513 5.99997 11.4496 5.99997 9H3.99997C3.99997 12.1352 5.81225 15.3979 8.48701 16.9963L9.51293 15.2794ZM9.99997 19.5001V16.1378H7.99997V19.5001H9.99997ZM10.5 20.0001C10.2238 20.0001 9.99997 19.7763 9.99997 19.5001H7.99997C7.99997 20.8808 9.11926 22.0001 10.5 22.0001V20.0001ZM13.5 20.0001H10.5V22.0001H13.5V20.0001ZM14 19.5001C14 19.7763 13.7761 20.0001 13.5 20.0001V22.0001C14.8807 22.0001 16 20.8808 16 19.5001H14ZM14 16.1378V19.5001H16V16.1378H14Z" fill="currentColor"></path>
-                                  <path d="M9 16.0001H15" stroke="currentColor"></path>
-                                  <path d="M12 16V12" stroke="currentColor" strokeLinecap="square"></path>
-                                </svg>
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium">Expert</p>
-                                <p className="text-xs text-muted-foreground">Current model</p>
-                              </div>
-                            </button>
-                          </div>
+                        <>
+                          {/* Backdrop */}
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setToolsMenuOpen(false)}
+                          />
+                          <div className="absolute bottom-full left-0 mb-2 w-72 bg-card border border-border rounded-xl shadow-2xl overflow-hidden z-50" role="menu">
+                            {/* Tools Section - Main Focus */}
+                            <div className="p-3">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase mb-3 px-1">Tools & Features</p>
 
-                          {/* Tools Section */}
-                          <div className="p-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 px-2">Tools</p>
-                            <button
-                              onClick={() => {
-                                toast.info('Grounding with Google Search', {
-                                  description: 'This feature will enable web search grounding'
-                                });
-                                setToolsMenuOpen(false);
-                              }}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left"
-                            >
-                              <Search className="w-4 h-4" />
-                              <div className="flex-1">
-                                <p className="text-sm font-medium">Grounding with Google Search</p>
-                                <p className="text-xs text-muted-foreground">Enable web search</p>
+                              {/* Google Search Toggle */}
+                              <div className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-secondary/50 transition-colors mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                    <Search className="w-4 h-4 text-blue-400" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Google Search</p>
+                                    <p className="text-xs text-muted-foreground">Enable web search grounding</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setGoogleSearchEnabled(!googleSearchEnabled);
+                                    toast.info(googleSearchEnabled ? 'Google Search disabled' : 'Google Search enabled');
+                                  }}
+                                  className={cn(
+                                    "relative w-11 h-6 rounded-full transition-colors",
+                                    googleSearchEnabled ? "bg-blue-500" : "bg-muted"
+                                  )}
+                                  aria-checked={googleSearchEnabled}
+                                  role="switch"
+                                >
+                                  <div className={cn(
+                                    "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
+                                    googleSearchEnabled ? "translate-x-5" : "translate-x-0.5"
+                                  )} />
+                                </button>
                               </div>
-                            </button>
+
+                              {/* Thinking Mode Toggle */}
+                              <div className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-secondary/50 transition-colors mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                    <Brain className="w-4 h-4 text-purple-400" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Thinking Mode</p>
+                                    <p className="text-xs text-muted-foreground">Show AI reasoning process</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const modelInfo = availableModels.find(m => m.name === selectedModel);
+                                    if (modelInfo && !modelInfo.supportsThinking) {
+                                      toast.error('Model tidak mendukung thinking mode', {
+                                        description: 'Gunakan Gemini 2.5 Flash, 2.5 Pro, atau 3 Pro'
+                                      });
+                                      return;
+                                    }
+                                    setThinkingModeEnabled(!thinkingModeEnabled);
+                                    toast.info(thinkingModeEnabled ? 'Thinking Mode disabled' : 'Thinking Mode enabled');
+                                  }}
+                                  className={cn(
+                                    "relative w-11 h-6 rounded-full transition-colors",
+                                    thinkingModeEnabled ? "bg-purple-500" : "bg-muted"
+                                  )}
+                                  aria-checked={thinkingModeEnabled}
+                                  role="switch"
+                                >
+                                  <div className={cn(
+                                    "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
+                                    thinkingModeEnabled ? "translate-x-5" : "translate-x-0.5"
+                                  )} />
+                                </button>
+                              </div>
+
+                              {/* Thinking Budget Slider - Only visible when thinking mode is on */}
+                              {thinkingModeEnabled && (
+                                <div className="px-3 py-3 bg-purple-500/5 rounded-lg border border-purple-500/10 mb-2">
+                                  <div className="flex justify-between text-xs mb-2">
+                                    <span className="text-purple-400 font-medium">Thinking Budget</span>
+                                    <span className="text-muted-foreground">{thinkingBudget.toLocaleString()} tokens</span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="1024"
+                                    max="24576"
+                                    step="1024"
+                                    value={thinkingBudget}
+                                    onChange={(e) => setThinkingBudget(Number(e.target.value))}
+                                    className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-purple-500"
+                                  />
+                                  <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                                    <span>Faster</span>
+                                    <span>More detailed</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Model Selector Section */}
+                            <div className="p-3 border-t border-border">
+                              <button
+                                onClick={() => {
+                                  setToolsMenuOpen(false);
+                                  setModeMenuOpen(!modeMenuOpen);
+                                }}
+                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-[#FFD700]/10 flex items-center justify-center">
+                                    <Zap className="w-4 h-4 text-[#FFD700]" />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="text-sm font-medium">{currentModel}</p>
+                                    <p className="text-xs text-muted-foreground">Click to change model</p>
+                                  </div>
+                                </div>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        </>
                       )}
                     </div>
 

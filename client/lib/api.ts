@@ -182,6 +182,46 @@ export const authApi = {
             method: 'GET',
         });
     },
+
+    /**
+     * Get OAuth URL for social login
+     */
+    getOAuthUrl: async (provider: 'google' | 'facebook' | 'github', redirectTo?: string): Promise<{ url: string; provider: string }> => {
+        const params = redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : '';
+        return apiCall<{ url: string; provider: string }>(`/auth/${provider}/url${params}`, {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Exchange OAuth code for session
+     */
+    exchangeOAuthCode: async (code: string): Promise<AuthResponse> => {
+        return apiCall<AuthResponse>('/auth/callback', {
+            method: 'POST',
+            body: JSON.stringify({ code }),
+        });
+    },
+
+    /**
+     * Request password reset email
+     */
+    forgotPassword: async (email: string, redirectTo?: string): Promise<{ message: string; success: boolean }> => {
+        return apiCall<{ message: string; success: boolean }>('/auth/forgot-password', {
+            method: 'POST',
+            body: JSON.stringify({ email, redirectTo }),
+        });
+    },
+
+    /**
+     * Update password with token from reset email
+     */
+    updatePassword: async (accessToken: string, newPassword: string): Promise<{ message: string; success: boolean }> => {
+        return apiCall<{ message: string; success: boolean }>('/auth/update-password', {
+            method: 'POST',
+            body: JSON.stringify({ accessToken, newPassword }),
+        });
+    },
 };
 
 // ============================================
@@ -243,6 +283,15 @@ export interface ChatStreamChunk {
         candidatesTokenCount: number;
         thoughtsTokenCount?: number;
         totalTokenCount: number;
+    };
+    groundingMetadata?: {
+        groundingChunks?: Array<{
+            web?: {
+                uri: string;
+                title: string;
+            };
+        }>;
+        webSearchQueries?: string[];
     };
     error?: boolean;
     message?: string;

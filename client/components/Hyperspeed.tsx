@@ -45,8 +45,8 @@ interface HyperspeedProps {
 
 const Hyperspeed = ({
   effectOptions = {
-    onSpeedUp: () => {},
-    onSlowDown: () => {},
+    onSpeedUp: () => { },
+    onSlowDown: () => { },
     distortion: 'turbulentDistortion',
     length: 400,
     roadWidth: 10,
@@ -158,11 +158,11 @@ const Hyperspeed = ({
           let uAmp = mountainUniforms.uAmp.value;
           let distortion = new THREE.Vector3(
             Math.cos(progress * Math.PI * uFreq.x + time) * uAmp.x -
-              Math.cos(movementProgressFix * Math.PI * uFreq.x + time) * uAmp.x,
+            Math.cos(movementProgressFix * Math.PI * uFreq.x + time) * uAmp.x,
             nsin(progress * Math.PI * uFreq.y + time) * uAmp.y -
-              nsin(movementProgressFix * Math.PI * uFreq.y + time) * uAmp.y,
+            nsin(movementProgressFix * Math.PI * uFreq.y + time) * uAmp.y,
             nsin(progress * Math.PI * uFreq.z + time) * uAmp.z -
-              nsin(movementProgressFix * Math.PI * uFreq.z + time) * uAmp.z
+            nsin(movementProgressFix * Math.PI * uFreq.z + time) * uAmp.z
           );
           let lookAtAmp = new THREE.Vector3(2, 2, 2);
           let lookAtOffset = new THREE.Vector3(0, 0, -5);
@@ -190,9 +190,9 @@ const Hyperspeed = ({
           let uAmp = xyUniforms.uAmp.value;
           let distortion = new THREE.Vector3(
             Math.cos(progress * Math.PI * uFreq.x + time) * uAmp.x -
-              Math.cos(movementProgressFix * Math.PI * uFreq.x + time) * uAmp.x,
+            Math.cos(movementProgressFix * Math.PI * uFreq.x + time) * uAmp.x,
             Math.sin(progress * Math.PI * uFreq.y + time + Math.PI / 2) * uAmp.y -
-              Math.sin(movementProgressFix * Math.PI * uFreq.y + time + Math.PI / 2) * uAmp.y,
+            Math.sin(movementProgressFix * Math.PI * uFreq.y + time + Math.PI / 2) * uAmp.y,
             0
           );
           let lookAtAmp = new THREE.Vector3(2, 0.4, 1);
@@ -221,9 +221,9 @@ const Hyperspeed = ({
           let uAmp = LongRaceUniforms.uAmp.value;
           let distortion = new THREE.Vector3(
             Math.sin(progress * Math.PI * uFreq.x + time) * uAmp.x -
-              Math.sin(camProgress * Math.PI * uFreq.x + time) * uAmp.x,
+            Math.sin(camProgress * Math.PI * uFreq.x + time) * uAmp.x,
             Math.sin(progress * Math.PI * uFreq.y + time) * uAmp.y -
-              Math.sin(camProgress * Math.PI * uFreq.y + time) * uAmp.y,
+            Math.sin(camProgress * Math.PI * uFreq.y + time) * uAmp.y,
             0
           );
           let lookAtAmp = new THREE.Vector3(1, 1, 0);
@@ -349,6 +349,8 @@ const Hyperspeed = ({
       timeOffset: number;
       fogUniforms: any;
       options: any;
+      renderPass: RenderPass;
+      bloomPass: EffectPass;
 
       constructor(container: HTMLElement, options: any = {}) {
         this.options = options;
@@ -359,10 +361,10 @@ const Hyperspeed = ({
           };
         }
         this.container = container;
-        
+
         // Get quality settings from device capability
         const qualitySettings = getWebGLQualitySettings();
-        
+
         this.renderer = new THREE.WebGLRenderer({
           antialias: qualitySettings.antialias,
           alpha: true,
@@ -436,10 +438,10 @@ const Hyperspeed = ({
 
       initPasses() {
         const qualitySettings = getWebGLQualitySettings();
-        
+
         this.renderPass = new RenderPass(this.scene, this.camera);
         this.renderPass.renderToScreen = !qualitySettings.bloom;
-        
+
         // Only add bloom if device can handle it
         if (qualitySettings.bloom) {
           this.bloomPass = new EffectPass(
@@ -459,9 +461,7 @@ const Hyperspeed = ({
           const smaaPass = new EffectPass(
             this.camera,
             new SMAAEffect({
-              preset: SMAAPreset.LOW, // Use LOW preset for better performance
-              searchImage: SMAAEffect.searchImageDataURL,
-              areaImage: SMAAEffect.areaImageDataURL
+              preset: SMAAPreset.LOW // Use LOW preset for better performance
             })
           );
           smaaPass.renderToScreen = true;
@@ -469,7 +469,7 @@ const Hyperspeed = ({
         } else {
           this.renderPass.renderToScreen = true;
         }
-        
+
         this.composer.addPass(this.renderPass);
       }
 
@@ -630,13 +630,13 @@ const Hyperspeed = ({
         const delta = this.clock.getDelta();
         this.render(delta);
         this.update(delta);
-        
+
         // Use recommended frame rate for device capability
         const deviceCapability = detectDeviceCapability();
-        const targetFPS = deviceCapability.recommendedQuality === 'low' ? 30 : 
-                         deviceCapability.recommendedQuality === 'medium' ? 45 : 60;
+        const targetFPS = deviceCapability.recommendedQuality === 'low' ? 30 :
+          deviceCapability.recommendedQuality === 'medium' ? 45 : 60;
         const frameDelay = 1000 / targetFPS;
-        
+
         // Throttle frame rate for low-end devices
         if (deviceCapability.isLowEnd) {
           setTimeout(() => {
@@ -713,7 +713,7 @@ const Hyperspeed = ({
         let curve = new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1));
         let geometry = new THREE.TubeGeometry(curve, 40, 1, 8, false);
 
-        let instanced = new THREE.InstancedBufferGeometry().copy(geometry);
+        let instanced = new THREE.InstancedBufferGeometry().copy(geometry as any);
         instanced.instanceCount = options.lightPairsPerRoadWay * 2;
 
         let laneWidth = options.roadWidth / options.lanesPerRoad;
@@ -804,7 +804,7 @@ const Hyperspeed = ({
       }
 
       update(time: number) {
-        this.mesh.material.uniforms.uTime.value = time;
+        (this.mesh.material as THREE.ShaderMaterial).uniforms.uTime.value = time;
       }
     }
 
@@ -870,7 +870,7 @@ const Hyperspeed = ({
       init() {
         const options = this.options;
         const geometry = new THREE.PlaneGeometry(1, 1);
-        let instanced = new THREE.InstancedBufferGeometry().copy(geometry);
+        let instanced = new THREE.InstancedBufferGeometry().copy(geometry as any);
         let totalSticks = options.totalSideLightSticks;
         instanced.instanceCount = totalSticks;
 
@@ -932,7 +932,7 @@ const Hyperspeed = ({
       }
 
       update(time: number) {
-        this.mesh.material.uniforms.uTime.value = time;
+        (this.mesh.material as THREE.ShaderMaterial).uniforms.uTime.value = time;
       }
     }
 
@@ -1149,7 +1149,7 @@ const Hyperspeed = ({
     (function () {
       const container = document.getElementById('lights');
       if (!container) return;
-      
+
       const options = { ...effectOptions };
       options.distortion = distortions[options.distortion as string];
 

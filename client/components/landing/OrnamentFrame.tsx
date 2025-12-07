@@ -5,6 +5,7 @@ interface OrnamentFrameProps {
   children: ReactNode;
   variant?: 'jawa' | 'bali' | 'toraja';
   className?: string;
+  style?: React.CSSProperties;
   onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -13,6 +14,7 @@ export const OrnamentFrame = memo(function OrnamentFrame({
   children,
   variant = 'jawa',
   className,
+  style,
   onMouseEnter,
   onMouseLeave,
 }: OrnamentFrameProps) {
@@ -56,8 +58,9 @@ export const OrnamentFrame = memo(function OrnamentFrame({
   };
 
   return (
-    <div 
+    <div
       className={cn('relative', className)}
+      style={style}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -66,4 +69,3 @@ export const OrnamentFrame = memo(function OrnamentFrame({
     </div>
   );
 });
-

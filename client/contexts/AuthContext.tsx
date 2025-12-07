@@ -24,7 +24,8 @@ interface AuthContextType {
   accessToken: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  socialLogin: (provider: "google" | "facebook" | "github", userData: { email: string; name: string }) => Promise<{ success: boolean; error?: string }>;
+  socialLogin: (provider: "google" | "facebook" | "github") => Promise<{ success: boolean; error?: string }>;
+  handleOAuthCallback: (code: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isLoading: boolean;
   refreshSession: () => Promise<boolean>;
@@ -270,22 +271,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Social login (placeholder - needs OAuth implementation)
+  // Social login via OAuth redirect
   const socialLogin = async (
-    provider: "google" | "facebook" | "github",
-    userData: { email: string; name: string }
+    provider: "google" | "facebook" | "github"
   ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
 
     try {
-      // TODO: Implement OAuth flow via backend
-      // For now, show message that OAuth is not yet implemented
-      return {
-        success: false,
-        error: `${provider.charAt(0).toUpperCase() + provider.slice(1)} login coming soon. Please use email/password.`
-      };
+      // Get OAuth URL from backend and redirect
+      const currentUrl = window.location.origin + '/auth/callback';
+      const response = await authApi.getOAuthUrl(provider, currentUrl);
+
+      if (response.url) {
+        window.location.href = response.url;
+        return { success: true };
+      }
+      return { success: false, error: 'Failed to get OAuth URL' };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Social login failed";
+      return { success: false, error: errorMessage };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle OAuth callback - exchange code for session
+  const handleOAuthCallback = async (code: string): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+
+    try {
+      // Exchange code for session via backend
+      const response = await authApi.exchangeOAuthCode(code);
+
+      // Store tokens
+      const expiresAt = response.expiresAt || (Date.now() + 24 * 60 * 60 * 1000);
+      storeAuthTokens(response.accessToken, response.refreshToken, expiresAt);
+
+      // Store user
+      const userData: User = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name || response.user.fullName || '',
+        provider: 'email', // Will be overwritten by actual provider from backend
+      };
+      storeUser(userData);
+
+      // Update state
+      setIsAuthenticated(true);
+      setUser(userData);
+      setAccessToken(response.accessToken);
+      scheduleTokenRefresh(expiresAt);
+
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'OAuth callback failed';
       return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
@@ -301,6 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         socialLogin,
+        handleOAuthCallback,
         logout,
         isLoading,
         refreshSession,

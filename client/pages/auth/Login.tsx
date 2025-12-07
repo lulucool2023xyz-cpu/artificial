@@ -76,22 +76,14 @@ const Login = memo(function Login() {
   const handleSocialLogin = async (provider: "google" | "facebook" | "github") => {
     setIsLoading(true);
 
-    // Simulate OAuth flow - in production, this would open OAuth popup
-    const userData = {
-      email: `user${Math.random().toString(36).substring(7)}@${provider === "google" ? "gmail.com" : provider === "facebook" ? "facebook.com" : "github.com"}`,
-      name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
-    };
+    // Call socialLogin which will redirect to OAuth provider
+    const result = await socialLogin(provider);
 
-    const success = await socialLogin(provider, userData);
-    if (success) {
-      // Wait a bit for state to update, then redirect
-      setTimeout(() => {
-        const from = (location.state as any)?.from?.pathname || "/chat";
-        navigate(from, { replace: true });
-      }, 100);
-    } else {
+    if (!result.success && result.error) {
+      setErrors({ password: result.error });
       setIsLoading(false);
     }
+    // Note: If successful, user will be redirected to OAuth provider
   };
 
   if (authLoading || isAuthenticated) {

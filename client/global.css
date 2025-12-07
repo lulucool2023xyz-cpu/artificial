@@ -91,49 +91,49 @@
   }
 
   .light {
-    /* Light Theme - Soft Cream (Eye-friendly) */
-    --background: 40 20% 96%;
-    --foreground: 40 10% 15%;
+    /* Light Theme - Warm Cream with Good Contrast */
+    --background: 45 25% 95%;
+    --foreground: 30 20% 12%;
 
-    --card: 40 15% 94%;
-    --card-foreground: 40 10% 15%;
+    --card: 45 20% 97%;
+    --card-foreground: 30 20% 12%;
 
-    --popover: 40 15% 94%;
-    --popover-foreground: 40 10% 15%;
+    --popover: 45 20% 97%;
+    --popover-foreground: 30 20% 12%;
 
-    --primary: 40 10% 20%;
-    --primary-foreground: 40 20% 96%;
+    --primary: 43 90% 38%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 15% 90%;
-    --secondary-foreground: 40 10% 20%;
+    --secondary: 45 15% 88%;
+    --secondary-foreground: 30 15% 18%;
 
-    --muted: 40 10% 85%;
-    --muted-foreground: 40 10% 40%;
+    --muted: 45 12% 82%;
+    --muted-foreground: 30 10% 38%;
 
-    --accent: 40 15% 88%;
-    --accent-foreground: 40 10% 20%;
+    --accent: 43 70% 90%;
+    --accent-foreground: 30 20% 12%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 10% 80%;
-    --input: 40 15% 88%;
-    --ring: 43 96% 50%;
+    --border: 40 12% 75%;
+    --input: 45 18% 90%;
+    --ring: 43 96% 45%;
 
-    --sidebar-background: 40 15% 94%;
-    --sidebar-foreground: 40 10% 15%;
-    --sidebar-primary: 40 10% 20%;
-    --sidebar-primary-foreground: 40 20% 96%;
-    --sidebar-accent: 40 15% 88%;
-    --sidebar-accent-foreground: 40 10% 20%;
-    --sidebar-border: 40 10% 80%;
-    --sidebar-ring: 43 96% 50%;
+    --sidebar-background: 45 18% 96%;
+    --sidebar-foreground: 30 20% 12%;
+    --sidebar-primary: 43 90% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 43 60% 88%;
+    --sidebar-accent-foreground: 30 15% 18%;
+    --sidebar-border: 40 12% 78%;
+    --sidebar-ring: 43 96% 45%;
 
-    --glow: 43 96% 50%;
+    --glow: 43 96% 45%;
 
-    /* Indonesian Gold - adjusted for light theme */
-    --indonesian-gold: 43 96% 45%;
-    --indonesian-gold-dark: 43 96% 35%;
+    /* Indonesian Gold - darker for light theme contrast */
+    --indonesian-gold: 43 90% 32%;
+    --indonesian-gold-dark: 43 90% 25%;
   }
 }
 
@@ -627,9 +627,12 @@
 
 /* Voice Wave Animation for Recording */
 @keyframes voiceWave {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scaleY(0.6);
   }
+
   50% {
     transform: scaleY(1.4);
   }

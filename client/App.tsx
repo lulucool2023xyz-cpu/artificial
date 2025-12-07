@@ -25,6 +25,7 @@ const GetStarted = lazy(() => import("./pages/GetStarted"));
 const Login = lazy(() => import("./pages/auth/Login"));
 const SignUp = lazy(() => import("./pages/auth/SignUp"));
 const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const AuthCallback = lazy(() => import("./pages/auth/AuthCallback"));
 
 // Chat pages
 const Chat = lazy(() => import("./pages/chat/index"));
@@ -141,6 +142,7 @@ const App = () => (
                   <Route path="/auth/login" element={<Login />} /> {/* Backward compatibility */}
                   <Route path="/auth/signup" element={<SignUp />} />
                   <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
 
                   {/* Chat Routes - Protected */}
                   <Route
