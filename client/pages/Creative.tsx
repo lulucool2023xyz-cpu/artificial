@@ -90,20 +90,63 @@ const Creative = memo(function Creative() {
         { id: "projects", label: "My Projects", icon: <FolderOpen className="w-5 h-5" />, active: studio === "projects", badge: "12" },
     ];
 
-    const handleGenerate = useCallback(() => {
+    const handleGenerate = useCallback(async () => {
         if (!prompt.trim() && imageMode === "from-prompt") {
             toast.error("Masukkan prompt terlebih dahulu");
             return;
         }
         setIsGenerating(true);
-        toast.info("Sedang membuat varian...", { duration: 2000 });
-        setTimeout(() => {
+        toast.info("Sedang membuat gambar...", { duration: 2000 });
+
+        try {
+            const response = await fetch('/api/v2/image/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Add auth token if available
+                    ...(localStorage.getItem('token') ? {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    } : {})
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    aspectRatio: aspectRatio,
+                    numberOfImages: 4,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Gagal generate gambar');
+            }
+
+            // Capture URL from response - handles both url and base64Data fallback
+            if (data.images && data.images.length > 0) {
+                const variants = data.images.map((img: { url?: string; base64Data?: string; mimeType: string }, index: number) => ({
+                    id: `generated-${index}`,
+                    // Use URL if available, otherwise create data URL from base64
+                    thumbnail: img.url || (img.base64Data ? `data:${img.mimeType};base64,${img.base64Data}` : mockVariants[index % mockVariants.length].thumbnail),
+                }));
+                setGeneratedVariants(variants);
+                setSelectedVariant(variants[0].id);
+                toast.success(`${variants.length} gambar berhasil dibuat`);
+            } else {
+                // Fallback to mock if no images returned
+                setGeneratedVariants(mockVariants);
+                setSelectedVariant(mockVariants[0].id);
+                toast.info("Menggunakan placeholder images");
+            }
+        } catch (error) {
+            console.error('Image generation error:', error);
+            toast.error(error instanceof Error ? error.message : 'Gagal generate gambar');
+            // Fallback to mock data on error
             setGeneratedVariants(mockVariants);
             setSelectedVariant(mockVariants[0].id);
+        } finally {
             setIsGenerating(false);
-            toast.success("4 varian berhasil dibuat");
-        }, 3000);
-    }, [prompt, imageMode]);
+        }
+    }, [prompt, imageMode, aspectRatio]);
 
     const handleSaveToLibrary = () => toast.success("Disimpan ke Library");
     const handleDownload = () => toast.success("Mengunduh gambar...");

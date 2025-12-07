@@ -426,22 +426,36 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
             />
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className={cn(
-              "lg:hidden p-2 rounded-lg transition-all duration-300",
-              theme === 'dark' ? "text-white" : "text-gray-900"
-            )}
-            aria-label="Toggle mobile menu"
-            aria-expanded={isMobileMenuOpen}
-          >
-            {isMobileMenuOpen ? (
-              <X className="w-6 h-6" aria-hidden="true" />
-            ) : (
-              <Menu className="w-6 h-6" aria-hidden="true" />
-            )}
-          </button>
+          {/* Mobile Right Actions - Theme Toggle + Hamburger */}
+          <div className="absolute right-0 flex lg:hidden items-center gap-2">
+            {/* Mobile Theme Toggle */}
+            <ToggleTheme
+              className={cn(
+                "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-300 cursor-pointer",
+                theme === 'dark'
+                  ? "text-gray-300 hover:text-white hover:bg-white/5"
+                  : "text-gray-700 hover:text-black hover:bg-gray-100"
+              )}
+              style={{ pointerEvents: 'auto' }}
+            />
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={cn(
+                "p-2 rounded-lg transition-all duration-300",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}
+              aria-label="Toggle mobile menu"
+              aria-expanded={isMobileMenuOpen}
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6" aria-hidden="true" />
+              ) : (
+                <Menu className="w-6 h-6" aria-hidden="true" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
