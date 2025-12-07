@@ -40,7 +40,7 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
   borderColor,
   initialTop = 70,
   compactTop = 20,
-  animationDuration = 1,
+  animationDuration = 0.4,
   className,
   onLinkClick,
   onMenuToggle,
@@ -51,13 +51,12 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
   const [isSticky, setIsSticky] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const navRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
     };
-
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -70,28 +69,29 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
           nav: "bg-black/80 border-gray-800",
           text: "text-white",
           button: "bg-black/50 border-gray-700",
+          dropdown: "bg-black/90 border-gray-800",
         };
-
       case "light":
         return {
           nav: "bg-white/80 border-gray-200",
           text: "text-gray-900",
           button: "bg-white/50 border-gray-300",
+          dropdown: "bg-white/95 border-gray-200",
         };
-
       case "custom":
         return {
           nav: backgroundColor ? "" : "bg-white/5 border-white/10",
           text: textColor ? "" : "text-white",
           button: "bg-black/30 border-white/10",
+          dropdown: "bg-background/95 border-border",
         };
-
       case "glass":
       default:
         return {
           nav: "bg-white/5 border-white/10",
           text: "text-foreground",
           button: "bg-black/30 border-white/10",
+          dropdown: "bg-background/95 border-border",
         };
     }
   }, [theme, backgroundColor, textColor]);
@@ -99,49 +99,32 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
   const themeStyles = getThemeStyles();
 
   useEffect(() => {
-    if (disableAutoMorph) return;
-
+    if (disableAutoMorph && !isMobile) return;
     const handleScroll = () => {
-      const scrollY = window.scrollY || document.documentElement.scrollTop;
-      const shouldBeSticky = scrollY >= scrollThreshold;
-      
-      setIsSticky(shouldBeSticky);
-      if (shouldBeSticky) {
-        setIsMenuOpen(false);
+      if (isMobile) {
+        setIsSticky(true);
+      } else {
+        setIsSticky(window.scrollY >= scrollThreshold);
       }
     };
-
-    // Check initial scroll position
+    // Initial check
     handleScroll();
-    
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [scrollThreshold, disableAutoMorph]);
+  }, [scrollThreshold, disableAutoMorph, isMobile]);
 
-  const handleMenuToggle = () => {
+  const handleMenuToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const open = !isMenuOpen;
     setIsMenuOpen(open);
-
-    if (isMobile && open) {
-      setIsSticky(true);
-    } else if (isMobile && !open) {
-      setIsSticky(window.scrollY >= scrollThreshold);
-    } else {
-      setIsSticky(false);
-    }
-
     onMenuToggle?.(open);
   };
 
   const handleLinkClick = (link: MorphingNavigationLink, e: React.MouseEvent) => {
     e.preventDefault();
     setIsMenuOpen(false);
-
     onLinkClick?.(link);
-
-    // Only try to scroll if href is a hash/anchor link (starts with #)
-    // For route paths, navigation is handled by onLinkClick callback
-    if (enableSmoothTransitions && link.href.startsWith('#')) {
+    if (enableSmoothTransitions) {
       const target = document.querySelector(link.href);
       if (target) {
         target.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -155,7 +138,6 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
         setIsMenuOpen(false);
       }
     };
-
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, [isMenuOpen]);
@@ -168,45 +150,43 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
 
   return (
     <>
+      {/* Backdrop blur when menu is open */}
       <AnimatePresence>
         {enablePageBlur && isMenuOpen && (
           <motion.div
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={() => setIsMenuOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      <motion.header
-        className={cn("fixed top-4 z-[70] w-full", className)}
-        initial={false}
-        animate={{
+      {/* Navigation Container */}
+      <div
+        ref={navRef}
+        className={cn("fixed z-[70] left-1/2 -translate-x-1/2", className)}
+        style={{
           top: isMobile ? compactTop : isSticky ? compactTop : initialTop,
         }}
-        transition={{ duration: animationDuration }}
       >
+        {/* Main Nav Bar */}
         <motion.nav
-          ref={navRef}
           className={cn(
-            "flex justify-center items-center mx-auto backdrop-blur-md border fixed",
+            "flex justify-center items-center backdrop-blur-xl border",
             themeStyles.nav,
-            themeStyles.text,
-            {
-              "left-1/2 -translate-x-1/2": !isMobile && !isSticky,
-              "left-0 right-0": isMobile || isSticky,
-              "sm:w-[70px] sm:h-[70px] sm:rounded-full": isMobile,
-            }
+            themeStyles.text
           )}
           animate={{
-            height: isMobile ? 60 : isSticky ? 70 : 90,
-            width: isMobile ? 60 : isSticky ? 70 : 450,
+            height: isMobile ? 56 : isSticky ? 56 : 64,
+            width: isMobile || isSticky ? 56 : 420,
             borderRadius: 9999,
           }}
-          transition={{ duration: animationDuration }}
-          style={{ top: 0, ...customStyles }}
+          transition={{ duration: animationDuration, ease: "easeInOut" }}
+          style={customStyles}
         >
+          {/* Desktop Links - Visible when expanded */}
           <AnimatePresence>
             {!isMobile && !isSticky &&
               links.map((link, i) => (
@@ -214,11 +194,11 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
                   key={link.id}
                   href={link.href}
                   onClick={(e) => handleLinkClick(link, e)}
-                  initial={{ opacity: 0, scale: 0.5 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="px-5 py-2.5 text-sm font-bold lowercase tracking-wide"
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
+                  className="px-4 py-2 text-sm font-medium tracking-wide hover:text-[#FFD700] transition-colors"
                 >
                   {link.icon && <span className="mr-2 inline-block">{link.icon}</span>}
                   {link.label}
@@ -226,86 +206,100 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
               ))}
           </AnimatePresence>
 
-          <motion.button
-            onClick={handleMenuToggle}
-            className={cn(
-              "absolute w-[50px] h-[50px] rounded-full outline-none border cursor-pointer",
-              themeStyles.button,
-              {
-                hidden: !isSticky && !isMobile,
-                "flex items-center justify-center": isMobile || isSticky,
-              }
+          {/* Hamburger Button - Visible when sticky or mobile */}
+          <AnimatePresence>
+            {(isMobile || isSticky) && (
+              <motion.button
+                onClick={handleMenuToggle}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={{ duration: 0.2 }}
+                className={cn(
+                  "w-12 h-12 rounded-full outline-none border flex items-center justify-center cursor-pointer",
+                  themeStyles.button,
+                  isMenuOpen && "bg-[#FFD700]/20 border-[#FFD700]/50"
+                )}
+                aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={isMenuOpen}
+              >
+                {customHamburgerIcon || (
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <motion.span
+                      className="block w-4 h-0.5 bg-current"
+                      animate={{
+                        rotate: isMenuOpen ? 45 : 0,
+                        y: isMenuOpen ? 3 : 0
+                      }}
+                      transition={{ duration: 0.2 }}
+                    />
+                    <motion.span
+                      className="block w-4 h-0.5 bg-current"
+                      animate={{ opacity: isMenuOpen ? 0 : 1 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                    <motion.span
+                      className="block w-4 h-0.5 bg-current"
+                      animate={{
+                        rotate: isMenuOpen ? -45 : 0,
+                        y: isMenuOpen ? -3 : 0
+                      }}
+                      transition={{ duration: 0.2 }}
+                    />
+                  </div>
+                )}
+              </motion.button>
             )}
-            animate={{ scale: isMobile || isSticky ? 1 : 0, opacity: isMobile || isSticky ? 1 : 0 }}
-            transition={{ delay: isMobile || isSticky ? 0.2 : 0 }}
-          >
-            {customHamburgerIcon || (
-              <div className="flex flex-col items-center justify-center h-full">
-                <span className="block w-4 h-0.5 bg-current my-1"></span>
-                <span className="block w-4 h-0.5 bg-current my-1"></span>
-                <span className="block w-4 h-0.5 bg-current my-1"></span>
-              </div>
-            )}
-          </motion.button>
+          </AnimatePresence>
         </motion.nav>
-      </motion.header>
 
-      <AnimatePresence>
-        {isMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              className="fixed inset-0 z-[79] bg-black/20 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setIsMenuOpen(false)}
-            />
-            
-            {/* Menu Popup */}
+        {/* Dropdown Menu - Drops DOWN below the nav */}
+        <AnimatePresence>
+          {isMenuOpen && (
             <motion.div
               className={cn(
-                "fixed z-[80]",
-                isMobile 
-                  ? "top-16 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm" 
-                  : "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-sm"
+                "absolute left-1/2 -translate-x-1/2 mt-3 w-64 sm:w-72",
+                "rounded-2xl backdrop-blur-xl border shadow-2xl overflow-hidden",
+                themeStyles.dropdown,
+                themeStyles.text
               )}
-              initial={{ opacity: 0, y: isMobile ? -10 : 0, scale: 0.95 }}
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: isMobile ? -10 : 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              style={customStyles}
             >
-              <motion.div
-                className={cn(
-                  "p-6 sm:p-8 rounded-2xl backdrop-blur-md border shadow-lg",
-                  themeStyles.nav,
-                  themeStyles.text
-                )}
-                style={customStyles}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex flex-col space-y-3 sm:space-y-4">
-                  {links.map((link) => (
-                    <a
-                      key={link.id}
-                      href={link.href}
-                      onClick={(e) => handleLinkClick(link, e)}
-                      className="font-bold text-base sm:text-lg tracking-wide lowercase hover:scale-105 transition-transform py-2"
-                    >
-                      {link.icon && <span className="inline-block mr-3">{link.icon}</span>}
-                      {link.label}
-                    </a>
-                  ))}
-                </div>
-              </motion.div>
+              <div className="p-4 space-y-1">
+                {links.map((link, index) => (
+                  <motion.a
+                    key={link.id}
+                    href={link.href}
+                    onClick={(e) => handleLinkClick(link, e)}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl",
+                      "font-medium text-sm tracking-wide",
+                      "hover:bg-[#FFD700]/10 hover:text-[#FFD700]",
+                      "transition-all duration-200"
+                    )}
+                  >
+                    {link.icon && (
+                      <span className="w-5 h-5 flex items-center justify-center text-[#FFD700]">
+                        {link.icon}
+                      </span>
+                    )}
+                    <span>{link.label}</span>
+                  </motion.a>
+                ))}
+              </div>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </div>
     </>
   );
 };
 
 export default MorphingNavigation;
-

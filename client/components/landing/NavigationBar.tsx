@@ -152,25 +152,20 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
       style={{ pointerEvents: 'auto' }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20">
-          {/* Logo */}
+        <div className="flex items-center justify-center h-16 sm:h-20 relative">
+          {/* Logo - positioned on the left */}
           <Link
             to="/"
-            className="flex items-center gap-2 text-xl sm:text-2xl font-bold font-heading hover:text-glow transition-all"
+            className="absolute left-0 flex items-center gap-2 text-xl sm:text-2xl font-bold font-heading hover:text-glow transition-all"
             aria-label="Go to homepage"
           >
-            <img
-              src="/logo/erasebg-transformed (1).png"
-              alt="Orenax Logo"
-              className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
-            />
             <span className={cn(
               theme === 'dark' ? "text-white" : "text-black"
             )}>Orenax</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-6 flex-1 justify-center ml-8" style={{ pointerEvents: 'auto', zIndex: 1001 }}>
+          {/* Desktop Navigation - Centered */}
+          <div className="hidden lg:flex items-center gap-6" style={{ pointerEvents: 'auto', zIndex: 1001 }}>
             {menuStructure.map((item) => {
               const hasChildren = item.children && item.children.length > 0;
               const itemIsActive = isActive(item.path);
@@ -291,8 +286,8 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
             })}
           </div>
 
-          {/* Right Side Actions */}
-          <div className="hidden lg:flex items-center gap-3 ml-auto" style={{ pointerEvents: 'auto', zIndex: 1001 }}>
+          {/* Right Side Actions - positioned on the right */}
+          <div className="absolute right-0 hidden lg:flex items-center gap-3" style={{ pointerEvents: 'auto', zIndex: 1001 }}>
             {/* User Menu / Get Started Button */}
             {isAuthenticated ? (
               <div className="relative" ref={userMenuRef} style={{ pointerEvents: 'auto', zIndex: 1002 }}>

@@ -17,11 +17,14 @@ export function ConditionalSmokeyCursor() {
 
   useEffect(() => {
     // List of paths where SmokeyCursor should NOT appear
+    // SmokeyCursor should ONLY appear on landing page (/) and public pages
     const excludedPaths = [
       '/chat',
       '/chat/history',
       '/chat/settings',
       '/chat/profile',
+      '/culture',
+      '/creative',
       '/product/playground',
       '/auth/login',
       '/auth/signup',
@@ -30,7 +33,7 @@ export function ConditionalSmokeyCursor() {
 
     // Check if current path starts with any excluded path
     const isExcluded = excludedPaths.some(path => location.pathname.startsWith(path));
-    
+
     // Show SmokeyCursor only on landing page and other public pages
     setShouldShow(!isExcluded);
   }, [location.pathname]);

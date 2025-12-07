@@ -13,7 +13,11 @@ import { MorphingNavigation, type MorphingNavigationLink } from '@/components/ui
 import { ToggleTheme } from '@/components/ui/ToggleTheme';
 import { chatApi, modelsApi, ChatContent, ChatPart, ChatTool, ThinkingConfig, GeminiModel } from '@/lib/api';
 import { VoiceLiveModal } from './VoiceLiveModal';
+import { SidebarDock } from './SidebarDock';
 import { ModelSelectorPopup } from './ModelSelectorPopup';
+import { GlowingCards, GlowingCard } from '@/components/ui/GlowingCards';
+import Dock from '@/components/ui/Dock';
+import { BorderBeam } from '@/components/ui/BorderBeam';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,8 +61,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarMinimized, setSidebarMinimized] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarMinimized, setSidebarMinimized] = useState(true);
   const sidebarToggleRef = useRef(false);
   const [currentView, setCurrentView] = useState(initialView);
   const [mode, setMode] = useState('balance');
@@ -88,6 +92,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Model & Tools State
   const [availableModels, setAvailableModels] = useState<GeminiModel[]>([]);
@@ -1185,14 +1190,14 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     const isEmpty = messages.length === 0;
 
     return (
-      <div className="flex flex-col h-full relative">
+      <div className="flex flex-col h-full relative min-h-0">
         {/* Modern Header with Navigation - Always visible */}
         {(
           <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
             <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
               {/* Left Side - Mobile Menu & Title */}
               <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                {/* Mobile Menu Button */}
+                {/* Mobile Menu Button - Opens Sidebar */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1214,8 +1219,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                 <h1 className="text-lg sm:text-xl font-bold text-[#FFD700] truncate">{currentModel}</h1>
               </div>
 
-              {/* Center - Navigation (Desktop & Mobile) */}
-              <div className="flex items-center justify-center flex-1">
+              {/* Center - Navigation (Desktop Only - Hidden on Mobile) */}
+              <div className="hidden lg:flex items-center justify-center flex-1">
                 <MorphingNavigation
                   links={navLinks}
                   theme="glass"
@@ -1230,25 +1235,8 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
               {/* Right Side - Actions */}
               <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                {/* Theme Toggle */}
-                <button
-                  onClick={() => {
-                    const newTheme = theme === 'dark' ? 'light' : 'dark';
-                    setTheme(newTheme);
-                    toast.success('Theme changed', {
-                      description: `Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} theme`
-                    });
-                  }}
-                  className="p-2 rounded-lg transition-all duration-200 bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 text-[#FFD700] flex-shrink-0"
-                  aria-label="Toggle theme"
-                  title="Toggle theme"
-                >
-                  {theme === 'dark' ? (
-                    <Moon className="w-4 h-4" />
-                  ) : (
-                    <Sun className="w-4 h-4" />
-                  )}
-                </button>
+                {/* Theme Toggle with Circle Spread Animation */}
+                <ToggleTheme animationType="circle-spread" />
 
                 {/* History Button */}
                 <button
@@ -1264,10 +1252,43 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
           </header>
         )}
 
-        {/* Messages Container - Mobile Responsive */}
+        {/* Mobile Dock Navigation - Below Header */}
+        <div className="lg:hidden">
+          <Dock
+            items={[
+              {
+                icon: <BookOpen className="w-6 h-6 text-foreground" />,
+                label: "Library",
+                onClick: () => navigate('/library'),
+              },
+              {
+                icon: <Sparkles className="w-6 h-6 text-foreground" />,
+                label: "Culture",
+                onClick: () => navigate('/culture'),
+              },
+              {
+                icon: <MessageSquare className="w-6 h-6 text-foreground" />,
+                label: "Chat",
+                onClick: () => navigate('/chat'),
+              },
+              {
+                icon: <PenTool className="w-6 h-6 text-foreground" />,
+                label: "Creative",
+                onClick: () => navigate('/creative'),
+              },
+            ]}
+            magnification={60}
+            distance={140}
+            baseItemSize={45}
+            panelHeight={56}
+            className="bg-card/80 backdrop-blur-md border-[#FFD700]/20"
+          />
+        </div>
+        {/* Messages Container - Mobile Responsive with proper bottom padding */}
         {!isEmpty ? (
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-background" role="log" aria-live="polite" aria-atomic="false">
-            <div className="space-y-6 max-w-3xl mx-auto pt-4">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-background min-h-0" role="log" aria-live="polite" aria-atomic="false">
+            {/* Add bottom padding to prevent content from being hidden behind fixed input on mobile */}
+            <div className="space-y-6 max-w-3xl mx-auto pt-4 pb-32 sm:pb-36 lg:pb-4">
               {messages.map((msg, index) => (
                 <div key={msg.id} className={cn(
                   "flex group",
@@ -1283,7 +1304,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                         ? "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-foreground border border-[#FFD700]/50 rounded-tr-sm"
                         : msg.type === 'error'
                           ? "bg-red-500/10 border border-red-500/30 text-foreground rounded-tl-sm"
-                          : "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-foreground border border-[#FFD700]/50 rounded-tl-sm"
+                          : "bg-background/50 dark:bg-card/50 border-2 border-[#FFD700]/50 rounded-tl-sm"
                     )}>
                       {msg.type === 'error' ? (
                         <div className="flex flex-col gap-2">
@@ -1611,17 +1632,18 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
           </div>
         )}
 
-        {/* Input Area - Centered when empty, Sticky when has messages - Mobile Responsive */}
+        {/* Input Area - Fixed at bottom for mobile, ensures it's always visible when scrolling */}
         <div
           className={cn(
             isEmpty
               ? "absolute bottom-0 left-0 right-0 flex items-center justify-center px-3 sm:px-4 md:px-6 pb-8 sm:pb-12 md:pb-16 z-40"
-              : "sticky bottom-0 bg-background/80 backdrop-blur-sm border-t border-border/50 py-4 z-40 flex items-center justify-center",
+              : "fixed lg:sticky bottom-0 left-0 right-0 lg:left-auto lg:right-auto bg-transparent lg:bg-transparent py-4 sm:py-5 z-50 lg:z-40 flex items-center justify-center safe-area-bottom",
             isDragging && "bg-blue-500/10"
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          style={!isEmpty ? { paddingBottom: 'max(env(safe-area-inset-bottom, 16px), 16px)' } : undefined}
         >
 
 
@@ -1643,62 +1665,50 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             {/* Template Cards - Display Above Input (Only when empty) */}
             {isEmpty && (
               <div className="w-full mb-8 px-2 md:px-0 -mt-8 sm:-mt-12 md:-mt-16">
-                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                <GlowingCards
+                  gap="1rem"
+                  padding="0"
+                  glowRadius={20}
+                  glowOpacity={0.8}
+                  responsive={false}
+                >
                   {[
-                    { title: "Tulis Esai", prompt: "Tolong buatkan esai tentang teknologi AI", icon: "✍️", gradient: "from-violet-500 to-purple-600" },
-                    { title: "Jelaskan Konsep", prompt: "Jelaskan konsep machine learning dengan sederhana", icon: "💡", gradient: "from-amber-500 to-orange-600" },
-                    { title: "Buat Kode", prompt: "Bantu saya membuat fungsi JavaScript untuk validasi form", icon: "💻", gradient: "from-blue-500 to-cyan-600" },
-                    { title: "Terjemahkan", prompt: "Terjemahkan teks ini ke bahasa Inggris", icon: "🌐", gradient: "from-emerald-500 to-teal-600" }
+                    { title: "Tulis Esai", prompt: "Tolong buatkan esai tentang teknologi AI", icon: "✍️", glowColor: "#8B5CF6" },
+                    { title: "Jelaskan Konsep", prompt: "Jelaskan konsep machine learning dengan sederhana", icon: "💡", glowColor: "#F59E0B" },
+                    { title: "Buat Kode", prompt: "Bantu saya membuat fungsi JavaScript untuk validasi form", icon: "💻", glowColor: "#3B82F6" },
+                    { title: "Terjemahkan", prompt: "Terjemahkan teks ini ke bahasa Inggris", icon: "🌐", glowColor: "#10B981" }
                   ].map((template, idx) => (
-                    <button
+                    <GlowingCard
                       key={idx}
-                      onClick={() => {
-                        setInput(template.prompt);
-                        inputRef.current?.focus();
-                      }}
-                      className={cn(
-                        "group relative overflow-hidden",
-                        "bg-card/50 dark:bg-white/5 backdrop-blur-sm",
-                        "border border-border/50 dark:border-white/10 rounded-2xl",
-                        "p-4 sm:p-5 min-w-[110px] sm:min-w-[130px]",
-                        "transition-all duration-300 ease-out",
-                        "hover:bg-card/80 dark:hover:bg-white/10",
-                        "hover:border-[#FFD700]/50 dark:hover:border-[#FFD700]/40",
-                        "hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-[#FFD700]/10",
-                        "hover:-translate-y-1",
-                        "focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50"
-                      )}
-                      style={{ animationDelay: `${idx * 100}ms` }}
+                      glowColor={template.glowColor}
+                      className="cursor-pointer min-w-[110px] sm:min-w-[130px] !p-4 sm:!p-5"
                     >
-                      {/* Gradient border glow on hover */}
-                      <div className={cn(
-                        "absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-                        "bg-gradient-to-br", template.gradient,
-                        "blur-xl -z-10 scale-110"
-                      )} style={{ opacity: 0.15 }} />
-
-                      {/* Content */}
-                      <div className="flex flex-col items-center justify-center gap-2 relative z-10">
-                        <div className={cn(
-                          "w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center",
-                          "bg-gradient-to-br", template.gradient,
-                          "shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-                        )}>
+                      <button
+                        onClick={() => {
+                          setInput(template.prompt);
+                          inputRef.current?.focus();
+                        }}
+                        className="flex flex-col items-center justify-center gap-2 w-full"
+                      >
+                        <div
+                          className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-110 hover:rotate-3"
+                          style={{ backgroundColor: template.glowColor }}
+                        >
                           <span className="text-xl sm:text-2xl">{template.icon}</span>
                         </div>
-                        <span className="text-xs sm:text-sm font-medium text-foreground/80 dark:text-white/80 text-center group-hover:text-foreground dark:group-hover:text-white transition-colors duration-300">
+                        <span className="text-xs sm:text-sm font-medium text-foreground/80 dark:text-white/80 text-center hover:text-foreground dark:hover:text-white transition-colors duration-300">
                           {template.title}
                         </span>
-                      </div>
-                    </button>
+                      </button>
+                    </GlowingCard>
                   ))}
-                </div>
+                </GlowingCards>
               </div>
             )}
 
             {/* Input Container - Elegant Gold Style */}
             <div className={cn(
-              "flex flex-col mx-2 md:mx-0 items-stretch transition-all duration-200 relative cursor-text z-40 rounded-2xl w-full",
+              "flex flex-col mx-2 md:mx-0 items-stretch transition-all duration-200 relative cursor-text z-40 rounded-2xl w-full group",
               "bg-gradient-to-br from-background via-background to-[#FFD700]/5",
               "border border-[#FFD700]/20",
               "shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/3.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.2)]",
@@ -1706,6 +1716,15 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               "focus-within:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/7.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.4)]",
               "hover:focus-within:shadow-[0_0.25rem_1.25rem_hsl(0_0%_0%_/7.5%),0_0_0_0.5px_hsla(43_96%_53%_/0.4)]"
             )}>
+              {/* BorderBeam Effect */}
+              <BorderBeam
+                size={80}
+                duration={8}
+                colorFrom="#FFD700"
+                colorTo="#FFA500"
+                beamBorderRadius={16}
+                opacity={0.6}
+              />
               <div className="flex flex-col m-3.5 gap-2">
                 {/* Uploaded Files Preview - Inside Input Container */}
                 {uploadedFiles.length > 0 && (
@@ -1962,20 +1981,20 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                   </div>
 
                   {/* Right Side - Model Selector & Live Voice/Send */}
-                  <div className="flex items-center gap-2 shrink-0 ml-auto">
-                    {/* Tools Active Indicator */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+                    {/* Tools Active Indicator - Compact on mobile */}
                     {(googleSearchEnabled || thinkingModeEnabled) && (
                       <div className="flex items-center gap-1">
                         {googleSearchEnabled && (
-                          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full flex items-center gap-1">
+                          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 sm:px-2 py-1 rounded-full flex items-center gap-0.5 sm:gap-1">
                             <Search className="w-3 h-3" />
-                            Search
+                            <span className="hidden sm:inline">Search</span>
                           </span>
                         )}
                         {thinkingModeEnabled && (
-                          <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full flex items-center gap-1">
+                          <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 sm:px-2 py-1 rounded-full flex items-center gap-0.5 sm:gap-1">
                             <Brain className="w-3 h-3" />
-                            Think
+                            <span className="hidden sm:inline">Think</span>
                           </span>
                         )}
                       </div>
@@ -2702,33 +2721,30 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   ];
 
   const handleNavLinkClick = (link: MorphingNavigationLink) => {
-    if (link.href === '/chat') {
-      navigate('/chat');
-    } else if (link.href === '/culture') {
-      navigate('/culture');
-    } else if (link.href === '/creative') {
-      navigate('/creative');
-    } else {
-      toast.info('Coming Soon', {
-        description: `${link.label} feature will be available soon`
-      });
+    // Navigate to all routes directly
+    if (link.href) {
+      navigate(link.href);
     }
   };
 
   return (
     <div className="flex h-screen bg-background text-foreground relative overflow-hidden">
 
-      {/* Sidebar - Mobile Responsive - Fixed bug: fully hidden on mobile when closed */}
+      {/* Sidebar - Mobile Responsive with Dock-style hover effects when minimized */}
       <div className={cn(
         "fixed lg:relative lg:translate-x-0 z-[60] bg-card border-r border-border h-full flex flex-col",
         "transition-all duration-300 ease-out",
-        sidebarOpen
-          ? sidebarMinimized
-            ? "w-16 sm:w-20 shadow-2xl lg:shadow-none"
-            : "w-64 sm:w-72 shadow-2xl lg:shadow-none"
-          : isMobileView
-            ? "w-0 -translate-x-full overflow-hidden"
-            : "w-0 lg:w-20 lg:translate-x-0 overflow-hidden lg:overflow-visible"
+        // Mobile: sidebarOpen controls visibility
+        // Desktop: always visible, sidebarMinimized controls width
+        isMobileView
+          ? sidebarOpen
+            ? sidebarMinimized
+              ? "w-16 sm:w-20 shadow-2xl"
+              : "w-64 sm:w-72 shadow-2xl"
+            : "w-0 -translate-x-full overflow-hidden"
+          : sidebarMinimized
+            ? "w-16 lg:w-20"
+            : "w-64 lg:w-72"
       )}>
         {/* Header - Modern Design */}
         <div className={cn(
@@ -2794,7 +2810,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               currentView === 'chat'
                 ? "bg-gradient-to-r from-[#FFD700]/20 to-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
@@ -2816,7 +2832,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               currentView === 'history'
                 ? "bg-gradient-to-r from-[#FFD700]/20 to-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
@@ -2841,7 +2857,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               currentView === 'profile'
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
@@ -2863,7 +2879,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               currentView === 'settings'
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
@@ -2886,7 +2902,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
             aria-label="Subscription"

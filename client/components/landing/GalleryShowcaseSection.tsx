@@ -93,19 +93,20 @@ export const GalleryShowcaseSection = memo(function GalleryShowcaseSection() {
                 >
                   <ThreeDImageRing
                     images={optimizedImages}
-                    width={deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 600 : 1200}
-                    perspective={deviceCapability?.isMobile ? 800 : deviceCapability?.isLowEnd ? 1200 : 2000}
-                    imageDistance={deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 500 : 900}
+                    width={deviceCapability?.isMobile ? 280 : deviceCapability?.isLowEnd ? 500 : 900}
+                    perspective={deviceCapability?.isMobile ? 800 : deviceCapability?.isLowEnd ? 1200 : 1800}
+                    imageDistance={deviceCapability?.isMobile ? 350 : deviceCapability?.isLowEnd ? 550 : 750}
                     initialRotation={180}
                     animationDuration={deviceCapability?.isLowEnd ? 1.0 : 1.5}
                     staggerDelay={deviceCapability?.isLowEnd ? 0.1 : 0.15}
                     draggable={!deviceCapability?.isLowEnd}
                     mobileBreakpoint={768}
-                    mobileScaleFactor={deviceCapability?.isMobile ? 0.4 : deviceCapability?.isLowEnd ? 0.5 : 0.7}
+                    mobileScaleFactor={deviceCapability?.isMobile ? 0.5 : deviceCapability?.isLowEnd ? 0.6 : 0.8}
                     backgroundColor="transparent"
                     containerClassName="w-full h-full"
                     autoRotate={!deviceCapability?.isLowEnd}
-                    autoRotateSpeed={0.2}
+                    autoRotateSpeed={0.15}
+                    imageScale={0.85}
                   />
                 </div>
 

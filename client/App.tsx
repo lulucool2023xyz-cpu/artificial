@@ -39,6 +39,9 @@ const Culture = lazy(() => import("./pages/Culture"));
 // Creative page
 const Creative = lazy(() => import("./pages/Creative"));
 
+// Library page
+const Library = lazy(() => import("./pages/Library"));
+
 // Product pages
 const ProductFeatures = lazy(() => import("./pages/product/Features"));
 const ProductDemo = lazy(() => import("./pages/product/Demo"));
@@ -200,6 +203,16 @@ const App = () => (
                     element={
                       <ProtectedRoute>
                         <Creative />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Library Route - Protected */}
+                  <Route
+                    path="/library"
+                    element={
+                      <ProtectedRoute>
+                        <Library />
                       </ProtectedRoute>
                     }
                   />
