@@ -76,12 +76,17 @@ const AuthCallback = memo(function AuthCallback() {
                         // Get user info using the token
                         const userResponse = await authApi.me();
 
+                        // Detect provider from URL or default to 'google'
+                        const providerFromUrl = window.location.href.includes('github') ? 'github'
+                            : window.location.href.includes('facebook') ? 'facebook'
+                                : 'google';
+
                         // Store user data
                         const userData = {
                             id: userResponse.user.id,
                             email: userResponse.user.email,
                             name: userResponse.user.name || userResponse.user.fullName || '',
-                            provider: 'google' as const,
+                            provider: providerFromUrl as 'google' | 'facebook' | 'github',
                         };
                         storeUser(userData);
 

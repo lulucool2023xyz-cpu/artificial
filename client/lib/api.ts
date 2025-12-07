@@ -53,13 +53,20 @@ export const getStoredUser = (): any | null => {
 };
 
 /**
- * Clear all auth data
+ * Clear all auth data and user-specific data
  */
 export const clearAuthData = (): void => {
+    // Clear session storage (auth tokens)
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
     sessionStorage.removeItem(REFRESH_TOKEN_KEY);
     sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
     sessionStorage.removeItem(USER_KEY);
+
+    // Clear localStorage user-specific data (chat history, settings, profile)
+    localStorage.removeItem('chatHistory');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('appSettings');
+    localStorage.removeItem('termsAccepted');
 };
 
 /**
