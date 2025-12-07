@@ -33,6 +33,12 @@ const ChatHistory = lazy(() => import("./pages/chat/history"));
 const ChatSettings = lazy(() => import("./pages/chat/settings"));
 const ChatProfile = lazy(() => import("./pages/chat/profile"));
 
+// Culture page
+const Culture = lazy(() => import("./pages/Culture"));
+
+// Creative page
+const Creative = lazy(() => import("./pages/Creative"));
+
 // Product pages
 const ProductFeatures = lazy(() => import("./pages/product/Features"));
 const ProductDemo = lazy(() => import("./pages/product/Demo"));
@@ -174,6 +180,26 @@ const App = () => (
                     element={
                       <ProtectedRoute>
                         <ChatProfile />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Culture Route - Protected */}
+                  <Route
+                    path="/culture"
+                    element={
+                      <ProtectedRoute>
+                        <Culture />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Creative Route - Protected */}
+                  <Route
+                    path="/creative"
+                    element={
+                      <ProtectedRoute>
+                        <Creative />
                       </ProtectedRoute>
                     }
                   />

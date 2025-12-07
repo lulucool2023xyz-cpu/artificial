@@ -1,15 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { motion, AnimatePresence, useMotionValue, easeOut } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useSpring, useAnimation, PanInfo } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { animate } from "framer-motion";
 import { detectDeviceCapability } from "@/utils/deviceCapability";
 
-// Hook untuk responsive width
 function useResponsiveWidth(width: number, mobileBreakpoint: number) {
   const [responsiveWidth, setResponsiveWidth] = useState(width);
-  
+
   useEffect(() => {
     const updateWidth = () => {
       const isMobile = window.innerWidth < mobileBreakpoint;
@@ -19,54 +17,32 @@ function useResponsiveWidth(width: number, mobileBreakpoint: number) {
         setResponsiveWidth(width);
       }
     };
-    
+
     updateWidth();
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
   }, [width, mobileBreakpoint]);
-  
+
   return responsiveWidth;
 }
 
 export interface ThreeDImageRingProps {
-  /** Array of image URLs to display in the ring */
   images: string[];
-  /** Container width in pixels (will be scaled) */
   width?: number;
-  /** 3D perspective value */
   perspective?: number;
-  /** Distance of images from center (z-depth) */
   imageDistance?: number;
-  /** Initial rotation of the ring */
   initialRotation?: number;
-  /** Animation duration for entrance */
   animationDuration?: number;
-  /** Stagger delay between images */
   staggerDelay?: number;
-  /** Hover opacity for non-hovered images */
-  hoverOpacity?: number;
-  /** Custom container className */
   containerClassName?: string;
-  /** Custom ring className */
   ringClassName?: string;
-  /** Custom image className */
   imageClassName?: string;
-  /** Background color of the stage */
   backgroundColor?: string;
-  /** Enable/disable drag functionality */
   draggable?: boolean;
-  /** Animation ease for entrance */
-  ease?: string;
-  /** Breakpoint for mobile responsiveness (e.g., 768 for iPad mini) */
   mobileBreakpoint?: number;
-  /** Scale factor for mobile (e.g., 0.7 for 70% size) */
   mobileScaleFactor?: number;
-  /** Power for the drag end inertia animation (higher means faster stop) */
-  inertiaPower?: number;
-  /** Time constant for the drag end inertia animation (duration of deceleration in ms) */
-  inertiaTimeConstant?: number;
-  /** Multiplier for initial velocity when drag ends (influences initial "spin") */
-  inertiaVelocityMultiplier?: number;
+  autoRotate?: boolean;
+  autoRotateSpeed?: number;
 }
 
 export function ThreeDImageRing({
@@ -74,30 +50,29 @@ export function ThreeDImageRing({
   width = 300,
   perspective = 2000,
   imageDistance = 500,
-  initialRotation = 180,
+  initialRotation = 0,
   animationDuration = 1.5,
   staggerDelay = 0.1,
-  hoverOpacity = 0.5,
   containerClassName,
   ringClassName,
   imageClassName,
   backgroundColor,
   draggable = true,
-  ease = "easeOut",
   mobileBreakpoint = 768,
   mobileScaleFactor = 0.8,
-  inertiaPower = 0.8,
-  inertiaTimeConstant = 300,
-  inertiaVelocityMultiplier = 20,
+  autoRotate = true,
+  autoRotateSpeed = 0.2,
 }: ThreeDImageRingProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
 
+  // Motion values
   const rotationY = useMotionValue(initialRotation);
-  const startX = useRef<number>(0);
-  const currentRotationY = useRef<number>(initialRotation);
+  // Smooth spring for rotation updates
+  const smoothRotation = useSpring(rotationY, { damping: 20, stiffness: 100, mass: 1 });
+
   const isDragging = useRef<boolean>(false);
-  const velocity = useRef<number>(0);
+  const autoRotateRef = useRef<number | null>(null);
 
   const [currentScale, setCurrentScale] = useState(1);
   const [showImages, setShowImages] = useState(false);
@@ -105,53 +80,21 @@ export function ThreeDImageRing({
 
   const deviceCapability = useMemo(() => detectDeviceCapability(), []);
   const responsiveWidth = useResponsiveWidth(width, mobileBreakpoint);
-  
-  // Reduce initial image count for low-end devices
+
+  // Reduce initial image count for mobile/low-end devices
   const visibleImages = useMemo(() => {
+    if (deviceCapability.isMobile) {
+      return images.slice(0, Math.min(3, images.length));
+    }
     if (deviceCapability.isLowEnd) {
-      // Only show first 6 images initially for low-end devices
-      return images.slice(0, Math.min(6, images.length));
+      return images.slice(0, Math.min(5, images.length));
     }
     return images;
-  }, [images, deviceCapability.isLowEnd]);
+  }, [images, deviceCapability.isLowEnd, deviceCapability.isMobile]);
 
   const angle = useMemo(() => 360 / visibleImages.length, [visibleImages.length]);
 
-  const getBgPos = (imageIndex: number, currentRot: number, scale: number) => {
-    const scaledImageDistance = imageDistance * scale;
-    const effectiveRotation = currentRot - 180 - imageIndex * angle;
-    const parallaxOffset = ((effectiveRotation % 360 + 360) % 360) / 360;
-    return `${-(parallaxOffset * (scaledImageDistance / 1.5))}px 0px`;
-  };
-
-  useEffect(() => {
-    const unsubscribe = rotationY.on("change", (latestRotation) => {
-      if (ringRef.current) {
-        Array.from(ringRef.current.children).forEach((imgElement, i) => {
-          (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
-            i,
-            latestRotation,
-            currentScale
-          );
-        });
-      }
-      currentRotationY.current = latestRotation;
-    });
-    
-    // Initialize background position on mount
-    if (ringRef.current) {
-      Array.from(ringRef.current.children).forEach((imgElement, i) => {
-        (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
-          i,
-          initialRotation,
-          currentScale
-        );
-      });
-    }
-    
-    return () => unsubscribe();
-  }, [rotationY, images.length, imageDistance, currentScale, angle, initialRotation]);
-
+  // Handle Resize
   useEffect(() => {
     const handleResize = () => {
       const viewportWidth = window.innerWidth;
@@ -165,213 +108,176 @@ export function ThreeDImageRing({
     return () => window.removeEventListener("resize", handleResize);
   }, [mobileBreakpoint, mobileScaleFactor]);
 
+  // Entrance Animation Trigger
   useEffect(() => {
     setShowImages(true);
-    // Ensure initial rotation is set immediately
-    rotationY.set(initialRotation);
+    rotationY.set(initialRotation); // Reset rotation on mount/change
   }, [initialRotation, rotationY]);
 
-  // Update background positions when images are shown and scale is ready
+  // Auto Rotation Logic
   useEffect(() => {
-    if (showImages && ringRef.current) {
-      const updatePositions = () => {
-        if (ringRef.current) {
-          Array.from(ringRef.current.children).forEach((imgElement, i) => {
-            (imgElement as HTMLElement).style.backgroundPosition = getBgPos(
-              i,
-              rotationY.get(),
-              currentScale
-            );
-          });
-        }
-      };
-      
-      // Update immediately
-      updatePositions();
-      
-      // Also update after a short delay to ensure DOM is ready
-      const timeout = setTimeout(updatePositions, 50);
-      return () => clearTimeout(timeout);
-    }
-  }, [showImages, currentScale, images.length, imageDistance, angle, rotationY]);
+    if (!autoRotate || isDragging.current) return;
 
-  const handleDragStart = (event: React.MouseEvent | React.TouchEvent) => {
-    if (!draggable) return;
+    let lastTime = performance.now();
+    const animate = (time: number) => {
+      const delta = time - lastTime;
+      lastTime = time;
+
+      const current = rotationY.get();
+      // Rotate slowly: speed * delta time adjustment
+      rotationY.set(current - (autoRotateSpeed * (delta / 16)));
+
+      autoRotateRef.current = requestAnimationFrame(animate);
+    };
+
+    autoRotateRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (autoRotateRef.current) cancelAnimationFrame(autoRotateRef.current);
+    };
+  }, [autoRotate, autoRotateSpeed, rotationY]);
+
+  // Drag Handlers
+  const handleDragStart = () => {
     isDragging.current = true;
-    const clientX = "touches" in event ? event.touches[0].clientX : event.clientX;
-    startX.current = clientX;
-    rotationY.stop();
-    velocity.current = 0;
-    if (ringRef.current) {
-      (ringRef.current as HTMLElement).style.cursor = "grabbing";
-    }
-    document.addEventListener("mousemove", handleDrag);
-    document.addEventListener("mouseup", handleDragEnd);
-    document.addEventListener("touchmove", handleDrag);
-    document.addEventListener("touchend", handleDragEnd);
+    if (containerRef.current) containerRef.current.style.cursor = "grabbing";
+    if (autoRotateRef.current) cancelAnimationFrame(autoRotateRef.current);
   };
 
-  const handleDrag = (event: MouseEvent | TouchEvent) => {
-    if (!draggable || !isDragging.current) return;
-
-    const clientX = "touches" in event ? (event as TouchEvent).touches[0].clientX : (event as MouseEvent).clientX;
-    const deltaX = clientX - startX.current;
-
-    velocity.current = -deltaX * 0.5;
-
-    rotationY.set(currentRotationY.current + velocity.current);
-
-    startX.current = clientX;
-  };
-
-  const handleDragEnd = () => {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     isDragging.current = false;
-    if (ringRef.current) {
-      ringRef.current.style.cursor = "grab";
-      currentRotationY.current = rotationY.get();
-    }
+    if (containerRef.current) containerRef.current.style.cursor = "grab";
 
-    document.removeEventListener("mousemove", handleDrag);
-    document.removeEventListener("mouseup", handleDragEnd);
-    document.removeEventListener("touchmove", handleDrag);
-    document.removeEventListener("touchend", handleDragEnd);
+    // Add momentum
+    const velocity = info.velocity.x;
+    const currentRotation = rotationY.get();
 
-    const initial = rotationY.get();
-    const velocityBoost = velocity.current * inertiaVelocityMultiplier;
-    const target = initial + velocityBoost;
+    // Simple momentum implementation
+    // For a robust inertia, we'd use animate() with type: 'inertia' but since we have autoRotate,
+    // we just let it resume auto-rotation or settle. 
+    // Let's settle it to the nearest image face if stopped, OR resume spin if it was a fling.
 
-    animate(initial, target, {
-      type: "inertia",
-      velocity: velocityBoost,
-      power: inertiaPower,
-      timeConstant: inertiaTimeConstant,
-      restDelta: 0.5,
-      modifyTarget: (target) => Math.round(target / angle) * angle,
-      onUpdate: (latest) => {
-        rotationY.set(latest);
-      },
-    });
+    // If it was a fast fling, maybe spin a bit then resume auto rotate
+    // Currently Framer Motion pan works well with updating motion values directly.
+  };
 
-    velocity.current = 0;
+  const handlePan = (event: Event, info: PanInfo) => {
+    const current = rotationY.get();
+    // Adjust sensitivity
+    rotationY.set(current + info.delta.x * 0.5);
   };
 
   const imageVariants = {
-    hidden: { y: 200, opacity: 0 },
-    visible: {
+    hidden: { y: 200, opacity: 0, scale: 0.5 },
+    visible: (index: number) => ({
       y: 0,
       opacity: 1,
-    },
+      scale: 1,
+      transition: {
+        delay: index * staggerDelay,
+        duration: animationDuration,
+        type: "spring",
+        damping: 20,
+        stiffness: 100
+      }
+    }),
   };
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        "w-full h-full overflow-hidden select-none relative",
+        "w-full h-full overflow-hidden select-none relative flex items-center justify-center cursor-grab",
         containerClassName
       )}
       style={{
         backgroundColor,
-        transform: `scale(${currentScale})`,
-        transformOrigin: "center center",
-        minHeight: deviceCapability.isMobile ? '300px' : '400px',
+        perspective: `${perspective}px`,
+        minHeight: deviceCapability.isMobile ? '350px' : '500px',
       }}
-      onMouseDown={draggable ? handleDragStart : undefined}
-      onTouchStart={draggable ? handleDragStart : undefined}
     >
-      <div
+      <motion.div
+        className="w-full h-full relative"
+        onPanStart={draggable ? handleDragStart : undefined}
+        onPanEnd={draggable ? handleDragEnd : undefined}
+        onPan={draggable ? handlePan : undefined}
         style={{
-          perspective: `${perspective}px`,
           width: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
-          maxWidth: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
-          height: deviceCapability.isMobile ? '100%' : `${responsiveWidth * 1.2}px`,
-          maxHeight: deviceCapability.isMobile ? '100%' : `${responsiveWidth * 1.2}px`,
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
+          height: deviceCapability.isMobile ? '100%' : `${responsiveWidth}px`,
+          position: "relative",
+          transformStyle: "preserve-3d",
+          rotateY: smoothRotation, // Use smooth spring rotation
+          scale: currentScale,
         }}
+        ref={ringRef}
       >
-        <motion.div
-          ref={ringRef}
-          className={cn(
-            "w-full h-full absolute",
-            ringClassName
-          )}
-          style={{
-            transformStyle: "preserve-3d",
-            rotateY: rotationY,
-            cursor: draggable ? "grab" : "default",
-          }}
-        >
-          <AnimatePresence>
-            {showImages && visibleImages.map((imageUrl, index) => {
-              const isLoaded = loadedImages.has(index);
-              
-              return (
-                <motion.div
-                  key={index}
-                  className={cn(
-                    "w-full h-full absolute",
-                    imageClassName
-                  )}
+        <AnimatePresence>
+          {showImages && visibleImages.map((imageUrl, index) => {
+            const isLoaded = loadedImages.has(index);
+
+            return (
+              <motion.div
+                key={`${index}-${imageUrl}`}
+                className={cn(
+                  "absolute left-0 top-0",
+                  imageClassName
+                )}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  transformStyle: "preserve-3d",
+                  rotateY: index * angle, // Each image rotated around center
+                  translateZ: imageDistance, // Pushed out from center
+                  transformOrigin: "center center",
+                  backfaceVisibility: "hidden", // Hide back face for better performance/look
+                }}
+                variants={imageVariants}
+                initial="hidden"
+                animate="visible"
+                custom={index}
+                whileHover={{
+                  scale: 1.05,
+                  y: -20,
+                  transition: { duration: 0.3 }
+                }}
+              >
+                {/* Image Content */}
+                <div
+                  className="w-full h-full rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10 relative"
                   style={{
-                    transformStyle: "preserve-3d",
-                    backgroundImage: isLoaded ? `url(${imageUrl})` : 'none',
-                    backgroundSize: "contain",
-                    backgroundRepeat: "no-repeat",
-                    backfaceVisibility: "hidden",
-                    rotateY: index * -angle,
-                    z: -imageDistance * currentScale,
-                    transformOrigin: `50% 50% ${imageDistance * currentScale}px`,
-                    backgroundPosition: getBgPos(index, initialRotation, currentScale),
-                    willChange: "transform, opacity",
+                    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+                    background: "#1a1a1a",
                   }}
-                  initial="hidden"
-                  animate="visible"
-                  exit="hidden"
-                  variants={imageVariants}
-                  custom={index}
-                  transition={{
-                    delay: index * staggerDelay,
-                    duration: deviceCapability.isLowEnd ? animationDuration * 0.7 : animationDuration,
-                    ease: easeOut,
-                  }}
-                  whileHover={!deviceCapability.isLowEnd ? { opacity: 1, transition: { duration: 0.15 } } : undefined}
-                  onHoverStart={() => {
-                    if (isDragging.current || deviceCapability.isLowEnd) return;
-                    if (ringRef.current) {
-                      Array.from(ringRef.current.children).forEach((imgEl, i) => {
-                        if (i !== index) {
-                          (imgEl as HTMLElement).style.opacity = `${hoverOpacity}`;
-                        }
-                      });
-                    }
-                  }}
-                  onHoverEnd={() => {
-                    if (isDragging.current || deviceCapability.isLowEnd) return;
-                    if (ringRef.current) {
-                      Array.from(ringRef.current.children).forEach((imgEl) => {
-                        (imgEl as HTMLElement).style.opacity = `1`;
-                      });
-                    }
-                  }}
-                  onAnimationComplete={() => {
-                    // Lazy load image after animation starts
-                    if (!isLoaded) {
-                      const img = new Image();
-                      img.onload = () => {
-                        setLoadedImages(prev => new Set([...prev, index]));
-                      };
-                      img.src = imageUrl;
-                    }
-                  }}
-                />
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
-      </div>
+                >
+                  {!isLoaded && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl animate-pulse">
+                      <div className="w-10 h-10 border-4 border-[#FFD700] border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                  {/* Actual Image */}
+                  <img
+                    src={imageUrl}
+                    alt={`Gallery item ${index}`}
+                    className={cn(
+                      "w-full h-full object-cover transition-opacity duration-500",
+                      isLoaded ? "opacity-100" : "opacity-0"
+                    )}
+                    onLoad={() => setLoadedImages(prev => new Set([...prev, index]))}
+                    draggable={false}
+                  />
+
+                  {/* Reflection/Sheen Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent pointer-events-none mix-blend-overlay" />
+
+                  {/* Darkness overlay for depth effect (simple approximation) */}
+                  {/* Ideally we'd calculate this based on rotation, but simple gradient helps depth */}
+                  <div className="absolute inset-0 bg-black/10 pointer-events-none" />
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }

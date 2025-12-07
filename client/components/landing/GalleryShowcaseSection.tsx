@@ -22,18 +22,22 @@ const galleryImages = [
 
 export const GalleryShowcaseSection = memo(function GalleryShowcaseSection() {
   const deviceCapability = useDeviceCapability();
-  
-  // Reduce image count for low-end devices
+
+  // Reduce image count for low-end and mobile devices for better performance
   const optimizedImages = useMemo(() => {
+    if (deviceCapability?.isMobile) {
+      // Only 3 images for mobile to reduce lag
+      return galleryImages.slice(0, 3);
+    }
     if (deviceCapability?.isLowEnd) {
-      // Only load first 6 images for low-end devices
-      return galleryImages.slice(0, 6);
+      // 5 images for low-end devices
+      return galleryImages.slice(0, 5);
     }
     return galleryImages;
-  }, [deviceCapability?.isLowEnd]);
+  }, [deviceCapability?.isLowEnd, deviceCapability?.isMobile]);
 
   return (
-    <section 
+    <section
       className="section-padding section-container bg-background relative overflow-hidden"
       aria-label="Gallery showcase section"
     >
@@ -75,53 +79,50 @@ export const GalleryShowcaseSection = memo(function GalleryShowcaseSection() {
               e.currentTarget.style.boxShadow = "inset 0 0 40px rgba(255, 255, 255, 0.05), 0 0 60px rgba(217, 119, 6, 0.1)";
             }}
           >
-          <OrnamentFrame 
-            variant="jawa" 
-            className="bg-gradient-to-br from-white/5 to-white/2 border border-indonesian-gold/20 rounded-2xl backdrop-blur-sm overflow-hidden"
-          >
-            <div className="p-4 sm:p-8 lg:p-12">
-              <div 
-                className="w-full flex items-center justify-center relative"
-                style={{ 
-                  height: deviceCapability?.isMobile ? '400px' : deviceCapability?.isLowEnd ? '500px' : '600px',
-                  minHeight: deviceCapability?.isMobile ? '350px' : '400px',
-                }}
-              >
-                <ThreeDImageRing
-                  images={optimizedImages}
-                  width={deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 600 : 1200}
-                  perspective={deviceCapability?.isMobile ? 800 : deviceCapability?.isLowEnd ? 1200 : 2000}
-                  imageDistance={deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 500 : 900}
-                  initialRotation={180}
-                  animationDuration={deviceCapability?.isLowEnd ? 1.0 : 1.5}
-                  staggerDelay={deviceCapability?.isLowEnd ? 0.1 : 0.15}
-                  hoverOpacity={0.4}
-                  draggable={!deviceCapability?.isLowEnd}
-                  mobileBreakpoint={768}
-                  mobileScaleFactor={deviceCapability?.isMobile ? 0.4 : deviceCapability?.isLowEnd ? 0.5 : 0.7}
-                  inertiaPower={0.85}
-                  inertiaTimeConstant={350}
-                  inertiaVelocityMultiplier={18}
-                  backgroundColor="transparent"
-                  containerClassName="w-full h-full"
-                />
+            <OrnamentFrame
+              variant="jawa"
+              className="bg-gradient-to-br from-white/5 to-white/2 border border-indonesian-gold/20 rounded-2xl backdrop-blur-sm overflow-hidden"
+            >
+              <div className="p-4 sm:p-8 lg:p-12">
+                <div
+                  className="w-full flex items-center justify-center relative"
+                  style={{
+                    height: deviceCapability?.isMobile ? '400px' : deviceCapability?.isLowEnd ? '500px' : '600px',
+                    minHeight: deviceCapability?.isMobile ? '350px' : '400px',
+                  }}
+                >
+                  <ThreeDImageRing
+                    images={optimizedImages}
+                    width={deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 600 : 1200}
+                    perspective={deviceCapability?.isMobile ? 800 : deviceCapability?.isLowEnd ? 1200 : 2000}
+                    imageDistance={deviceCapability?.isMobile ? 300 : deviceCapability?.isLowEnd ? 500 : 900}
+                    initialRotation={180}
+                    animationDuration={deviceCapability?.isLowEnd ? 1.0 : 1.5}
+                    staggerDelay={deviceCapability?.isLowEnd ? 0.1 : 0.15}
+                    draggable={!deviceCapability?.isLowEnd}
+                    mobileBreakpoint={768}
+                    mobileScaleFactor={deviceCapability?.isMobile ? 0.4 : deviceCapability?.isLowEnd ? 0.5 : 0.7}
+                    backgroundColor="transparent"
+                    containerClassName="w-full h-full"
+                    autoRotate={!deviceCapability?.isLowEnd}
+                    autoRotateSpeed={0.2}
+                  />
+                </div>
+
+                {/* Instructions */}
+                <div className="mt-8 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    <span className="text-indonesian-gold/70">Drag atau scroll</span> untuk memutar galeri
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">
+                    Hover pada gambar untuk fokus
+                  </p>
+                </div>
               </div>
-              
-              {/* Instructions */}
-              <div className="mt-8 text-center">
-                <p className="text-sm text-muted-foreground mb-2">
-                  <span className="text-indonesian-gold/70">Drag atau scroll</span> untuk memutar galeri
-                </p>
-                <p className="text-xs text-muted-foreground/70">
-                  Hover pada gambar untuk fokus
-                </p>
-              </div>
-            </div>
-          </OrnamentFrame>
+            </OrnamentFrame>
           </div>
         </ScrollReveal>
       </div>
     </section>
   );
 });
-

@@ -2704,6 +2704,10 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const handleNavLinkClick = (link: MorphingNavigationLink) => {
     if (link.href === '/chat') {
       navigate('/chat');
+    } else if (link.href === '/culture') {
+      navigate('/culture');
+    } else if (link.href === '/creative') {
+      navigate('/creative');
     } else {
       toast.info('Coming Soon', {
         description: `${link.label} feature will be available soon`
