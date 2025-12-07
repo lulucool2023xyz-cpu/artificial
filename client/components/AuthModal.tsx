@@ -83,16 +83,13 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  // Close modal and redirect when authenticated
+  // Close modal when authenticated
+  // Don't auto-redirect - user should be able to browse landing while logged in
   useEffect(() => {
     if (isAuthenticated) {
       onClose();
-      // Redirect to chat after successful authentication
-      setTimeout(() => {
-        navigate("/chat", { replace: true });
-      }, 100);
     }
-  }, [isAuthenticated, onClose, navigate]);
+  }, [isAuthenticated, onClose]);
 
   // Prevent body scroll when modal is open and scroll to top
   useEffect(() => {
@@ -580,11 +577,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
               <button
                 onClick={async () => {
                   setIsSocialLoading("google");
-                  // Simulate OAuth flow - in production, this would open OAuth popup
-                  const result = await socialLogin("google", {
-                    email: `user${Math.random().toString(36).substring(7)}@gmail.com`,
-                    name: "Google User",
-                  });
+                  const result = await socialLogin("google");
                   setIsSocialLoading(null);
                   if (!result.success) {
                     setLoginErrors({ email: result.error || "Social login failed" });
@@ -629,11 +622,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
               <button
                 onClick={async () => {
                   setIsSocialLoading("facebook");
-                  // Simulate OAuth flow - in production, this would open OAuth popup
-                  const result = await socialLogin("facebook", {
-                    email: `user${Math.random().toString(36).substring(7)}@facebook.com`,
-                    name: "Facebook User",
-                  });
+                  const result = await socialLogin("facebook");
                   setIsSocialLoading(null);
                   if (!result.success) {
                     setLoginErrors({ email: result.error || "Social login failed" });
@@ -663,11 +652,7 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
               <button
                 onClick={async () => {
                   setIsSocialLoading("github");
-                  // Simulate OAuth flow - in production, this would open OAuth popup
-                  const result = await socialLogin("github", {
-                    email: `user${Math.random().toString(36).substring(7)}@github.com`,
-                    name: "GitHub User",
-                  });
+                  const result = await socialLogin("github");
                   setIsSocialLoading(null);
                   if (!result.success) {
                     setLoginErrors({ email: result.error || "Social login failed" });
