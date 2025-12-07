@@ -17,7 +17,7 @@ const AuthCallback = memo(function AuthCallback() {
 
     useEffect(() => {
         const processCallback = async () => {
-            // Check for error from OAuth provider
+            // Check for error from OAuth provider (can be in query or hash)
             const errorDescription = searchParams.get('error_description');
             const errorCode = searchParams.get('error');
 
@@ -27,31 +27,78 @@ const AuthCallback = memo(function AuthCallback() {
                 return;
             }
 
-            // Get authorization code
+            // First, check for authorization code in query params (PKCE flow)
             const code = searchParams.get('code');
-            if (!code) {
-                setError('No authorization code received');
-                setIsProcessing(false);
+            if (code) {
+                try {
+                    const result = await handleOAuthCallback(code);
+                    if (result.success) {
+                        setTimeout(() => {
+                            navigate('/chat', { replace: true });
+                        }, 100);
+                    } else {
+                        setError(result.error || 'Authentication failed');
+                        setIsProcessing(false);
+                    }
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Authentication failed');
+                    setIsProcessing(false);
+                }
                 return;
             }
 
-            // Exchange code for session
-            try {
-                const result = await handleOAuthCallback(code);
+            // Check for tokens in URL hash fragment (implicit flow)
+            // Supabase returns: #access_token=xxx&refresh_token=xxx&...
+            const hash = window.location.hash.substring(1); // Remove the '#'
+            if (hash) {
+                const hashParams = new URLSearchParams(hash);
+                const accessToken = hashParams.get('access_token');
+                const refreshToken = hashParams.get('refresh_token');
+                const expiresAt = hashParams.get('expires_at');
 
-                if (result.success) {
-                    // Small delay to ensure state is updated before navigation
-                    setTimeout(() => {
-                        navigate('/chat', { replace: true });
-                    }, 100);
-                } else {
-                    setError(result.error || 'Authentication failed');
+                // Check for error in hash
+                const hashError = hashParams.get('error_description') || hashParams.get('error');
+                if (hashError) {
+                    setError(hashError);
                     setIsProcessing(false);
+                    return;
                 }
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'Authentication failed');
-                setIsProcessing(false);
+
+                if (accessToken) {
+                    try {
+                        // Import and use the token directly
+                        const { storeAuthTokens, storeUser, authApi } = await import('@/lib/api');
+
+                        // Store the tokens
+                        const expiry = expiresAt ? parseInt(expiresAt) * 1000 : Date.now() + 3600 * 1000;
+                        storeAuthTokens(accessToken, refreshToken || '', expiry);
+
+                        // Get user info using the token
+                        const userResponse = await authApi.me();
+
+                        // Store user data
+                        const userData = {
+                            id: userResponse.user.id,
+                            email: userResponse.user.email,
+                            name: userResponse.user.name || userResponse.user.fullName || '',
+                            provider: 'google' as const,
+                        };
+                        storeUser(userData);
+
+                        // Force page reload to update auth state
+                        window.location.href = '/chat';
+                        return;
+                    } catch (err) {
+                        setError(err instanceof Error ? err.message : 'Failed to complete authentication');
+                        setIsProcessing(false);
+                        return;
+                    }
+                }
             }
+
+            // No code or token found
+            setError('No authorization code or token received');
+            setIsProcessing(false);
         };
 
         if (!isAuthenticated) {
