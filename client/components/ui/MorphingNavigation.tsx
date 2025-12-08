@@ -281,7 +281,7 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-xl",
                       "font-medium text-sm tracking-wide",
-                      "hover:bg-[#FFD700]/10 hover:text-[#FFD700]",
+                      "hover:bg-white/10 hover:text-white active:text-white",
                       "transition-all duration-200"
                     )}
                   >

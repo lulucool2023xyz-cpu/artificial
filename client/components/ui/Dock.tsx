@@ -158,7 +158,7 @@ function DockItem({
                         transition={{ duration: 0.2, ease: "easeOut" }}
                         className={`absolute -top-6 left-1/2 w-fit whitespace-pre rounded-md 
             border border-border px-2 py-0.5 text-xs text-foreground
-            ${isActivated ? 'bg-[#FFD700] text-black border-[#FFD700]' : 'bg-card'}`}
+            ${isActivated ? 'bg-white/95 text-black border-white/50' : 'bg-card'}`}
                         style={{ x: "-50%" }}
                         role="tooltip"
                     >

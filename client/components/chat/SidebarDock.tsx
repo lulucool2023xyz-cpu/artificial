@@ -15,7 +15,6 @@ import {
     Newspaper,
     History,
     Palette,
-    Settings,
     CreditCard,
     ChevronRight,
     LogOut,
@@ -185,7 +184,6 @@ export const SidebarDock = memo(function SidebarDock({
 
     const toolItems = [
         { icon: <Palette className="w-5 h-5" />, label: "Customize", path: "/chat/profile" },
-        { icon: <Settings className="w-5 h-5" />, label: "Settings", path: "/chat/settings" },
         { icon: <CreditCard className="w-5 h-5" />, label: "Subscription", path: "/chat/subscription" },
     ];
 
