@@ -622,19 +622,32 @@ const Culture = memo(function Culture() {
                 {/* Map Modal */}
                 <AnimatePresence>
                     {showMapModal && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowMapModal(false)} className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-8">
-                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-card rounded-2xl overflow-hidden max-w-4xl w-full">
-                                <div className="flex items-center justify-between p-4 border-b border-border">
-                                    <h3 className="text-lg font-semibold text-foreground">PETA INDONESIA</h3>
-                                    <button onClick={() => setShowMapModal(false)} className="p-2 rounded-lg hover:bg-secondary"><X className="w-5 h-5" /></button>
-                                </div>
-                                <div className="p-8">
-                                    <div className="bg-secondary rounded-xl h-96 flex items-center justify-center relative">
-                                        <p className="text-muted-foreground">🗺️ Peta Interaktif Indonesia</p>
-                                        <div className="absolute" style={{ left: "60%", top: "55%" }}>
-                                            <div className="w-8 h-8 rounded-full bg-[#C9A04F] flex items-center justify-center animate-pulse"><MapPin className="w-5 h-5 text-white" /></div>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowMapModal(false)} className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 md:p-8">
+                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-card rounded-2xl overflow-hidden max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+                                <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card/95 backdrop-blur-sm z-10">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-[#C9A04F]/20 flex items-center justify-center">
+                                            <Map className="w-5 h-5 text-[#C9A04F]" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-foreground">Peta Budaya Indonesia</h3>
+                                            <p className="text-xs text-muted-foreground">Klik provinsi untuk info budaya</p>
                                         </div>
                                     </div>
+                                    <button onClick={() => setShowMapModal(false)} className="p-2 rounded-lg hover:bg-secondary transition-colors"><X className="w-5 h-5" /></button>
+                                </div>
+                                <div className="p-4 md:p-6">
+                                    <IndonesiaMap
+                                        onProvinceClick={(id, name, culture, capital) => {
+                                            toast.info(`🗺️ ${name}`, {
+                                                description: `📍 Ibukota: ${capital}\n🎭 Budaya: ${culture}`,
+                                                duration: 5000,
+                                            });
+                                        }}
+                                        className="w-full"
+                                        showStats={true}
+                                        showLegend={true}
+                                    />
                                 </div>
                             </motion.div>
                         </motion.div>
