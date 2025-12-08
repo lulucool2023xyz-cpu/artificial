@@ -22,11 +22,14 @@ import {
     Copy,
     Mail,
     MessageCircle,
-    MapPin
+    MapPin,
+    FolderOpen,
+    Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AppLayout, type SidebarItem } from "@/components/layout/AppLayout";
+import IndonesiaMap from "@/components/ui/IndonesiaMap";
 
 // MOCK DATA - Batik Pekalongan analysis result
 const mockAnalysisResult = {
@@ -64,7 +67,7 @@ const mockAnalysisResult = {
     ]
 };
 
-type CultureCategory = "identify" | "story" | "craft" | "rituals" | "map" | "sources";
+type CultureCategory = "identify" | "story" | "craft" | "rituals" | "map" | "sources" | "projects";
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete" | "error";
 
 const Culture = memo(function Culture() {
@@ -90,6 +93,7 @@ const Culture = memo(function Culture() {
         { id: "rituals", label: "Ritual & Tradisi", icon: <Users className="w-5 h-5" />, active: category === "rituals" },
         { id: "map", label: "Peta Indonesia", icon: <Map className="w-5 h-5" />, active: category === "map" },
         { id: "sources", label: "Sumber & Referensi", icon: <FileSearch className="w-5 h-5" />, active: category === "sources" },
+        { id: "projects", label: "My Projects", icon: <FolderOpen className="w-5 h-5" />, active: category === "projects", badge: "5" },
     ];
 
     const simulateAnalysis = useCallback(() => {
@@ -136,6 +140,9 @@ const Culture = memo(function Culture() {
             sidebarItems={sidebarItems}
             activeSidebarItem={category}
             onSidebarItemClick={(id) => setCategory(id as CultureCategory)}
+            showNewButton
+            newButtonLabel="New Project"
+            onNewButtonClick={() => toast.info("Buat proyek budaya baru")}
         >
             <div className="min-h-full">
                 {category === "identify" && (
@@ -312,19 +319,302 @@ const Culture = memo(function Culture() {
                     </>
                 )}
 
-                {/* Other categories - Placeholder */}
-                {category !== "identify" && (
-                    <div className="flex items-center justify-center min-h-[calc(100vh-120px)]">
-                        <div className="text-center">
-                            <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-6">
-                                {category === "story" && <BookOpen className="w-10 h-10 text-muted-foreground" />}
-                                {category === "craft" && <Palette className="w-10 h-10 text-muted-foreground" />}
-                                {category === "rituals" && <Users className="w-10 h-10 text-muted-foreground" />}
-                                {category === "map" && <Map className="w-10 h-10 text-muted-foreground" />}
-                                {category === "sources" && <FileSearch className="w-10 h-10 text-muted-foreground" />}
+                {/* STORY - Cerita Budaya */}
+                {category === "story" && (
+                    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 rounded-full bg-[#C9A04F]/20 flex items-center justify-center mx-auto mb-4">
+                                <BookOpen className="w-8 h-8 text-[#C9A04F]" />
                             </div>
-                            <h2 className="text-xl font-bold text-foreground mb-2">{sidebarItems.find(i => i.id === category)?.label}</h2>
-                            <p className="text-muted-foreground">Fitur ini akan segera hadir</p>
+                            <h2 className="text-2xl font-bold text-foreground mb-2">Cerita Budaya Indonesia</h2>
+                            <p className="text-muted-foreground">Kisah legendaris dari berbagai daerah Nusantara</p>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {[
+                                { title: "Legenda Roro Jonggrang", region: "Jawa Tengah", desc: "Kisah cinta tragis yang melahirkan Candi Prambanan", icon: "🏛️" },
+                                { title: "Malin Kundang", region: "Sumatera Barat", desc: "Anak durhaka yang dikutuk menjadi batu", icon: "⛵" },
+                                { title: "Sangkuriang", region: "Jawa Barat", desc: "Asal usul Gunung Tangkuban Perahu", icon: "🌋" },
+                                { title: "Timun Mas", region: "Jawa Tengah", desc: "Gadis pemberani melawan raksasa jahat", icon: "🥒" },
+                                { title: "Si Pitung", region: "DKI Jakarta", desc: "Pahlawan Betawi pembela rakyat kecil", icon: "🥊" },
+                                { title: "Lutung Kasarung", region: "Jawa Barat", desc: "Pangeran kera dan putri Purbasari", icon: "🐒" },
+                            ].map((story, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="bg-card border border-border rounded-xl p-5 cursor-pointer hover:border-[#C9A04F]/50 hover:shadow-lg transition-all group"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className="text-3xl">{story.icon}</div>
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold text-foreground group-hover:text-[#C9A04F] transition-colors">{story.title}</h3>
+                                            <p className="text-xs text-[#C9A04F] mb-2">{story.region}</p>
+                                            <p className="text-sm text-muted-foreground">{story.desc}</p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+
+                        <div className="text-center mt-8">
+                            <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#C9A04F] to-[#B8860B] text-white font-semibold">
+                                Jelajahi Lebih Banyak Cerita
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* CRAFT - Kerajinan & Asal */}
+                {category === "craft" && (
+                    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 rounded-full bg-[#C9A04F]/20 flex items-center justify-center mx-auto mb-4">
+                                <Palette className="w-8 h-8 text-[#C9A04F]" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-foreground mb-2">Kerajinan Tradisional</h2>
+                            <p className="text-muted-foreground">Warisan seni dan kerajinan dari seluruh Nusantara</p>
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-3">
+                            {[
+                                { name: "Batik", origin: "Jawa", image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop", desc: "Kain dengan motif malam" },
+                                { name: "Wayang Kulit", origin: "Jawa", image: "https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=300&h=200&fit=crop", desc: "Seni pertunjukan boneka" },
+                                { name: "Songket", origin: "Sumatera", image: "https://images.unsplash.com/photo-1533669955142-6a73332af4db?w=300&h=200&fit=crop", desc: "Tenun benang emas" },
+                                { name: "Ukiran Jepara", origin: "Jawa Tengah", image: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=300&h=200&fit=crop", desc: "Seni ukir kayu" },
+                                { name: "Tenun Ikat", origin: "NTT", image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=300&h=200&fit=crop", desc: "Kain tenun tradisional" },
+                                { name: "Keramik", origin: "Kasongan", image: "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=300&h=200&fit=crop", desc: "Seni gerabah Yogya" },
+                            ].map((craft, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="bg-card border border-border rounded-xl overflow-hidden group cursor-pointer hover:shadow-xl transition-all"
+                                >
+                                    <div className="h-40 overflow-hidden">
+                                        <img src={craft.image} alt={craft.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                    </div>
+                                    <div className="p-4">
+                                        <h3 className="font-semibold text-foreground">{craft.name}</h3>
+                                        <p className="text-xs text-[#C9A04F] mb-1">{craft.origin}</p>
+                                        <p className="text-sm text-muted-foreground">{craft.desc}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* RITUALS - Ritual & Tradisi */}
+                {category === "rituals" && (
+                    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 rounded-full bg-[#C9A04F]/20 flex items-center justify-center mx-auto mb-4">
+                                <Users className="w-8 h-8 text-[#C9A04F]" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-foreground mb-2">Ritual & Tradisi</h2>
+                            <p className="text-muted-foreground">Upacara adat dan tradisi yang masih lestari</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {[
+                                { name: "Sekaten", region: "Yogyakarta & Solo", time: "Maulid Nabi", desc: "Perayaan kelahiran Nabi Muhammad dengan gamelan pusaka", type: "Keagamaan" },
+                                { name: "Kasada", region: "Bromo, Jawa Timur", time: "14 Kasada", desc: "Persembahan hasil bumi ke kawah Gunung Bromo oleh Suku Tengger", type: "Adat" },
+                                { name: "Ngaben", region: "Bali", time: "Sesuai weton", desc: "Upacara kremasi untuk mengembalikan roh ke alam semesta", type: "Kematian" },
+                                { name: "Rambu Solo", region: "Toraja", time: "Sesuai adat", desc: "Upacara pemakaman dengan korban kerbau", type: "Kematian" },
+                                { name: "Tabuik", region: "Pariaman", time: "1-10 Muharram", desc: "Peringatan wafatnya cucu Nabi, Husain bin Ali", type: "Keagamaan" },
+                                { name: "Erau", region: "Kutai, Kalimantan", time: "Tahunan", desc: "Festival adat Kerajaan Kutai Kartanegara", type: "Kerajaan" },
+                            ].map((ritual, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 hover:border-[#C9A04F]/50 transition-all cursor-pointer"
+                                >
+                                    <div className="w-12 h-12 rounded-full bg-[#C9A04F]/20 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-[#C9A04F] font-bold">{i + 1}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-semibold text-foreground">{ritual.name}</h3>
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-[#C9A04F]/20 text-[#C9A04F]">{ritual.type}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mb-1">{ritual.region} • {ritual.time}</p>
+                                        <p className="text-sm text-muted-foreground">{ritual.desc}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* MAP - Peta Indonesia */}
+                {category === "map" && (
+                    <div className="p-6 space-y-6">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 rounded-full bg-[#C9A04F]/20 flex items-center justify-center mx-auto mb-4">
+                                <Map className="w-8 h-8 text-[#C9A04F]" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-foreground mb-2">Peta Budaya Indonesia</h2>
+                            <p className="text-muted-foreground">Jelajahi kekayaan budaya dari 38 provinsi Nusantara</p>
+                        </div>
+
+                        <div className="bg-card border border-border rounded-2xl p-6">
+                            {/* Interactive Indonesia Map SVG */}
+                            <IndonesiaMap
+                                onProvinceClick={(id, name, culture, capital) => {
+                                    toast.info(`🗺️ ${name}`, {
+                                        description: `Ibukota: ${capital}\nBudaya: ${culture}`,
+                                        duration: 5000,
+                                    });
+                                }}
+                                className="w-full"
+                            />
+                            <p className="text-center text-xs text-muted-foreground mt-4">
+                                🖱️ Arahkan kursor ke wilayah untuk melihat nama provinsi, klik untuk info budaya lengkap
+                            </p>
+                        </div>
+
+                        {/* Cultural Highlights */}
+                        <div className="mt-8">
+                            <h3 className="text-lg font-semibold text-foreground mb-4 text-center">Sorotan Budaya Nusantara</h3>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                {[
+                                    { 
+                                        region: "Warisan UNESCO", 
+                                        items: ["Batik", "Wayang", "Angklung", "Tari Saman"],
+                                        icon: "🏛️",
+                                        color: "from-[#C9A04F]/20 to-[#B8860B]/10 border-[#C9A04F]/30"
+                                    },
+                                    { 
+                                        region: "Tarian Tradisional", 
+                                        items: ["Tari Kecak", "Tari Pendet", "Tari Piring", "Tari Jaipong"],
+                                        icon: "💃",
+                                        color: "from-purple-500/20 to-purple-600/10 border-purple-500/30"
+                                    },
+                                    { 
+                                        region: "Kerajinan Khas", 
+                                        items: ["Songket", "Tenun Ikat", "Ukiran Jepara", "Keris"],
+                                        icon: "🎨",
+                                        color: "from-cyan-500/20 to-cyan-600/10 border-cyan-500/30"
+                                    },
+                                ].map((item, i) => (
+                                    <motion.div 
+                                        key={i}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className={`bg-gradient-to-br ${item.color} border rounded-xl p-4`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span className="text-2xl">{item.icon}</span>
+                                            <h4 className="font-semibold text-foreground">{item.region}</h4>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {item.items.map((name, idx) => (
+                                                <span key={idx} className="px-2 py-1 bg-background/50 rounded-full text-xs text-muted-foreground">
+                                                    {name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* SOURCES - Sumber & Referensi */}
+                {category === "sources" && (
+                    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 rounded-full bg-[#C9A04F]/20 flex items-center justify-center mx-auto mb-4">
+                                <FileSearch className="w-8 h-8 text-[#C9A04F]" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-foreground mb-2">Sumber & Referensi</h2>
+                            <p className="text-muted-foreground">Referensi terpercaya untuk pembelajaran budaya</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {[
+                                { title: "Kementerian Pendidikan dan Kebudayaan", url: "kemdikbud.go.id", type: "Pemerintah", desc: "Sumber resmi informasi kebudayaan Indonesia" },
+                                { title: "Indonesia.go.id", url: "indonesia.go.id", type: "Portal", desc: "Portal resmi Republik Indonesia" },
+                                { title: "Perpustakaan Nasional RI", url: "perpusnas.go.id", type: "Perpustakaan", desc: "Koleksi digital naskah kuno dan dokumen sejarah" },
+                                { title: "Museum Nasional Indonesia", url: "museumnasional.or.id", type: "Museum", desc: "Koleksi artefak dan benda bersejarah" },
+                                { title: "Arsip Nasional RI", url: "anri.go.id", type: "Arsip", desc: "Dokumen sejarah dan arsip negara" },
+                                { title: "UNESCO Indonesia", url: "unesco.or.id", type: "Internasional", desc: "Warisan budaya dunia dari Indonesia" },
+                            ].map((source, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 hover:border-[#C9A04F]/50 transition-all cursor-pointer group"
+                                >
+                                    <div className="w-12 h-12 rounded-xl bg-[#C9A04F]/20 flex items-center justify-center flex-shrink-0">
+                                        <FileSearch className="w-6 h-6 text-[#C9A04F]" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-semibold text-foreground group-hover:text-[#C9A04F] transition-colors">{source.title}</h3>
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{source.type}</span>
+                                        </div>
+                                        <p className="text-xs text-[#C9A04F] mb-1">{source.url}</p>
+                                        <p className="text-sm text-muted-foreground">{source.desc}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* PROJECTS - My Projects */}
+                {category === "projects" && (
+                    <div className="p-6 space-y-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold text-foreground">My Projects</h2>
+                                <p className="text-muted-foreground">Proyek identifikasi budaya yang tersimpan</p>
+                            </div>
+                            <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C9A04F] to-[#B8860B] text-white font-semibold flex items-center gap-2">
+                                <Plus className="w-4 h-4" />
+                                New Project
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {[
+                                { name: "Batik Pekalongan", date: "2 hari lalu", status: "Selesai", image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop" },
+                                { name: "Wayang Kulit Purwa", date: "5 hari lalu", status: "Selesai", image: "https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=300&h=200&fit=crop" },
+                                { name: "Keris Pusaka", date: "1 minggu lalu", status: "Draft", image: "https://images.unsplash.com/photo-1533669955142-6a73332af4db?w=300&h=200&fit=crop" },
+                                { name: "Songket Palembang", date: "2 minggu lalu", status: "Selesai", image: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=300&h=200&fit=crop" },
+                                { name: "Tarian Saman", date: "3 minggu lalu", status: "Selesai", image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=300&h=200&fit=crop" },
+                            ].map((project, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="bg-card border border-border rounded-xl overflow-hidden group cursor-pointer hover:shadow-xl transition-all"
+                                >
+                                    <div className="h-32 overflow-hidden relative">
+                                        <img src={project.image} alt={project.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                        <div className={cn(
+                                            "absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium",
+                                            project.status === "Selesai" ? "bg-green-500/90 text-white" : "bg-yellow-500/90 text-black"
+                                        )}>
+                                            {project.status}
+                                        </div>
+                                    </div>
+                                    <div className="p-4">
+                                        <h3 className="font-semibold text-foreground mb-1">{project.name}</h3>
+                                        <p className="text-xs text-muted-foreground">{project.date}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
                         </div>
                     </div>
                 )}

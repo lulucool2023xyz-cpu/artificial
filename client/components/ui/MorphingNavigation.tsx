@@ -124,10 +124,24 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
     e.preventDefault();
     setIsMenuOpen(false);
     onLinkClick?.(link);
-    if (enableSmoothTransitions) {
-      const target = document.querySelector(link.href);
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Check if href is a route path (starts with /) or an anchor (starts with #)
+    if (link.href.startsWith('/')) {
+      // It's a route path - just navigate via onLinkClick callback
+      // The parent component should handle navigation
+      return;
+    }
+
+    if (enableSmoothTransitions && link.href.startsWith('#')) {
+      // It's an anchor selector - use smooth scroll
+      try {
+        const target = document.querySelector(link.href);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      } catch (err) {
+        // Invalid selector, ignore
+        console.warn('Invalid selector:', link.href);
       }
     }
   };

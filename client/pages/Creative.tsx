@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { AppLayout, type SidebarItem } from "@/components/layout/AppLayout";
 import { StudioChatInput, StudioEmptyState } from "@/components/creative/StudioChatInput";
+import { getAccessToken, API_BASE_URL } from "@/lib/api";
 
 // MOCK DATA
 const mockTemplates = [
@@ -67,21 +68,29 @@ type AudioMode = "record" | "tts" | "upload";
 
 const Creative = memo(function Creative() {
     const [studio, setStudio] = useState<StudioType>("image");
-    // New image generation mode (text-to-image, image-to-image, upscale)
-    const [imageGenerationMode, setImageGenerationMode] = useState("text-to-image");
-    const [selectedModel, setSelectedModel] = useState("imagen-3");
+
+    // Image Studio states
+    const [imageCategory, setImageCategory] = useState("text-to-image");
+    const [imageModel, setImageModel] = useState("imagen-4.0-generate-001");
     const [aspectRatio, setAspectRatio] = useState("1:1");
+    const [outputCount, setOutputCount] = useState(2);
     const [prompt, setPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedVariants, setGeneratedVariants] = useState<typeof mockVariants>([]);
-    const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+    const [generatedImages, setGeneratedImages] = useState<{ url: string; timestamp: Date }[]>([]);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    // Video Studio states
+    const [videoCategory, setVideoCategory] = useState("text-to-video");
+    const [videoModel, setVideoModel] = useState("veo-3.1-fast-generate-preview");
+    const [videoPrompt, setVideoPrompt] = useState("");
+    const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+
+    // Audio Studio states
     const [audioMode, setAudioMode] = useState<AudioMode>("tts");
     const [selectedVoice, setSelectedVoice] = useState("formal-male");
     const [ttsText, setTtsText] = useState("");
     const [isRecording, setIsRecording] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [videoPrompt, setVideoPrompt] = useState("");
-    const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
     const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
     // Sidebar items for Creative
@@ -101,57 +110,220 @@ const Creative = memo(function Creative() {
             return;
         }
         setIsGenerating(true);
-        toast.info("Sedang membuat gambar...", { duration: 2000 });
+
+        // Get token from sessionStorage via api.ts helper
+        const token = getAccessToken();
+        const authHeaders = token
+            ? { 'Authorization': `Bearer ${token}` }
+            : {};
 
         try {
-            const response = await fetch('/api/v2/image/generate', {
+            let endpoint = '';
+            let body: Record<string, any> = {};
+
+            switch (imageCategory) {
+                case 'text-to-image':
+                    // v2 API - Text to Image
+                    endpoint = '/api/v2/image/generate';
+                    body = {
+                        prompt,
+                        model: imageModel,
+                        aspectRatio,
+                        numberOfImages: outputCount,
+                    };
+                    toast.info(`Membuat gambar dengan ${imageModel}...`, { duration: 3000 });
+                    break;
+
+                case 'customize':
+                    // v1 API - Customize Image
+                    endpoint = '/api/v1/image/image-customize';
+                    body = {
+                        prompt,
+                        referenceImages: [], // TODO: Add uploaded image references
+                        sampleCount: outputCount,
+                    };
+                    toast.info("Mengkustomisasi gambar...", { duration: 3000 });
+                    break;
+
+                case 'image-to-image':
+                    // v1 API - Image Edit
+                    endpoint = '/api/v1/image/image-edit';
+                    body = {
+                        prompt,
+                        referenceImages: [], // TODO: Add uploaded image references
+                        editMode: 'EDIT_MODE_DEFAULT',
+                        sampleCount: outputCount,
+                    };
+                    toast.info("Mengubah gambar...", { duration: 3000 });
+                    break;
+
+                case 'upscale':
+                    // v1 API - Image Upscale
+                    endpoint = '/api/v1/image/image-upscale';
+                    body = {
+                        image: '', // TODO: Add uploaded image base64
+                        prompt: prompt || 'Upscale the image',
+                        upscaleFactor: 'x2',
+                    };
+                    toast.info("Mengupscale gambar...", { duration: 3000 });
+                    break;
+
+                default:
+                    endpoint = '/api/v2/image/generate';
+                    body = { prompt, model: imageModel, aspectRatio, numberOfImages: outputCount };
+            }
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // Add auth token if available
-                    ...(localStorage.getItem('token') ? {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    } : {})
+                    ...authHeaders
                 },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    aspectRatio: aspectRatio,
-                    numberOfImages: 4,
-                }),
+                body: JSON.stringify(body),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Gagal generate gambar');
+                throw new Error(data.message || data.error?.message || 'Gagal generate gambar');
             }
 
-            // Capture URL from response - handles both url and base64Data fallback
+            // Check response format and show appropriate message
             if (data.images && data.images.length > 0) {
-                const variants = data.images.map((img: { url?: string; base64Data?: string; mimeType: string }, index: number) => ({
-                    id: `generated-${index}`,
-                    // Use URL if available, otherwise create data URL from base64
-                    thumbnail: img.url || (img.base64Data ? `data:${img.mimeType};base64,${img.base64Data}` : mockVariants[index % mockVariants.length].thumbnail),
+                // Save images to state for display
+                const newImages = data.images.map((img: any) => ({
+                    url: img.url || img.gcsUrl || img,
+                    timestamp: new Date()
                 }));
-                setGeneratedVariants(variants);
-                setSelectedVariant(variants[0].id);
-                toast.success(`${variants.length} gambar berhasil dibuat`);
+                setGeneratedImages(prev => [...newImages, ...prev]);
+                setSelectedImage(newImages[0].url);
+                toast.success(`${data.images.length} gambar berhasil dibuat!`);
+                console.log('Generated images:', data.images);
+            } else if (data.url || data.gcsUrl) {
+                // Single image response
+                const imageUrl = data.url || data.gcsUrl;
+                setGeneratedImages(prev => [{ url: imageUrl, timestamp: new Date() }, ...prev]);
+                setSelectedImage(imageUrl);
+                toast.success("Gambar berhasil dibuat!");
+            } else if (data.success) {
+                toast.success("Gambar berhasil dibuat!");
             } else {
-                // Fallback to mock if no images returned
-                setGeneratedVariants(mockVariants);
-                setSelectedVariant(mockVariants[0].id);
-                toast.info("Menggunakan placeholder images");
+                toast.success("Proses selesai!");
             }
+
+            setPrompt(""); // Clear prompt after success
         } catch (error) {
             console.error('Image generation error:', error);
             toast.error(error instanceof Error ? error.message : 'Gagal generate gambar');
-            // Fallback to mock data on error
-            setGeneratedVariants(mockVariants);
-            setSelectedVariant(mockVariants[0].id);
         } finally {
             setIsGenerating(false);
         }
-    }, [prompt, imageGenerationMode, aspectRatio]);
+    }, [prompt, imageModel, aspectRatio, outputCount, imageCategory]);
+
+    // Video Generation Handler
+    const handleVideoGenerate = useCallback(async () => {
+        if (!videoPrompt.trim()) {
+            toast.error("Masukkan prompt terlebih dahulu");
+            return;
+        }
+        setIsGeneratingVideo(true);
+
+        // Get token from sessionStorage via api.ts helper
+        const token = getAccessToken();
+        const authHeaders = token
+            ? { 'Authorization': `Bearer ${token}` }
+            : {};
+
+        try {
+            let endpoint = '';
+            let body: Record<string, any> = {};
+
+            // Video only supports 16:9 and 9:16 (NOT 1:1)
+            const videoAspectRatio = ['16:9', '9:16'].includes(aspectRatio) ? aspectRatio : '16:9';
+
+            switch (videoCategory) {
+                case 'text-to-video':
+                    // v2 API - Text to Video
+                    endpoint = '/api/v2/video/generate';
+                    body = {
+                        prompt: videoPrompt,
+                        model: videoModel,
+                        aspectRatio: videoAspectRatio,
+                        durationSeconds: 8,
+                    };
+                    toast.info(`Generating video with ${videoModel}...`, { duration: 5000 });
+                    break;
+
+                case 'frames-to-video':
+                    // v2 API - Frame Interpolation
+                    endpoint = '/api/v2/video/interpolate';
+                    body = {
+                        prompt: videoPrompt,
+                        firstFrame: { bytesBase64Encoded: '' }, // TODO: Add uploaded frame
+                        lastFrame: { bytesBase64Encoded: '' }, // TODO: Add uploaded frame
+                        durationSeconds: 8,
+                        aspectRatio: videoAspectRatio,
+                    };
+                    toast.info("Interpolating frames to video...", { duration: 5000 });
+                    break;
+
+                case 'ingredients-to-video':
+                    // v2 API - Video with References
+                    endpoint = '/api/v2/video/with-references';
+                    body = {
+                        prompt: videoPrompt,
+                        referenceImages: [], // TODO: Add uploaded references
+                        durationSeconds: 8,
+                        aspectRatio: videoAspectRatio,
+                    };
+                    toast.info("Creating video from ingredients...", { duration: 5000 });
+                    break;
+
+                default:
+                    endpoint = '/api/v2/video/generate';
+                    body = {
+                        prompt: videoPrompt,
+                        model: videoModel,
+                        aspectRatio: videoAspectRatio,
+                        durationSeconds: 8,
+                    };
+            }
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeaders
+                },
+                body: JSON.stringify(body),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || data.error?.message || 'Gagal generate video');
+            }
+
+            // Check response format
+            if (data.url) {
+                toast.success("Video berhasil dibuat!");
+                console.log('Generated video URL:', data.url);
+            } else if (data.operationId) {
+                // Async operation - video is still generating
+                toast.success("Video sedang diproses. Cek status nanti.");
+                console.log('Video operation ID:', data.operationId);
+            } else {
+                toast.success("Video generation started!");
+            }
+
+            setVideoPrompt(""); // Clear prompt after success
+        } catch (error) {
+            console.error('Video generation error:', error);
+            toast.error(error instanceof Error ? error.message : 'Gagal generate video');
+        } finally {
+            setIsGeneratingVideo(false);
+        }
+    }, [videoPrompt, videoModel, aspectRatio, videoCategory]);
 
     const handleSaveToLibrary = () => toast.success("Disimpan ke Library");
     const handleDownload = () => toast.success("Mengunduh gambar...");
@@ -176,20 +348,81 @@ const Creative = memo(function Creative() {
                 {/* IMAGE STUDIO */}
                 {studio === "image" && (
                     <div className="flex-1 flex flex-col min-h-0">
-
                         {/* Main Area with Floating Chat Input */}
                         <div className="flex-1 flex flex-col min-h-0 relative">
-                            {/* Canvas */}
-                            <div className="flex-1 bg-black flex items-center justify-center overflow-auto">
-                                {generatedVariants.length > 0 && selectedVariant ? (
-                                    <img src={generatedVariants.find(v => v.id === selectedVariant)?.thumbnail} alt="Generated" className="max-w-full max-h-full object-contain rounded-xl" />
-                                ) : (
+                            {/* Canvas - Theme aware */}
+                            <div className="flex-1 bg-secondary/30 dark:bg-black/80 flex items-center justify-center overflow-auto p-4">
+                                {generatedImages.length === 0 ? (
                                     <StudioEmptyState type="image" />
+                                ) : (
+                                    <div className="w-full h-full flex flex-col gap-4">
+                                        {/* Main Selected Image */}
+                                        {selectedImage && (
+                                            <div className="flex-1 flex items-center justify-center min-h-0">
+                                                <motion.img
+                                                    key={selectedImage}
+                                                    initial={{ opacity: 0, scale: 0.95 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    src={selectedImage}
+                                                    alt="Generated"
+                                                    className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+                                                    onError={(e) => {
+                                                        console.error('Image load error:', selectedImage);
+                                                        (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23374151" width="100" height="100"/><text fill="%23C9A04F" x="50" y="55" text-anchor="middle" font-size="12">Image</text></svg>';
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                        {/* Thumbnail Gallery */}
+                                        {generatedImages.length > 1 && (
+                                            <div className="flex gap-2 overflow-x-auto pb-2 px-2">
+                                                {generatedImages.slice(0, 10).map((img, idx) => (
+                                                    <motion.div
+                                                        key={idx}
+                                                        initial={{ opacity: 0, y: 20 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ delay: idx * 0.1 }}
+                                                        onClick={() => setSelectedImage(img.url)}
+                                                        className={cn(
+                                                            "flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all",
+                                                            selectedImage === img.url ? "border-[#C9A04F] ring-2 ring-[#C9A04F]/50" : "border-transparent hover:border-[#C9A04F]/50"
+                                                        )}
+                                                    >
+                                                        <img src={img.url} alt={`Generated ${idx + 1}`} className="w-full h-full object-cover" />
+                                                    </motion.div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {/* Actions */}
+                                        {selectedImage && (
+                                            <div className="flex justify-center gap-2 pb-16">
+                                                <a
+                                                    href={selectedImage}
+                                                    download
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="px-4 py-2 rounded-lg bg-[#C9A04F] text-white font-medium flex items-center gap-2 hover:bg-[#B8860B] transition-colors"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                    Download
+                                                </a>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(selectedImage);
+                                                        toast.success("URL disalin!");
+                                                    }}
+                                                    className="px-4 py-2 rounded-lg border border-[#C9A04F] text-[#C9A04F] font-medium hover:bg-[#C9A04F]/10 transition-colors"
+                                                >
+                                                    Copy URL
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 
-                            {/* Floating Chat Input at Bottom */}
-                            <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-full max-w-full px-3 sm:px-6 z-10">
+                            {/* Floating Chat Input at Bottom - overflow-visible for dropdowns */}
+                            <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-full max-w-full px-3 sm:px-6 z-10 overflow-visible">
                                 <StudioChatInput
                                     type="image"
                                     placeholder="Describe the image you're imagining..."
@@ -199,75 +432,43 @@ const Creative = memo(function Creative() {
                                     isLoading={isGenerating}
                                     aspectRatio={aspectRatio}
                                     onAspectRatioChange={setAspectRatio}
-                                    imageMode={imageGenerationMode}
-                                    onImageModeChange={setImageGenerationMode}
-                                    selectedModel={selectedModel}
-                                    onModelChange={setSelectedModel}
+                                    imageCategory={imageCategory}
+                                    onImageCategoryChange={setImageCategory}
+                                    imageModel={imageModel}
+                                    onImageModelChange={setImageModel}
+                                    outputCount={outputCount}
+                                    onOutputCountChange={setOutputCount}
                                 />
                             </div>
-
-                            {/* Side Actions (when generated) */}
-                            {generatedVariants.length > 0 && (
-                                <div className="absolute top-4 right-4 flex flex-col gap-2">
-                                    <button onClick={handleSaveToLibrary} className="p-3 rounded-xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors">
-                                        <Save className="w-5 h-5 text-white" />
-                                    </button>
-                                    <button onClick={handleDownload} className="p-3 rounded-xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors">
-                                        <Download className="w-5 h-5 text-white" />
-                                    </button>
-                                </div>
-                            )}
                         </div>
-
-                        {/* Variant Thumbnails */}
-                        {generatedVariants.length > 0 && (
-                            <div className="p-4 border-t border-border flex items-center gap-4">
-                                <span className="text-xs text-muted-foreground">Variants:</span>
-                                {generatedVariants.map((v) => (
-                                    <div key={v.id} onClick={() => setSelectedVariant(v.id)} className={cn("w-20 h-20 rounded-lg overflow-hidden cursor-pointer border-2", selectedVariant === v.id ? "border-[#C9A04F]" : "border-transparent hover:border-border")}>
-                                        <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 )}
 
                 {/* VIDEO STUDIO */}
                 {studio === "video" && (
                     <div className="flex-1 flex flex-col relative">
-                        {/* Video Preview */}
-                        <div className="flex-1 bg-black flex items-center justify-center overflow-auto">
-                            <div className="w-full max-w-3xl p-8">
-                                <div className="aspect-video bg-card/50 rounded-2xl flex items-center justify-center border border-white/10">
-                                    <div className="text-center">
-                                        <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-                                            <Play className="w-10 h-10 text-muted-foreground" />
-                                        </div>
-                                        <h3 className="text-lg font-semibold text-white mb-2">Video Studio</h3>
-                                        <p className="text-sm text-muted-foreground">Describe a video to generate</p>
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Video Preview - Theme aware */}
+                        <div className="flex-1 bg-secondary/30 dark:bg-black/80 flex items-center justify-center overflow-auto">
+                            <StudioEmptyState type="video" />
                         </div>
 
-                        {/* Floating Chat Input */}
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full px-6 z-10">
+                        {/* Floating Chat Input - overflow-visible for dropdowns */}
+                        <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-full px-3 sm:px-6 z-10 overflow-visible">
                             <StudioChatInput
                                 type="video"
                                 placeholder="Generate a video with text..."
                                 value={videoPrompt}
                                 onChange={setVideoPrompt}
-                                onSubmit={() => {
-                                    if (!videoPrompt.trim()) return;
-                                    setIsGeneratingVideo(true);
-                                    toast.info("Generating video...", { duration: 2000 });
-                                    setTimeout(() => {
-                                        setIsGeneratingVideo(false);
-                                        toast.success("Video generated!");
-                                    }, 3000);
-                                }}
+                                onSubmit={handleVideoGenerate}
                                 isLoading={isGeneratingVideo}
+                                videoCategory={videoCategory}
+                                onVideoCategoryChange={setVideoCategory}
+                                videoModel={videoModel}
+                                onVideoModelChange={setVideoModel}
+                                aspectRatio={aspectRatio}
+                                onAspectRatioChange={setAspectRatio}
+                                outputCount={outputCount}
+                                onOutputCountChange={setOutputCount}
                             />
                         </div>
                     </div>
@@ -276,29 +477,13 @@ const Creative = memo(function Creative() {
                 {/* AUDIO STUDIO */}
                 {studio === "audio" && (
                     <div className="flex-1 flex flex-col relative">
-                        {/* Audio Visualizer */}
-                        <div className="flex-1 bg-black flex items-center justify-center overflow-auto">
-                            <div className="max-w-3xl mx-auto w-full p-8">
-                                <div className="bg-card/50 rounded-2xl p-8 mb-6 border border-white/10">
-                                    <div className="h-32 flex items-center justify-center gap-1">
-                                        {[...Array(50)].map((_, i) => <div key={i} className="w-1 bg-[#C9A04F] rounded-full" style={{ height: `${Math.random() * 80 + 20}%`, opacity: 0.5 + Math.random() * 0.5 }} />)}
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-center gap-4">
-                                    <button className="p-2 hover:bg-secondary rounded"><SkipBack className="w-5 h-5 text-foreground" /></button>
-                                    <button className="p-3 bg-[#C9A04F] rounded-full"><Play className="w-6 h-6 text-white ml-0.5" /></button>
-                                    <button className="p-2 hover:bg-secondary rounded"><Square className="w-5 h-5 text-foreground" /></button>
-                                    {audioMode === "record" && (
-                                        <button onClick={() => setIsRecording(!isRecording)} className={cn("ml-4 px-4 py-2 rounded-lg flex items-center gap-2", isRecording ? "bg-red-500 animate-pulse" : "bg-red-500/20")}>
-                                            <div className="w-3 h-3 rounded-full bg-red-500" /><span className="text-white text-sm">{isRecording ? "Recording..." : "REC"}</span>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                        {/* Audio Visualizer - Theme aware */}
+                        <div className="flex-1 bg-secondary/30 dark:bg-black/80 flex items-center justify-center overflow-auto">
+                            <StudioEmptyState type="audio" />
                         </div>
 
-                        {/* Floating Chat Input */}
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full px-6 z-10">
+                        {/* Floating Chat Input - overflow-visible for dropdowns */}
+                        <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-full px-3 sm:px-6 z-10 overflow-visible">
                             <StudioChatInput
                                 type="audio"
                                 placeholder="Enter text to convert to speech..."
@@ -310,7 +495,8 @@ const Creative = memo(function Creative() {
                                     toast.info("Generating audio...", { duration: 2000 });
                                     setTimeout(() => {
                                         setIsGeneratingAudio(false);
-                                        toast.success("Audio generated!");
+                                        toast.success("Audio generated! Lihat hasil di chat.");
+                                        setTtsText("");
                                     }, 2000);
                                 }}
                                 isLoading={isGeneratingAudio}
