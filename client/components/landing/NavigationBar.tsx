@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut, User, Settings, LayoutDashboard, CreditCard } from 'lucide-react';
 import { ToggleTheme } from '@/components/ui/ToggleTheme';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
@@ -34,6 +34,7 @@ const menuStructure: MenuItem[] = [
       { label: 'Playground', path: '/product/playground' },
     ],
   },
+  { label: 'Pricing', path: '/chat/subscription' },
   {
     label: 'Resources',
     path: '/resources',
@@ -354,6 +355,20 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                         Dashboard
                       </Link>
                       <Link
+                        to="/chat/subscription"
+                        onClick={() => setOpenUserMenu(false)}
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-2 text-sm transition-colors cursor-pointer",
+                          theme === 'dark'
+                            ? "text-gray-300 hover:text-white hover:bg-white/5"
+                            : "text-gray-700 hover:text-black hover:bg-gray-100"
+                        )}
+                        style={{ pointerEvents: 'auto' }}
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        Subscription
+                      </Link>
+                      <Link
                         to="/company/about"
                         onClick={() => setOpenUserMenu(false)}
                         className={cn(
@@ -631,6 +646,21 @@ export function NavigationBar({ onGetStartedClick }: NavigationBarProps) {
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   <span>Dashboard</span>
+                </Link>
+                <Link
+                  to="/chat/subscription"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-2 w-full text-left px-4 py-3 rounded-lg transition-all duration-300 cursor-pointer",
+                    theme === 'dark'
+                      ? "text-gray-300 hover:text-white hover:bg-white/5"
+                      : "text-gray-700 hover:text-black hover:bg-gray-100"
+                  )}
+                  role="menuitem"
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>Subscription</span>
                 </Link>
                 <button
                   onClick={() => {

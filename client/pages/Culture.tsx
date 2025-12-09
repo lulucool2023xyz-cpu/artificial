@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useRef } from "react";
+import { memo, useState, useCallback, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Sparkles,
@@ -24,7 +24,8 @@ import {
     MessageCircle,
     MapPin,
     FolderOpen,
-    Plus
+    Plus,
+    Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -464,15 +465,26 @@ const Culture = memo(function Culture() {
 
                         <div className="bg-card border border-border rounded-2xl p-6">
                             {/* Interactive Indonesia Map SVG */}
-                            <IndonesiaMap
-                                onProvinceClick={(id, name, culture, capital) => {
-                                    toast.info(`🗺️ ${name}`, {
-                                        description: `Ibukota: ${capital}\nBudaya: ${culture}`,
-                                        duration: 5000,
-                                    });
-                                }}
-                                className="w-full"
-                            />
+                            <div className="w-full min-h-[400px]">
+                                <Suspense fallback={
+                                    <div className="flex flex-col items-center justify-center h-[400px] gap-3">
+                                        <Loader2 className="w-8 h-8 animate-spin text-[#C9A04F]" />
+                                        <p className="text-sm text-muted-foreground">Memuat peta Indonesia...</p>
+                                    </div>
+                                }>
+                                    <IndonesiaMap
+                                        onProvinceClick={(id, name, culture, capital) => {
+                                            toast.info(`🗺️ ${name}`, {
+                                                description: `📍 Ibukota: ${capital}\n🎭 Budaya: ${culture}`,
+                                                duration: 5000,
+                                            });
+                                        }}
+                                        className="w-full"
+                                        showStats={true}
+                                        showLegend={true}
+                                    />
+                                </Suspense>
+                            </div>
                             <p className="text-center text-xs text-muted-foreground mt-4">
                                 🖱️ Arahkan kursor ke wilayah untuk melihat nama provinsi, klik untuk info budaya lengkap
                             </p>
@@ -637,17 +649,24 @@ const Culture = memo(function Culture() {
                                     <button onClick={() => setShowMapModal(false)} className="p-2 rounded-lg hover:bg-secondary transition-colors"><X className="w-5 h-5" /></button>
                                 </div>
                                 <div className="p-4 md:p-6">
-                                    <IndonesiaMap
-                                        onProvinceClick={(id, name, culture, capital) => {
-                                            toast.info(`🗺️ ${name}`, {
-                                                description: `📍 Ibukota: ${capital}\n🎭 Budaya: ${culture}`,
-                                                duration: 5000,
-                                            });
-                                        }}
-                                        className="w-full"
-                                        showStats={true}
-                                        showLegend={true}
-                                    />
+                                    <Suspense fallback={
+                                        <div className="flex flex-col items-center justify-center h-[400px] gap-3">
+                                            <Loader2 className="w-8 h-8 animate-spin text-[#C9A04F]" />
+                                            <p className="text-sm text-muted-foreground">Memuat peta Indonesia...</p>
+                                        </div>
+                                    }>
+                                        <IndonesiaMap
+                                            onProvinceClick={(id, name, culture, capital) => {
+                                                toast.info(`🗺️ ${name}`, {
+                                                    description: `📍 Ibukota: ${capital}\n🎭 Budaya: ${culture}`,
+                                                    duration: 5000,
+                                                });
+                                            }}
+                                            className="w-full"
+                                            showStats={true}
+                                            showLegend={true}
+                                        />
+                                    </Suspense>
                                 </div>
                             </motion.div>
                         </motion.div>

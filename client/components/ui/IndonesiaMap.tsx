@@ -97,6 +97,17 @@ const idMappings: Record<string, string> = {
     "ID-GO": "ID-GO", "ID-SR": "ID-SR", "ID-MA": "ID-MA", "ID-MU": "ID-MU",
     "ID-PB": "ID-PB", "ID-PA": "ID-PA", "ID-PD": "ID-PD", "ID-PT": "ID-PT",
     "ID-PP": "ID-PP", "ID-PS": "ID-PS",
+    // SVG specific codes (from id.svg file)
+    "IDKU": "ID-KU", "IDNT": "ID-NT", "IDKB": "ID-KB", "IDJI": "ID-JI",
+    "IDPA": "ID-PA", "IDAC": "ID-AC", "IDSU": "ID-SU", "IDSB": "ID-SB",
+    "IDRI": "ID-RI", "IDJA": "ID-JA", "IDSS": "ID-SS", "IDBE": "ID-BE",
+    "IDLA": "ID-LA", "IDBB": "ID-BB", "IDKR": "ID-KR", "IDJK": "ID-JK",
+    "IDJB": "ID-JB", "IDJT": "ID-JT", "IDYO": "ID-YO", "IDBT": "ID-BT",
+    "IDBA": "ID-BA", "IDNB": "ID-NB", "IDKT": "ID-KT", "IDKS": "ID-KS",
+    "IDKI": "ID-KI", "IDSA": "ID-SA", "IDST": "ID-ST", "IDSN": "ID-SN",
+    "IDSG": "ID-SG", "IDGO": "ID-GO", "IDSR": "ID-SR", "IDMA": "ID-MA",
+    "IDMU": "ID-MU", "IDPB": "ID-PB", "IDPD": "ID-PD", "IDPT": "ID-PT",
+    "IDPP": "ID-PP", "IDPS": "ID-PS",
     // Alternative codes (without hyphen)
     "IDAC": "ID-AC", "IDSU": "ID-SU", "IDSB": "ID-SB", "IDRI": "ID-RI",
     "IDJA": "ID-JA", "IDSS": "ID-SS", "IDBE": "ID-BE", "IDLA": "ID-LA",
@@ -165,50 +176,67 @@ const IndonesiaMap = memo(function IndonesiaMap({
 
     // Style an SVG element for interactivity
     const styleElement = useCallback((element: SVGElement, id: string, name: string) => {
-        // Apply base styles
-        element.style.fill = '#374151';
-        element.style.stroke = '#C9A04F';
-        element.style.strokeWidth = '0.5';
-        element.style.cursor = 'pointer';
-        element.style.transition = 'all 0.2s ease';
-
-        // Add event listeners
-        element.addEventListener('mouseenter', (e) => {
-            element.style.fill = '#C9A04F';
-            element.style.strokeWidth = '1.5';
-            element.style.filter = 'drop-shadow(0 0 6px rgba(201, 160, 79, 0.6))';
-
+        try {
+            // Check if this element corresponds to a known province
             const provinceInfo = getProvinceData(id) || getProvinceData(name);
-            if (provinceInfo) {
-                setHoveredProvince(provinceInfo.id);
+            
+            if (!provinceInfo) {
+                // Skip elements without province data
+                return;
             }
 
-            const mouseEvent = e as MouseEvent;
-            setMousePos({ x: mouseEvent.clientX, y: mouseEvent.clientY });
-        });
+            // Apply base styles
+            element.style.fill = selectedProvince === provinceInfo.id ? '#C9A04F' : '#374151';
+            element.style.stroke = '#C9A04F';
+            element.style.strokeWidth = '0.5';
+            element.style.cursor = 'pointer';
+            element.style.transition = 'all 0.2s ease';
 
-        element.addEventListener('mousemove', (e) => {
-            const mouseEvent = e as MouseEvent;
-            setMousePos({ x: mouseEvent.clientX, y: mouseEvent.clientY });
-        });
-
-        element.addEventListener('mouseleave', () => {
-            const normalizedId = normalizeId(id) || normalizeId(name);
-            if (normalizedId !== selectedProvince) {
-                element.style.fill = '#374151';
-                element.style.strokeWidth = '0.5';
-                element.style.filter = 'none';
+            // Highlight if selected
+            if (selectedProvince === provinceInfo.id) {
+                element.style.filter = 'brightness(1.3) drop-shadow(0 0 8px rgba(201, 160, 79, 0.5))';
             }
-            setHoveredProvince(null);
-        });
 
-        element.addEventListener('click', () => {
-            const provinceInfo = getProvinceData(id) || getProvinceData(name);
-            if (provinceInfo) {
-                setSelectedProvince(provinceInfo.id);
-                onProvinceClick?.(provinceInfo.id, provinceInfo.name, provinceInfo.culture, provinceInfo.capital);
-            }
-        });
+            // Add event listeners
+            element.addEventListener('mouseenter', (e) => {
+                element.style.fill = '#C9A04F';
+                element.style.strokeWidth = '1.5';
+                element.style.filter = 'drop-shadow(0 0 6px rgba(201, 160, 79, 0.6))';
+
+                const provinceInfo = getProvinceData(id) || getProvinceData(name);
+                if (provinceInfo) {
+                    setHoveredProvince(provinceInfo.id);
+                }
+
+                const mouseEvent = e as MouseEvent;
+                setMousePos({ x: mouseEvent.clientX, y: mouseEvent.clientY });
+            });
+
+            element.addEventListener('mousemove', (e) => {
+                const mouseEvent = e as MouseEvent;
+                setMousePos({ x: mouseEvent.clientX, y: mouseEvent.clientY });
+            });
+
+            element.addEventListener('mouseleave', () => {
+                const normalizedId = normalizeId(id) || normalizeId(name);
+                if (normalizedId !== selectedProvince) {
+                    element.style.fill = '#374151';
+                    element.style.strokeWidth = '0.5';
+                    element.style.filter = 'none';
+                }
+                setHoveredProvince(null);
+            });
+
+            element.addEventListener('click', () => {
+                const provinceInfo = getProvinceData(id) || getProvinceData(name);
+                if (provinceInfo) {
+                    setSelectedProvince(provinceInfo.id);
+                    onProvinceClick?.(provinceInfo.id, provinceInfo.name, provinceInfo.culture, provinceInfo.capital);
+                }
+            });
+        } catch (error) {
+            console.error('Error styling element:', { id, name, error });
+        }
     }, [getProvinceData, normalizeId, onProvinceClick, selectedProvince]);
 
     // Load and enhance SVG
@@ -218,11 +246,15 @@ const IndonesiaMap = memo(function IndonesiaMap({
             setError(null);
             
             try {
+                console.log('Loading Indonesia map from /peta/id.svg');
                 const response = await fetch('/peta/id.svg');
+                
                 if (!response.ok) {
-                    throw new Error(`Failed to load map: ${response.status}`);
+                    throw new Error(`Failed to load map: HTTP ${response.status}`);
                 }
+                
                 const svgText = await response.text();
+                console.log('SVG loaded, length:', svgText.length);
 
                 if (containerRef.current) {
                     // Create a container for the SVG
@@ -233,10 +265,12 @@ const IndonesiaMap = memo(function IndonesiaMap({
                     // Check for parse errors
                     const parseError = svgDoc.querySelector('parsererror');
                     if (parseError) {
+                        console.error('SVG parse error:', parseError.textContent);
                         throw new Error('Invalid SVG format');
                     }
 
                     if (svgElement) {
+                        console.log('SVG element found, styling...');
                         // Style the SVG
                         svgElement.style.width = '100%';
                         svgElement.style.height = 'auto';
@@ -248,18 +282,27 @@ const IndonesiaMap = memo(function IndonesiaMap({
                         const polygons = svgElement.querySelectorAll('polygon');
                         const groups = svgElement.querySelectorAll('g[id]');
 
+                        console.log(`Found ${paths.length} paths, ${polygons.length} polygons, ${groups.length} groups`);
+
                         // Process paths
+                        let styledCount = 0;
                         paths.forEach((path) => {
                             const id = path.getAttribute('id') || path.getAttribute('data-id') || '';
                             const name = path.getAttribute('name') || path.getAttribute('data-name') || path.getAttribute('title') || '';
-                            styleElement(path as SVGElement, id, name);
+                            if (id || name) {
+                                styleElement(path as SVGElement, id, name);
+                                styledCount++;
+                            }
                         });
 
                         // Process polygons
                         polygons.forEach((polygon) => {
                             const id = polygon.getAttribute('id') || polygon.getAttribute('data-id') || '';
                             const name = polygon.getAttribute('name') || polygon.getAttribute('data-name') || polygon.getAttribute('title') || '';
-                            styleElement(polygon as SVGElement, id, name);
+                            if (id || name) {
+                                styleElement(polygon as SVGElement, id, name);
+                                styledCount++;
+                            }
                         });
 
                         // Process groups (if they represent provinces)
@@ -273,8 +316,11 @@ const IndonesiaMap = memo(function IndonesiaMap({
                                 childPaths.forEach((child) => {
                                     styleElement(child as SVGElement, id, name);
                                 });
+                                styledCount++;
                             }
                         });
+
+                        console.log(`Styled ${styledCount} interactive elements`);
 
                         // Clear and insert SVG
                         const svgContainer = containerRef.current.querySelector('.svg-container');
@@ -282,16 +328,22 @@ const IndonesiaMap = memo(function IndonesiaMap({
                             svgContainer.innerHTML = '';
                             svgContainer.appendChild(svgElement);
                             svgRef.current = svgElement as unknown as SVGSVGElement;
+                            console.log('SVG successfully mounted to DOM');
+                        } else {
+                            console.error('SVG container not found');
+                            throw new Error('SVG container not found in DOM');
                         }
                         
+                        console.log('Map loaded successfully!');
                         setIsLoading(false);
                     } else {
+                        console.error('SVG element not found in parsed document');
                         throw new Error('No SVG element found');
                     }
                 }
             } catch (err) {
-                console.error('Error loading SVG:', err);
-                setError(err instanceof Error ? err.message : 'Gagal memuat peta');
+                console.error('Error loading map:', err);
+                setError(err instanceof Error ? err.message : 'Gagal memuat peta Indonesia');
                 setIsLoading(false);
             }
         };

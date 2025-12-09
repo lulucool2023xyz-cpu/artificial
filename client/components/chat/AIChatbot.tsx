@@ -2894,11 +2894,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
 
           {/* Subscription - Mobile Responsive */}
           <button
-            onClick={() => {
-              toast.info('Subscription', {
-                description: 'Subscription feature coming soon'
-              });
-            }}
+            onClick={() => navigate('/chat/subscription')}
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
@@ -3012,11 +3008,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => {
-                  toast.info('Subscription', {
-                    description: 'Subscription feature coming soon'
-                  });
-                }}
+                onClick={() => navigate('/chat/subscription')}
                 className="cursor-pointer"
               >
                 <div className="flex items-center gap-2 w-full text-sm">
