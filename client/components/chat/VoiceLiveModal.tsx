@@ -1,7 +1,7 @@
 import { memo, useState, useEffect, useRef } from 'react';
-import { X, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { X, Mic, MicOff, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AnimatedBubbleParticles } from '@/components/ui/AnimatedBubbleParticles';
+import { motion } from 'framer-motion';
 
 interface VoiceLiveModalProps {
     isOpen: boolean;
@@ -13,20 +13,20 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
     onClose
 }: VoiceLiveModalProps) {
     const [isListening, setIsListening] = useState(false);
-    const [isSpeaking, setIsSpeaking] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [audioLevel, setAudioLevel] = useState(0);
     const recognitionRef = useRef<any>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
 
-    // Generate random wave bars
-    const waveBarCount = 40;
+    // Generate elegant wave bars - fewer, more refined
+    const waveBarCount = 24;
     const generateWaveBars = () => {
         return Array.from({ length: waveBarCount }, (_, i) => ({
-            delay: i * 0.02,
-            baseHeight: 20 + Math.random() * 30
+            delay: i * 0.03,
+            baseHeight: 8 + Math.random() * 16
         }));
     };
     const [waveBars] = useState(generateWaveBars);
@@ -40,8 +40,15 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
             }
+            if (audioContextRef.current) {
+                audioContextRef.current.close();
+            }
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
             setIsListening(false);
             setTranscript('');
+            setAudioLevel(0);
         }
     }, [isOpen]);
 
@@ -49,13 +56,14 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
         try {
             // Request microphone access
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            streamRef.current = stream;
 
             // Setup audio analysis for visualization
             audioContextRef.current = new AudioContext();
             analyserRef.current = audioContextRef.current.createAnalyser();
             const source = audioContextRef.current.createMediaStreamSource(stream);
             source.connect(analyserRef.current);
-            analyserRef.current.fftSize = 256;
+            analyserRef.current.fftSize = 128;
 
             const updateAudioLevel = () => {
                 if (analyserRef.current) {
@@ -110,141 +118,173 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
         if (audioContextRef.current) {
             audioContextRef.current.close();
         }
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+        }
         setIsListening(false);
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop - elegant blur */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/70 backdrop-blur-xl"
                 onClick={onClose}
             />
 
-            {/* Modal Container */}
-            <div className="relative w-full max-w-lg mx-4 h-[500px] sm:h-[550px] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                {/* Animated Background Particles */}
-                <div className="absolute inset-0">
-                    <AnimatedBubbleParticles
-                        particleColor="#FFD700"
-                        particleSize={25}
-                        spawnInterval={150}
-                        enableGooEffect={true}
-                        blurStrength={12}
+            {/* Modal Container - Clean, minimal design */}
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="relative w-full max-w-md rounded-3xl overflow-hidden bg-gradient-to-b from-[#0A0A0A] to-[#111111] border border-white/10 shadow-2xl"
+            >
+                {/* Subtle gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#FFD700]/5 via-transparent to-[#FFD700]/3" />
+                
+                {/* Elegant ring glow when listening */}
+                {isListening && (
+                    <motion.div
+                        className="absolute inset-0 rounded-3xl"
+                        animate={{
+                            boxShadow: [
+                                'inset 0 0 60px rgba(255, 215, 0, 0.1)',
+                                'inset 0 0 80px rgba(255, 215, 0, 0.15)',
+                                'inset 0 0 60px rgba(255, 215, 0, 0.1)'
+                            ]
+                        }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     />
-                </div>
-
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
+                )}
 
                 {/* Content */}
-                <div className="relative z-10 h-full flex flex-col">
+                <div className="relative z-10 flex flex-col">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-4 border-b border-white/10">
+                    <div className="flex items-center justify-between p-5 border-b border-white/5">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-[#FFD700] flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] flex items-center justify-center shadow-lg shadow-[#FFD700]/20">
                                 <Volume2 className="w-5 h-5 text-black" />
                             </div>
                             <div>
-                                <h2 className="font-semibold text-white">Voice Chat Live</h2>
-                                <p className="text-xs text-gray-400">Bicara dengan AI secara realtime</p>
+                                <h2 className="font-semibold text-white text-lg">Voice Chat</h2>
+                                <p className="text-xs text-gray-500">AI Assistant</p>
                             </div>
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                            className="p-2.5 rounded-xl hover:bg-white/5 transition-colors text-gray-400 hover:text-white"
                         >
-                            <X className="w-5 h-5 text-white" />
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
 
                     {/* Voice Visualization Area */}
-                    <div className="flex-1 flex flex-col items-center justify-center p-6">
-                        {/* Audio Wave Visualization */}
-                        <div className="flex items-center justify-center gap-[2px] h-32 mb-6">
+                    <div className="flex flex-col items-center justify-center py-12 px-6">
+                        {/* Elegant Waveform */}
+                        <div className="flex items-center justify-center gap-1 h-20 mb-8">
                             {waveBars.map((bar, i) => (
-                                <div
+                                <motion.div
                                     key={i}
                                     className={cn(
-                                        "w-1 rounded-full transition-all duration-100",
+                                        "w-1 rounded-full transition-colors duration-300",
                                         isListening
-                                            ? "bg-gradient-to-t from-[#FFD700] to-[#FFA500]"
-                                            : "bg-white/20"
+                                            ? "bg-gradient-to-t from-[#FFD700]/80 to-[#FFD700]"
+                                            : "bg-white/10"
                                     )}
-                                    style={{
+                                    animate={{
                                         height: isListening
-                                            ? `${bar.baseHeight * (0.5 + audioLevel * 1.5)}px`
-                                            : `${bar.baseHeight * 0.3}px`,
-                                        animationDelay: `${bar.delay}s`,
-                                        animation: isListening
-                                            ? `voiceWaveModal 0.4s ease-in-out ${bar.delay}s infinite alternate`
-                                            : 'none',
-                                        transform: `scaleY(${isListening ? 1 + audioLevel : 0.5})`
+                                            ? `${bar.baseHeight * (0.8 + audioLevel * 2.5)}px`
+                                            : `${bar.baseHeight * 0.4}px`,
+                                        opacity: isListening ? 0.7 + audioLevel * 0.3 : 0.3
+                                    }}
+                                    transition={{
+                                        duration: 0.1,
+                                        ease: "easeOut"
                                     }}
                                 />
                             ))}
                         </div>
 
-                        {/* Transcript Display */}
-                        <div className="w-full max-h-24 overflow-y-auto mb-6">
-                            {transcript ? (
-                                <p className="text-center text-white text-lg font-medium animate-fade-in">
-                                    "{transcript}"
-                                </p>
+                        {/* Main Action Button - Refined design */}
+                        <motion.button
+                            onClick={isListening ? stopListening : startListening}
+                            className={cn(
+                                "relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300",
+                                isListening
+                                    ? "bg-gradient-to-br from-red-500 to-red-600"
+                                    : "bg-gradient-to-br from-[#FFD700] to-[#FFA500]"
+                            )}
+                            whileTap={{ scale: 0.95 }}
+                            whileHover={{ scale: 1.05 }}
+                        >
+                            {/* Subtle glow ring */}
+                            <motion.div
+                                className={cn(
+                                    "absolute inset-0 rounded-full",
+                                    isListening ? "bg-red-500/20" : "bg-[#FFD700]/20"
+                                )}
+                                animate={isListening ? {
+                                    scale: [1, 1.3, 1],
+                                    opacity: [0.5, 0, 0.5]
+                                } : {}}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+                            />
+                            {isListening ? (
+                                <MicOff className="w-9 h-9 text-white relative z-10" />
                             ) : (
-                                <p className="text-center text-gray-400 text-sm">
-                                    {isListening ? 'Mendengarkan...' : 'Tekan untuk mulai berbicara'}
+                                <Mic className="w-9 h-9 text-black relative z-10" />
+                            )}
+                        </motion.button>
+
+                        {/* Status Text */}
+                        <p className="mt-6 text-sm text-gray-400">
+                            {isListening ? 'Tap untuk berhenti' : 'Tap untuk mulai'}
+                        </p>
+
+                        {/* Transcript Display */}
+                        <div className="w-full min-h-[60px] mt-6 px-4">
+                            {transcript ? (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="text-center"
+                                >
+                                    <p className="text-white text-base leading-relaxed">
+                                        "{transcript}"
+                                    </p>
+                                </motion.div>
+                            ) : (
+                                <p className="text-center text-gray-600 text-sm">
+                                    {isListening ? 'Mendengarkan...' : 'Transkripsi akan muncul di sini'}
                                 </p>
                             )}
                         </div>
-
-                        {/* Main Action Button */}
-                        <button
-                            onClick={isListening ? stopListening : startListening}
-                            className={cn(
-                                "w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300",
-                                isListening
-                                    ? "bg-red-500 hover:bg-red-600 shadow-[0_0_30px_rgba(239,68,68,0.5)] animate-pulse"
-                                    : "bg-[#FFD700] hover:bg-[#FFD700]/90 shadow-[0_0_30px_rgba(255,215,0,0.5)]"
-                            )}
-                        >
-                            {isListening ? (
-                                <MicOff className="w-8 h-8 text-white" />
-                            ) : (
-                                <Mic className="w-8 h-8 text-black" />
-                            )}
-                        </button>
-
-                        <p className="mt-4 text-sm text-gray-400">
-                            {isListening ? 'Klik untuk berhenti' : 'Klik untuk mulai'}
-                        </p>
                     </div>
 
-                    {/* Status Bar */}
-                    <div className="p-4 border-t border-white/10 bg-black/30">
-                        <div className="flex items-center justify-center gap-3">
-                            <div className={cn(
-                                "w-2 h-2 rounded-full",
-                                isListening ? "bg-green-500 animate-pulse" : "bg-gray-500"
-                            )} />
-                            <span className="text-sm text-gray-300">
-                                {isListening ? 'Aktif - Merekam suara...' : 'Tidak aktif'}
+                    {/* Status Bar - Minimal */}
+                    <div className="px-6 py-4 border-t border-white/5 bg-black/20">
+                        <div className="flex items-center justify-center gap-2">
+                            <motion.div
+                                className={cn(
+                                    "w-2 h-2 rounded-full",
+                                    isListening ? "bg-green-500" : "bg-gray-600"
+                                )}
+                                animate={isListening ? { scale: [1, 1.2, 1] } : {}}
+                                transition={{ duration: 1, repeat: Infinity }}
+                            />
+                            <span className="text-xs text-gray-500">
+                                {isListening ? 'Merekam' : 'Siap'}
                             </span>
                         </div>
                     </div>
                 </div>
-
-                {/* CSS for wave animation */}
-                <style dangerouslySetInnerHTML={{
-                    __html: `
-          @keyframes voiceWaveModal {
-            0% { transform: scaleY(0.5); }
-            100% { transform: scaleY(1.2); }
-          }
-        `}} />
-            </div>
+            </motion.div>
         </div>
     );
 });

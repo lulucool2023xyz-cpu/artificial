@@ -22,7 +22,12 @@ import {
     HelpCircle,
     LogOut,
     Clock,
-    Plus
+    Plus,
+    Globe,
+    Download,
+    ExternalLink,
+    Crown,
+    Info
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -119,8 +124,8 @@ export function AppLayout({
         if (!sidebarToggleRef.current) {
             sidebarToggleRef.current = true;
             // On mobile, always open sidebar fully expanded (not minimized)
-            if (isMobileView && !sidebarOpen) {
-                setSidebarMinimized(false);
+            if (isMobileView) {
+                setSidebarMinimized(false); // Always expanded on mobile
             }
             setSidebarOpen(!sidebarOpen);
             setTimeout(() => { sidebarToggleRef.current = false; }, 300);
@@ -311,17 +316,91 @@ export function AppLayout({
                                 )}
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" side="top" sideOffset={8} className="w-[17rem] bg-background/95 backdrop-blur-xl border border-border/50 shadow-lg" style={{ zIndex: 9999 }}>
-                            <DropdownMenuLabel className="text-muted-foreground pt-1 px-2 pb-2 truncate">{profile.email}</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => { navigate('/chat/settings'); if (isMobileView) setSidebarOpen(false); }} className="cursor-pointer">
+                        <DropdownMenuContent 
+                            align="end" 
+                            side="top" 
+                            sideOffset={8} 
+                            className="w-[17rem] bg-[#0A0A0A] dark:bg-[#0A0A0A] border border-white/10 shadow-xl" 
+                            style={{ zIndex: 9999 }}
+                        >
+                            <DropdownMenuLabel className="text-gray-400 pt-1 px-2 pb-2 truncate">{profile.email}</DropdownMenuLabel>
+                            
+                            <DropdownMenuItem 
+                                onClick={() => { navigate('/chat/settings'); if (isMobileView) setSidebarOpen(false); }} 
+                                className="cursor-pointer text-gray-300 hover:text-white hover:bg-white/5 focus:bg-white/5 focus:text-white"
+                            >
                                 <Settings className="w-4 h-4 mr-2" /> Settings
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { navigate('/chat/history'); if (isMobileView) setSidebarOpen(false); }} className="cursor-pointer">
+                            
+                            <DropdownMenuItem 
+                                onClick={() => { navigate('/chat/subscription'); if (isMobileView) setSidebarOpen(false); }} 
+                                className="cursor-pointer text-gray-300 hover:text-white hover:bg-white/5 focus:bg-white/5 focus:text-white"
+                            >
+                                <CreditCard className="w-4 h-4 mr-2" /> Subscription
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem 
+                                onClick={() => { navigate('/chat/history'); if (isMobileView) setSidebarOpen(false); }} 
+                                className="cursor-pointer text-gray-300 hover:text-white hover:bg-white/5 focus:bg-white/5 focus:text-white"
+                            >
                                 <History className="w-4 h-4 mr-2" /> History
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
-                                <LogOut className="w-4 h-4 mr-2" /> Logout
+                            
+                            <DropdownMenuSeparator className="bg-white/10" />
+                            
+                            {/* Language submenu - simplified as single item */}
+                            <DropdownMenuItem 
+                                className="cursor-pointer text-gray-300 hover:text-white hover:bg-white/5 focus:bg-white/5 focus:text-white flex items-center justify-between"
+                            >
+                                <div className="flex items-center">
+                                    <Globe className="w-4 h-4 mr-2" /> Language
+                                </div>
+                                <span className="text-xs text-gray-500">ID</span>
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem 
+                                onClick={() => { toast.info("Bantuan tersedia di resources/support"); navigate('/resources/support'); if (isMobileView) setSidebarOpen(false); }} 
+                                className="cursor-pointer text-gray-300 hover:text-white hover:bg-white/5 focus:bg-white/5 focus:text-white"
+                            >
+                                <HelpCircle className="w-4 h-4 mr-2" /> Get help
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator className="bg-white/10" />
+                            
+                            <DropdownMenuItem 
+                                onClick={() => { navigate('/chat/subscription'); if (isMobileView) setSidebarOpen(false); }} 
+                                className="cursor-pointer text-gray-300 hover:text-white hover:bg-white/5 focus:bg-white/5 focus:text-white"
+                            >
+                                <Crown className="w-4 h-4 mr-2" /> Upgrade plan
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem 
+                                onClick={() => {
+                                    window.open('/aplikasi/app-release.apk', '_blank');
+                                    toast.success("Download dimulai...");
+                                }} 
+                                className="cursor-pointer text-gray-300 hover:text-white hover:bg-white/5 focus:bg-white/5 focus:text-white"
+                            >
+                                <Download className="w-4 h-4 mr-2" /> Download OrenAX for Android
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem 
+                                onClick={() => { navigate('/company/about'); if (isMobileView) setSidebarOpen(false); }} 
+                                className="cursor-pointer text-gray-300 hover:text-white hover:bg-white/5 focus:bg-white/5 focus:text-white flex items-center justify-between"
+                            >
+                                <div className="flex items-center">
+                                    <Info className="w-4 h-4 mr-2" /> Learn more
+                                </div>
+                                <ExternalLink className="w-3 h-3 text-gray-500" />
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator className="bg-white/10" />
+                            
+                            <DropdownMenuItem 
+                                onClick={handleLogout} 
+                                className="cursor-pointer text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-300"
+                            >
+                                <LogOut className="w-4 h-4 mr-2" /> Log out
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

@@ -1,450 +1,403 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Check, X, Sparkles, Zap, Crown, ArrowRight, Shield, Clock, Users, ArrowLeft, Home, MessageSquare } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { memo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { 
+    Crown, 
+    Zap, 
+    Check, 
+    X, 
+    Sparkles, 
+    Brain, 
+    Image, 
+    Video, 
+    Mic, 
+    Globe,
+    ArrowLeft,
+    Star,
+    Shield,
+    Clock,
+    Users,
+    Rocket
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
 
-interface PricingTier {
-  id: string;
-  name: string;
-  price: number;
-  period: string;
-  description: string;
-  icon: React.ReactNode;
-  popular?: boolean;
-  features: {
-    included: string[];
-    excluded: string[];
-  };
-  limits: {
-    messages: string;
-    models: string[];
-    storage: string;
-    support: string;
-  };
-  color: string;
-  gradient: string;
+interface PlanFeature {
+    text: string;
+    included: boolean;
+    highlight?: boolean;
 }
 
-const pricingTiers: PricingTier[] = [
-  {
-    id: "free",
-    name: "Free",
-    price: 0,
-    period: "forever",
-    description: "Perfect for getting started with AI",
-    icon: <Sparkles className="w-6 h-6" />,
-    color: "text-blue-500",
-    gradient: "from-blue-500/20 to-purple-500/20",
-    features: {
-      included: [
-        "100 messages per month",
-        "Access to basic AI models",
-        "Text generation",
-        "Community support",
-        "Basic chat history",
-      ],
-      excluded: [
-        "Advanced AI models",
-        "Image generation",
-        "Priority support",
-        "Custom AI training",
-        "API access",
-      ],
+interface Plan {
+    id: string;
+    name: string;
+    price: string;
+    period: string;
+    description: string;
+    icon: React.ReactNode;
+    features: PlanFeature[];
+    popular?: boolean;
+    buttonText: string;
+    gradient: string;
+}
+
+const plans: Plan[] = [
+    {
+        id: "free",
+        name: "Free",
+        price: "Rp 0",
+        period: "selamanya",
+        description: "Untuk memulai eksplorasi AI",
+        icon: <Zap className="w-6 h-6" />,
+        buttonText: "Paket Aktif",
+        gradient: "from-gray-600 to-gray-700",
+        features: [
+            { text: "50 pesan/hari", included: true },
+            { text: "Gemini 2.0 Flash", included: true },
+            { text: "3 gambar/hari", included: true },
+            { text: "Voice chat basic", included: true },
+            { text: "Riwayat 7 hari", included: true },
+            { text: "Gemini 2.5 Pro", included: false },
+            { text: "Video generation", included: false },
+            { text: "Priority support", included: false },
+        ]
     },
-    limits: {
-      messages: "100/month",
-      models: ["GPT-3.5", "Claude Instant"],
-      storage: "1 GB",
-      support: "Community",
+    {
+        id: "pro",
+        name: "Pro",
+        price: "Rp 99.000",
+        period: "/bulan",
+        description: "Untuk kreator dan profesional",
+        icon: <Crown className="w-6 h-6" />,
+        buttonText: "Upgrade ke Pro",
+        popular: true,
+        gradient: "from-[#FFD700] to-[#FFA500]",
+        features: [
+            { text: "Unlimited pesan", included: true, highlight: true },
+            { text: "Semua model AI", included: true, highlight: true },
+            { text: "50 gambar/hari", included: true },
+            { text: "10 video/hari", included: true },
+            { text: "Voice chat unlimited", included: true },
+            { text: "Deep thinking mode", included: true, highlight: true },
+            { text: "Riwayat unlimited", included: true },
+            { text: "Priority support", included: true },
+        ]
     },
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 19,
-    period: "month",
-    description: "For power users and professionals",
-    icon: <Zap className="w-6 h-6" />,
-    popular: true,
-    color: "text-purple-500",
-    gradient: "from-purple-500/20 to-pink-500/20",
-    features: {
-      included: [
-        "Unlimited messages",
-        "All AI models including GPT-4",
-        "Image generation (100/month)",
-        "Priority support",
-        "Advanced chat history",
-        "Export conversations",
-        "Custom instructions",
-        "Early access to new features",
-      ],
-      excluded: [
-        "Custom AI training",
-        "API access",
-        "Team collaboration",
-      ],
-    },
-    limits: {
-      messages: "Unlimited",
-      models: ["GPT-4", "Claude 3.5", "Gemini Pro", "Llama 3"],
-      storage: "50 GB",
-      support: "Priority Email",
-    },
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 99,
-    period: "month",
-    description: "For teams and organizations",
-    icon: <Crown className="w-6 h-6" />,
-    color: "text-amber-500",
-    gradient: "from-amber-500/20 to-orange-500/20",
-    features: {
-      included: [
-        "Everything in Pro",
-        "Unlimited image generation",
-        "Custom AI model training",
-        "API access with higher limits",
-        "Team collaboration tools",
-        "Dedicated account manager",
-        "SLA guarantee",
-        "Advanced analytics",
-        "White-label options",
-        "Custom integrations",
-      ],
-      excluded: [],
-    },
-    limits: {
-      messages: "Unlimited",
-      models: ["All models + Custom models"],
-      storage: "500 GB",
-      support: "24/7 Dedicated",
-    },
-  },
+    {
+        id: "enterprise",
+        name: "Enterprise",
+        price: "Custom",
+        period: "",
+        description: "Untuk tim dan organisasi",
+        icon: <Rocket className="w-6 h-6" />,
+        buttonText: "Hubungi Sales",
+        gradient: "from-purple-600 to-indigo-600",
+        features: [
+            { text: "Semua fitur Pro", included: true },
+            { text: "API access", included: true, highlight: true },
+            { text: "Custom model training", included: true },
+            { text: "Dedicated support", included: true },
+            { text: "SLA guarantee", included: true },
+            { text: "On-premise option", included: true },
+            { text: "Team management", included: true },
+            { text: "Analytics dashboard", included: true },
+        ]
+    }
 ];
 
-const Subscription = () => {
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const navigate = useNavigate();
+const featureHighlights = [
+    { icon: <Brain className="w-5 h-5" />, title: "AI Terdepan", desc: "Gemini 2.5 Pro & Flash" },
+    { icon: <Image className="w-5 h-5" />, title: "Image Generation", desc: "Imagen 4.0" },
+    { icon: <Video className="w-5 h-5" />, title: "Video Generation", desc: "Veo 3.1" },
+    { icon: <Mic className="w-5 h-5" />, title: "Voice Chat", desc: "Realtime conversation" },
+    { icon: <Globe className="w-5 h-5" />, title: "Web Search", desc: "Google Search integration" },
+    { icon: <Sparkles className="w-5 h-5" />, title: "Deep Thinking", desc: "Extended reasoning" },
+];
 
-  const handleSubscribe = (tierId: string) => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to subscribe to a plan",
-        variant: "destructive",
-      });
-      navigate("/auth/login");
-      return;
-    }
+const Subscription = memo(function Subscription() {
+    const navigate = useNavigate();
+    const { theme } = useTheme();
+    const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+    const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
-    if (tierId === "free") {
-      toast({
-        title: "Already on Free Plan",
-        description: "You're currently using the free plan",
-      });
-      return;
-    }
+    const handleSubscribe = (planId: string) => {
+        setSelectedPlan(planId);
+        // TODO: Implement payment flow
+    };
 
-    // Simulate payment processing
-    toast({
-      title: "Processing Payment",
-      description: "Redirecting to payment gateway...",
-    });
-
-    // In production, integrate with payment gateway like Stripe
-    setTimeout(() => {
-      toast({
-        title: "Subscription Activated! 🎉",
-        description: `You're now subscribed to the ${tierId} plan`,
-      });
-    }, 2000);
-  };
-
-  const getDiscountedPrice = (price: number) => {
-    if (billingPeriod === "yearly") {
-      return Math.round(price * 12 * 0.8); // 20% discount for yearly
-    }
-    return price;
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Navigation Buttons */}
-      <div className="container mx-auto px-4 pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => navigate("/")}
-              className="gap-2"
-            >
-              <Home className="w-4 h-4" />
-              <span className="hidden sm:inline">Landing Page</span>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/chat")}
-              className="gap-2"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">Chatbot</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Header */}
-      <div className="container mx-auto px-4 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <Badge className="mb-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
-            Pricing Plans
-          </Badge>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
-            Choose Your Perfect Plan
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Unlock the full potential of AI with our flexible pricing options.
-            Start free and upgrade anytime.
-          </p>
-        </motion.div>
-
-        {/* Billing Toggle */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex items-center justify-center gap-4 mb-12"
-        >
-          <span className={`text-sm font-medium ${billingPeriod === "monthly" ? "text-foreground" : "text-muted-foreground"}`}>
-            Monthly
-          </span>
-          <button
-            onClick={() => setBillingPeriod(billingPeriod === "monthly" ? "yearly" : "monthly")}
-            className={`relative w-14 h-7 rounded-full transition-colors ${
-              billingPeriod === "yearly" ? "bg-purple-500" : "bg-muted"
-            }`}
-          >
-            <motion.div
-              className="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md"
-              animate={{
-                x: billingPeriod === "yearly" ? 28 : 0,
-              }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            />
-          </button>
-          <span className={`text-sm font-medium ${billingPeriod === "yearly" ? "text-foreground" : "text-muted-foreground"}`}>
-            Yearly
-            <Badge className="ml-2 bg-green-500 text-white text-xs">Save 20%</Badge>
-          </span>
-        </motion.div>
-
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {pricingTiers.map((tier, index) => (
-            <motion.div
-              key={tier.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="relative"
-            >
-              {tier.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-lg">
-                    Most Popular
-                  </Badge>
+    return (
+        <div className={cn(
+            "min-h-screen",
+            theme === "dark" 
+                ? "bg-gradient-to-b from-[#0A0A0A] via-[#0A0A0A] to-[#111111]" 
+                : "bg-gradient-to-b from-[#FAFAF9] via-white to-[#F5F5F4]"
+        )}>
+            {/* Header */}
+            <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between h-16">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                            <span className="hidden sm:inline">Kembali</span>
+                        </button>
+                        <h1 className="text-xl font-bold text-[#FFD700]">Subscription</h1>
+                        <div className="w-20" />
+                    </div>
                 </div>
-              )}
-              
-              <Card
-                className={`relative h-full p-8 transition-all hover:shadow-2xl ${
-                  tier.popular
-                    ? "border-2 border-purple-500 shadow-xl"
-                    : "border border-border"
-                }`}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${tier.gradient} opacity-50 rounded-lg`} />
-                
-                <div className="relative z-10">
-                  {/* Header */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={`${tier.color}`}>
-                      {tier.icon}
+            </header>
+
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                {/* Hero Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center mb-16"
+                >
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FFD700]/10 border border-[#FFD700]/20 mb-6">
+                        <Crown className="w-4 h-4 text-[#FFD700]" />
+                        <span className="text-sm text-[#FFD700] font-medium">Upgrade Experience Anda</span>
                     </div>
-                    <h3 className="text-2xl font-bold">{tier.name}</h3>
-                  </div>
-                  
-                  <p className="text-muted-foreground mb-6">
-                    {tier.description}
-                  </p>
-
-                  {/* Price */}
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold">
-                        ${billingPeriod === "yearly" && tier.price > 0
-                          ? getDiscountedPrice(tier.price)
-                          : tier.price}
-                      </span>
-                      {tier.price > 0 && (
-                        <span className="text-muted-foreground">
-                          /{billingPeriod === "yearly" ? "year" : tier.period}
-                        </span>
-                      )}
-                      {tier.price === 0 && (
-                        <span className="text-muted-foreground">
-                          /{tier.period}
-                        </span>
-                      )}
-                    </div>
-                    {billingPeriod === "yearly" && tier.price > 0 && (
-                      <p className="text-sm text-green-500 mt-1">
-                        Save ${Math.round(tier.price * 12 * 0.2)}/year
-                      </p>
-                    )}
-                  </div>
-
-                  {/* CTA Button */}
-                  <Button
-                    onClick={() => handleSubscribe(tier.id)}
-                    className={`w-full mb-6 ${
-                      tier.popular
-                        ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                        : ""
-                    }`}
-                    variant={tier.popular ? "default" : "outline"}
-                  >
-                    {tier.id === "free" ? "Current Plan" : "Get Started"}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-
-                  {/* Features */}
-                  <div className="space-y-3 mb-6">
-                    <p className="text-sm font-semibold text-muted-foreground">
-                      What's included:
+                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+                        Pilih Paket yang <span className="text-[#FFD700]">Tepat</span>
+                    </h2>
+                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                        Akses penuh ke AI paling canggih untuk kreativitas dan produktivitas tanpa batas
                     </p>
-                    {tier.features.included.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-2">
-                        <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
-                    {tier.features.excluded.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-2 opacity-50">
-                        <X className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-muted-foreground">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
 
-                  {/* Limits */}
-                  <div className="pt-6 border-t border-border space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Messages:</span>
-                      <span className="font-medium ml-auto">{tier.limits.messages}</span>
+                    {/* Billing Toggle */}
+                    <div className="flex items-center justify-center gap-4 mt-8">
+                        <button
+                            onClick={() => setBillingCycle("monthly")}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                billingCycle === "monthly"
+                                    ? "bg-[#FFD700] text-black"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            Bulanan
+                        </button>
+                        <button
+                            onClick={() => setBillingCycle("yearly")}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2",
+                                billingCycle === "yearly"
+                                    ? "bg-[#FFD700] text-black"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            Tahunan
+                            <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+                                -20%
+                            </span>
+                        </button>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Shield className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Storage:</span>
-                      <span className="font-medium ml-auto">{tier.limits.storage}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Support:</span>
-                      <span className="font-medium ml-auto">{tier.limits.support}</span>
-                    </div>
-                  </div>
+                </motion.div>
+
+                {/* Plans Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-16">
+                    {plans.map((plan, index) => (
+                        <motion.div
+                            key={plan.id}
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={cn(
+                                "relative rounded-2xl border transition-all duration-300",
+                                plan.popular
+                                    ? "border-[#FFD700]/50 shadow-xl shadow-[#FFD700]/10 scale-105 z-10"
+                                    : "border-border hover:border-[#FFD700]/30",
+                                theme === "dark" ? "bg-card" : "bg-white"
+                            )}
+                        >
+                            {/* Popular Badge */}
+                            {plan.popular && (
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                                    <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black text-sm font-semibold shadow-lg">
+                                        <Star className="w-4 h-4 fill-current" />
+                                        Paling Populer
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="p-6 lg:p-8">
+                                {/* Plan Header */}
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className={cn(
+                                        "w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br",
+                                        plan.gradient,
+                                        plan.id === "free" ? "text-white" : "text-black"
+                                    )}>
+                                        {plan.icon}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
+                                        <p className="text-sm text-muted-foreground">{plan.description}</p>
+                                    </div>
+                                </div>
+
+                                {/* Price */}
+                                <div className="mb-6">
+                                    <span className="text-4xl font-bold text-foreground">
+                                        {billingCycle === "yearly" && plan.price !== "Custom" && plan.price !== "Rp 0"
+                                            ? `Rp ${Math.round(parseInt(plan.price.replace(/\D/g, '')) * 0.8 * 12).toLocaleString()}`
+                                            : plan.price
+                                        }
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        {billingCycle === "yearly" && plan.period === "/bulan" ? "/tahun" : plan.period}
+                                    </span>
+                                </div>
+
+                                {/* CTA Button */}
+                                <button
+                                    onClick={() => handleSubscribe(plan.id)}
+                                    className={cn(
+                                        "w-full py-3 rounded-xl font-semibold transition-all duration-300",
+                                        plan.popular
+                                            ? "bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black hover:shadow-lg hover:shadow-[#FFD700]/30"
+                                            : plan.id === "free"
+                                                ? "bg-secondary text-foreground cursor-default"
+                                                : "border border-[#FFD700] text-[#FFD700] hover:bg-[#FFD700]/10"
+                                    )}
+                                    disabled={plan.id === "free"}
+                                >
+                                    {plan.buttonText}
+                                </button>
+
+                                {/* Features List */}
+                                <div className="mt-8 space-y-3">
+                                    {plan.features.map((feature, i) => (
+                                        <div
+                                            key={i}
+                                            className={cn(
+                                                "flex items-center gap-3",
+                                                !feature.included && "opacity-50"
+                                            )}
+                                        >
+                                            {feature.included ? (
+                                                <div className={cn(
+                                                    "w-5 h-5 rounded-full flex items-center justify-center",
+                                                    feature.highlight 
+                                                        ? "bg-[#FFD700] text-black" 
+                                                        : "bg-green-500/20 text-green-500"
+                                                )}>
+                                                    <Check className="w-3 h-3" />
+                                                </div>
+                                            ) : (
+                                                <div className="w-5 h-5 rounded-full flex items-center justify-center bg-secondary">
+                                                    <X className="w-3 h-3 text-muted-foreground" />
+                                                </div>
+                                            )}
+                                            <span className={cn(
+                                                "text-sm",
+                                                feature.highlight ? "text-[#FFD700] font-medium" : "text-muted-foreground"
+                                            )}>
+                                                {feature.text}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
                 </div>
-              </Card>
-            </motion.div>
-          ))}
+
+                {/* Feature Highlights */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="mb-16"
+                >
+                    <h3 className="text-2xl font-bold text-center text-foreground mb-8">
+                        Fitur <span className="text-[#FFD700]">Unggulan</span>
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        {featureHighlights.map((feature, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.5 + i * 0.05 }}
+                                className={cn(
+                                    "p-4 rounded-xl border text-center group hover:border-[#FFD700]/50 transition-all",
+                                    theme === "dark" ? "bg-card border-border" : "bg-white border-gray-200"
+                                )}
+                            >
+                                <div className="w-10 h-10 rounded-lg bg-[#FFD700]/10 flex items-center justify-center mx-auto mb-3 text-[#FFD700] group-hover:bg-[#FFD700] group-hover:text-black transition-colors">
+                                    {feature.icon}
+                                </div>
+                                <h4 className="text-sm font-semibold text-foreground mb-1">{feature.title}</h4>
+                                <p className="text-xs text-muted-foreground">{feature.desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </motion.div>
+
+                {/* Trust Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                    className={cn(
+                        "rounded-2xl p-8 border",
+                        theme === "dark" ? "bg-card border-border" : "bg-white border-gray-200"
+                    )}
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500">
+                                <Shield className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-foreground">Pembayaran Aman</h4>
+                                <p className="text-sm text-muted-foreground">SSL encrypted & secure</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                <Clock className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-foreground">Batal Kapan Saja</h4>
+                                <p className="text-sm text-muted-foreground">Tanpa biaya pembatalan</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500">
+                                <Users className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-foreground">Support 24/7</h4>
+                                <p className="text-sm text-muted-foreground">Tim siap membantu</p>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* FAQ Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 }}
+                    className="mt-16 text-center"
+                >
+                    <h3 className="text-xl font-bold text-foreground mb-4">Ada Pertanyaan?</h3>
+                    <p className="text-muted-foreground mb-6">
+                        Hubungi tim kami untuk informasi lebih lanjut tentang paket Enterprise
+                    </p>
+                    <button className="px-6 py-3 rounded-xl border border-[#FFD700] text-[#FFD700] font-semibold hover:bg-[#FFD700]/10 transition-colors">
+                        Hubungi Kami
+                    </button>
+                </motion.div>
+            </main>
         </div>
-
-        {/* FAQ Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-20 max-w-4xl mx-auto"
-        >
-          <h2 className="text-3xl font-bold text-center mb-8">
-            Frequently Asked Questions
-          </h2>
-          <div className="grid gap-6">
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-2">Can I change my plan anytime?</h3>
-              <p className="text-muted-foreground">
-                Yes! You can upgrade or downgrade your plan at any time. Changes will be reflected
-                immediately, and we'll prorate the charges accordingly.
-              </p>
-            </Card>
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-2">What payment methods do you accept?</h3>
-              <p className="text-muted-foreground">
-                We accept all major credit cards (Visa, MasterCard, American Express), PayPal,
-                and bank transfers for enterprise plans.
-              </p>
-            </Card>
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-2">Is there a free trial for paid plans?</h3>
-              <p className="text-muted-foreground">
-                Yes! All paid plans come with a 7-day free trial. No credit card required to start.
-                You can cancel anytime during the trial period.
-              </p>
-            </Card>
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-2">What happens if I exceed my limits?</h3>
-              <p className="text-muted-foreground">
-                If you reach your monthly message limit, you'll be notified. You can either wait
-                for the next billing cycle or upgrade to a higher plan for immediate access.
-              </p>
-            </Card>
-          </div>
-        </motion.div>
-
-        {/* Contact CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-16 text-center"
-        >
-          <Card className="p-8 max-w-2xl mx-auto bg-gradient-to-br from-purple-500/10 to-pink-500/10">
-            <h3 className="text-2xl font-bold mb-4">Need a Custom Plan?</h3>
-            <p className="text-muted-foreground mb-6">
-              Contact our sales team for custom pricing tailored to your organization's needs.
-            </p>
-            <Button size="lg" className="bg-gradient-to-r from-purple-500 to-pink-500">
-              Contact Sales
-            </Button>
-          </Card>
-        </motion.div>
-      </div>
-    </div>
-  );
-};
+    );
+});
 
 export default Subscription;
+

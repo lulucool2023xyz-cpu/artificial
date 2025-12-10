@@ -71,6 +71,92 @@ const mockAnalysisResult = {
 type CultureCategory = "identify" | "story" | "craft" | "rituals" | "map" | "sources" | "projects";
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete" | "error";
 
+// Mock AI responses for culture content
+const mockAIResponses: Record<string, string> = {
+    "roro jonggrang": `**Legenda Roro Jonggrang** adalah kisah cinta tragis dari Jawa Tengah.
+
+Dikisahkan, Bandung Bondowoso jatuh cinta pada Roro Jonggrang, putri Raja Boko yang telah ia kalahkan. Roro Jonggrang tidak ingin menikah dengannya, maka ia memberi syarat: Bandung harus membangun 1000 candi dalam semalam.
+
+Dengan bantuan jin, Bandung hampir berhasil. Namun Roro Jonggrang menyuruh para gadis desa menumbuk padi dan menyalakan api agar jin mengira fajar telah tiba. Jin-jin pun pergi, dan candi hanya terbangun 999.
+
+Marah besar, Bandung mengutuk Roro Jonggrang menjadi batu—menjadi arca Dewi Durga di Candi Prambanan.
+
+**Pelajaran**: Kesombongan dan tipu daya dapat membawa akibat yang buruk.`,
+    
+    "malin kundang": `**Malin Kundang** adalah legenda dari Sumatera Barat tentang anak durhaka.
+
+Malin adalah anak miskin yang pergi merantau mencari kehidupan lebih baik. Setelah menjadi kaya dan menikahi putri bangsawan, ia kembali ke kampung halamannya dengan kapal besar.
+
+Ibunya yang telah lama menunggu, berlari ke pelabuhan untuk memeluknya. Namun Malin malu mengakui ibunya yang miskin dan renta. Ia mengusir ibunya di hadapan istrinya.
+
+Hati sang ibu hancur. Ia berdoa: "Ya Tuhan, jika memang ia anakku Malin Kundang, kutuklah ia menjadi batu!"
+
+Tiba-tiba badai datang, kapal Malin hancur, dan ia berubah menjadi batu di pantai Air Manis.
+
+**Pelajaran**: Hormati orang tua, jangan lupakan asal-usul.`,
+
+    "batik": `**Batik** adalah seni tradisional Indonesia yang telah diakui UNESCO sebagai Warisan Budaya Takbenda Kemanusiaan sejak 2009.
+
+**Teknik Pembuatan:**
+1. **Batik Tulis** - Menggunakan canting untuk menggambar motif dengan lilin panas
+2. **Batik Cap** - Menggunakan cap tembaga untuk mencetak motif
+3. **Batik Printing** - Teknik cetak modern
+
+**Motif Populer:**
+- **Parang** - Melambangkan kekuatan dan keberanian
+- **Kawung** - Melambangkan kesucian dan keadilan
+- **Mega Mendung** - Khas Cirebon, melambangkan kesabaran
+- **Truntum** - Melambangkan cinta yang tumbuh kembali
+
+**Filosofi:**
+Setiap motif batik memiliki makna mendalam. Warna, pola, dan simbol semuanya mengandung pesan tentang kehidupan, alam, dan spiritualitas.`,
+
+    "wayang": `**Wayang Kulit** adalah seni pertunjukan tradisional menggunakan boneka kulit yang diproyeksikan ke layar.
+
+**Sejarah:**
+Wayang sudah ada sejak abad ke-9. Awalnya digunakan untuk upacara keagamaan dan penghormatan arwah leluhur.
+
+**Jenis Wayang:**
+- **Wayang Kulit Purwa** - Lakon Ramayana & Mahabharata
+- **Wayang Golek** - Boneka kayu 3D dari Jawa Barat
+- **Wayang Orang** - Dimainkan oleh manusia
+- **Wayang Suket** - Dari rumput, untuk anak-anak
+
+**Tokoh Penting:**
+- **Semar** - Punakawan bijaksana
+- **Gatotkaca** - Ksatria perkasa
+- **Arjuna** - Ksatria tampan dan ahli panah
+
+**Pertunjukan:**
+Dalang memainkan puluhan wayang, menyanyikan tembang, dan bercerita sepanjang malam, diiringi gamelan.`,
+};
+
+// Generate mock AI response based on query
+const generateMockAIResponse = (query: string): string => {
+    const lowerQuery = query.toLowerCase();
+    
+    for (const [key, response] of Object.entries(mockAIResponses)) {
+        if (lowerQuery.includes(key)) {
+            return response;
+        }
+    }
+    
+    // Default response if no match found
+    return `Terima kasih atas pertanyaan Anda tentang "${query}".
+
+**Informasi Budaya Indonesia:**
+
+Indonesia memiliki lebih dari 300 kelompok etnis dengan ribuan tradisi, bahasa, dan kesenian yang unik. Setiap daerah memiliki kekayaan budaya tersendiri yang diwariskan turun-temurun.
+
+Untuk informasi lebih spesifik, silakan tanyakan tentang:
+- **Cerita Rakyat**: Roro Jonggrang, Malin Kundang, Sangkuriang, dll.
+- **Kerajinan**: Batik, Wayang, Songket, Tenun Ikat, dll.
+- **Tarian**: Kecak, Pendet, Saman, Jaipong, dll.
+- **Upacara Adat**: Ngaben, Sekaten, Kasada, dll.
+
+*Ketik nama budaya atau tradisi untuk mendapatkan informasi lengkap.*`;
+};
+
 const Culture = memo(function Culture() {
     const [category, setCategory] = useState<CultureCategory>("identify");
     const [analysisState, setAnalysisState] = useState<AnalysisState>("idle");
@@ -83,8 +169,44 @@ const Culture = memo(function Culture() {
     const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
     const [feedbackGiven, setFeedbackGiven] = useState<"up" | "down" | null>(null);
     const [zoomLevel, setZoomLevel] = useState(100);
+    
+    // AI Chat states for story/craft sections
+    const [storyQuery, setStoryQuery] = useState("");
+    const [storyResponse, setStoryResponse] = useState<string | null>(null);
+    const [storyLoading, setStoryLoading] = useState(false);
+    const [craftQuery, setCraftQuery] = useState("");
+    const [craftResponse, setCraftResponse] = useState<string | null>(null);
+    const [craftLoading, setCraftLoading] = useState(false);
+    const [selectedStory, setSelectedStory] = useState<string | null>(null);
+    const [selectedCraft, setSelectedCraft] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // Handle AI query for story
+    const handleStoryQuery = useCallback((query: string) => {
+        setStoryLoading(true);
+        setStoryResponse(null);
+        
+        // Simulate AI thinking delay
+        setTimeout(() => {
+            const response = generateMockAIResponse(query);
+            setStoryResponse(response);
+            setStoryLoading(false);
+        }, 1500);
+    }, []);
+    
+    // Handle AI query for craft
+    const handleCraftQuery = useCallback((query: string) => {
+        setCraftLoading(true);
+        setCraftResponse(null);
+        
+        // Simulate AI thinking delay
+        setTimeout(() => {
+            const response = generateMockAIResponse(query);
+            setCraftResponse(response);
+            setCraftLoading(false);
+        }, 1500);
+    }, []);
 
     // Sidebar items for Culture
     const sidebarItems: SidebarItem[] = [
@@ -322,48 +444,141 @@ const Culture = memo(function Culture() {
 
                 {/* STORY - Cerita Budaya */}
                 {category === "story" && (
-                    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                    <div className="p-6 space-y-6 max-w-5xl mx-auto">
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 rounded-full bg-[#C9A04F]/20 flex items-center justify-center mx-auto mb-4">
                                 <BookOpen className="w-8 h-8 text-[#C9A04F]" />
                             </div>
                             <h2 className="text-2xl font-bold text-foreground mb-2">Cerita Budaya Indonesia</h2>
-                            <p className="text-muted-foreground">Kisah legendaris dari berbagai daerah Nusantara</p>
+                            <p className="text-muted-foreground">Tanyakan AI tentang legenda dan cerita rakyat Nusantara</p>
                         </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {[
-                                { title: "Legenda Roro Jonggrang", region: "Jawa Tengah", desc: "Kisah cinta tragis yang melahirkan Candi Prambanan", icon: "🏛️" },
-                                { title: "Malin Kundang", region: "Sumatera Barat", desc: "Anak durhaka yang dikutuk menjadi batu", icon: "⛵" },
-                                { title: "Sangkuriang", region: "Jawa Barat", desc: "Asal usul Gunung Tangkuban Perahu", icon: "🌋" },
-                                { title: "Timun Mas", region: "Jawa Tengah", desc: "Gadis pemberani melawan raksasa jahat", icon: "🥒" },
-                                { title: "Si Pitung", region: "DKI Jakarta", desc: "Pahlawan Betawi pembela rakyat kecil", icon: "🥊" },
-                                { title: "Lutung Kasarung", region: "Jawa Barat", desc: "Pangeran kera dan putri Purbasari", icon: "🐒" },
-                            ].map((story, i) => (
-                                <motion.div
-                                    key={i}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="bg-card border border-border rounded-xl p-5 cursor-pointer hover:border-[#C9A04F]/50 hover:shadow-lg transition-all group"
+                        {/* AI Chat Input */}
+                        <div className="bg-card border border-border rounded-xl p-4 mb-6">
+                            <div className="flex items-center gap-3">
+                                <Sparkles className="w-5 h-5 text-[#C9A04F]" />
+                                <input
+                                    type="text"
+                                    placeholder="Tanyakan cerita... (cth: Roro Jonggrang, Malin Kundang)"
+                                    value={storyQuery}
+                                    onChange={(e) => setStoryQuery(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && storyQuery.trim()) {
+                                            handleStoryQuery(storyQuery);
+                                        }
+                                    }}
+                                    className="flex-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
+                                />
+                                <button
+                                    onClick={() => storyQuery.trim() && handleStoryQuery(storyQuery)}
+                                    disabled={storyLoading || !storyQuery.trim()}
+                                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#C9A04F] to-[#B8860B] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <div className="flex items-start gap-4">
-                                        <div className="text-3xl">{story.icon}</div>
-                                        <div className="flex-1">
-                                            <h3 className="font-semibold text-foreground group-hover:text-[#C9A04F] transition-colors">{story.title}</h3>
-                                            <p className="text-xs text-[#C9A04F] mb-2">{story.region}</p>
-                                            <p className="text-sm text-muted-foreground">{story.desc}</p>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    {storyLoading ? "..." : "Tanya AI"}
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="text-center mt-8">
-                            <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#C9A04F] to-[#B8860B] text-white font-semibold">
-                                Jelajahi Lebih Banyak Cerita
-                            </button>
-                        </div>
+                        {/* AI Response */}
+                        {storyLoading && (
+                            <div className="bg-card border border-[#C9A04F]/30 rounded-xl p-6 animate-pulse">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-8 h-8 rounded-full bg-[#C9A04F]/20 flex items-center justify-center">
+                                        <Sparkles className="w-4 h-4 text-[#C9A04F] animate-spin" />
+                                    </div>
+                                    <span className="text-[#C9A04F] font-medium">AI sedang berpikir...</span>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="h-4 bg-secondary rounded w-full" />
+                                    <div className="h-4 bg-secondary rounded w-3/4" />
+                                    <div className="h-4 bg-secondary rounded w-5/6" />
+                                </div>
+                            </div>
+                        )}
+
+                        {storyResponse && !storyLoading && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-card border border-[#C9A04F]/30 rounded-xl p-6"
+                            >
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-8 h-8 rounded-full bg-[#C9A04F]/20 flex items-center justify-center">
+                                        <Sparkles className="w-4 h-4 text-[#C9A04F]" />
+                                    </div>
+                                    <span className="text-[#C9A04F] font-medium">AI Culture Assistant</span>
+                                </div>
+                                <div className="prose prose-invert prose-sm max-w-none">
+                                    {storyResponse.split('\n').map((line, i) => {
+                                        if (line.startsWith('**') && line.endsWith('**')) {
+                                            return <h3 key={i} className="text-lg font-bold text-foreground mt-4 mb-2">{line.replace(/\*\*/g, '')}</h3>;
+                                        }
+                                        if (line.startsWith('**')) {
+                                            return <p key={i} className="font-semibold text-foreground">{line.replace(/\*\*/g, '')}</p>;
+                                        }
+                                        if (line.startsWith('- ')) {
+                                            return <li key={i} className="text-muted-foreground ml-4">{line.substring(2)}</li>;
+                                        }
+                                        if (line.startsWith('*') && line.endsWith('*')) {
+                                            return <p key={i} className="text-sm italic text-muted-foreground mt-4">{line.replace(/\*/g, '')}</p>;
+                                        }
+                                        if (line.trim() === '') {
+                                            return <br key={i} />;
+                                        }
+                                        return <p key={i} className="text-muted-foreground leading-relaxed">{line}</p>;
+                                    })}
+                                </div>
+                                <div className="flex items-center gap-4 mt-6 pt-4 border-t border-border">
+                                    <button onClick={() => { setStoryResponse(null); setStoryQuery(""); }} className="text-sm text-muted-foreground hover:text-foreground">
+                                        Tanya lagi
+                                    </button>
+                                    <button onClick={() => toast.success("Disimpan!")} className="text-sm text-[#C9A04F] hover:text-[#B8860B]">
+                                        Simpan
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Story Cards */}
+                        {!storyResponse && !storyLoading && (
+                            <>
+                                <p className="text-sm text-muted-foreground text-center mb-4">Atau pilih cerita populer:</p>
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {[
+                                        { title: "Legenda Roro Jonggrang", region: "Jawa Tengah", desc: "Kisah cinta tragis yang melahirkan Candi Prambanan", icon: "🏛️", query: "roro jonggrang" },
+                                        { title: "Malin Kundang", region: "Sumatera Barat", desc: "Anak durhaka yang dikutuk menjadi batu", icon: "⛵", query: "malin kundang" },
+                                        { title: "Sangkuriang", region: "Jawa Barat", desc: "Asal usul Gunung Tangkuban Perahu", icon: "🌋", query: "sangkuriang" },
+                                        { title: "Timun Mas", region: "Jawa Tengah", desc: "Gadis pemberani melawan raksasa jahat", icon: "🥒", query: "timun mas" },
+                                        { title: "Si Pitung", region: "DKI Jakarta", desc: "Pahlawan Betawi pembela rakyat kecil", icon: "🥊", query: "si pitung" },
+                                        { title: "Lutung Kasarung", region: "Jawa Barat", desc: "Pangeran kera dan putri Purbasari", icon: "🐒", query: "lutung kasarung" },
+                                    ].map((story, i) => (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.1 }}
+                                            onClick={() => {
+                                                setStoryQuery(story.title);
+                                                handleStoryQuery(story.query);
+                                            }}
+                                            className={cn(
+                                                "bg-card border border-border rounded-xl p-5 cursor-pointer hover:border-[#C9A04F]/50 hover:shadow-lg transition-all group",
+                                                selectedStory === story.title && "border-[#C9A04F] bg-[#C9A04F]/10"
+                                            )}
+                                        >
+                                            <div className="flex items-start gap-4">
+                                                <div className="text-3xl">{story.icon}</div>
+                                                <div className="flex-1">
+                                                    <h3 className="font-semibold text-foreground group-hover:text-[#C9A04F] transition-colors">{story.title}</h3>
+                                                    <p className="text-xs text-[#C9A04F] mb-2">{story.region}</p>
+                                                    <p className="text-sm text-muted-foreground">{story.desc}</p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -375,36 +590,140 @@ const Culture = memo(function Culture() {
                                 <Palette className="w-8 h-8 text-[#C9A04F]" />
                             </div>
                             <h2 className="text-2xl font-bold text-foreground mb-2">Kerajinan Tradisional</h2>
-                            <p className="text-muted-foreground">Warisan seni dan kerajinan dari seluruh Nusantara</p>
+                            <p className="text-muted-foreground">Tanyakan AI tentang kerajinan dan seni tradisional Indonesia</p>
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-3">
-                            {[
-                                { name: "Batik", origin: "Jawa", image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop", desc: "Kain dengan motif malam" },
-                                { name: "Wayang Kulit", origin: "Jawa", image: "https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=300&h=200&fit=crop", desc: "Seni pertunjukan boneka" },
-                                { name: "Songket", origin: "Sumatera", image: "https://images.unsplash.com/photo-1533669955142-6a73332af4db?w=300&h=200&fit=crop", desc: "Tenun benang emas" },
-                                { name: "Ukiran Jepara", origin: "Jawa Tengah", image: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=300&h=200&fit=crop", desc: "Seni ukir kayu" },
-                                { name: "Tenun Ikat", origin: "NTT", image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=300&h=200&fit=crop", desc: "Kain tenun tradisional" },
-                                { name: "Keramik", origin: "Kasongan", image: "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=300&h=200&fit=crop", desc: "Seni gerabah Yogya" },
-                            ].map((craft, i) => (
-                                <motion.div
-                                    key={i}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="bg-card border border-border rounded-xl overflow-hidden group cursor-pointer hover:shadow-xl transition-all"
+                        {/* AI Chat Input */}
+                        <div className="bg-card border border-border rounded-xl p-4 mb-6">
+                            <div className="flex items-center gap-3">
+                                <Sparkles className="w-5 h-5 text-[#C9A04F]" />
+                                <input
+                                    type="text"
+                                    placeholder="Tanyakan kerajinan... (cth: Batik, Wayang)"
+                                    value={craftQuery}
+                                    onChange={(e) => setCraftQuery(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && craftQuery.trim()) {
+                                            handleCraftQuery(craftQuery);
+                                        }
+                                    }}
+                                    className="flex-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
+                                />
+                                <button
+                                    onClick={() => craftQuery.trim() && handleCraftQuery(craftQuery)}
+                                    disabled={craftLoading || !craftQuery.trim()}
+                                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#C9A04F] to-[#B8860B] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <div className="h-40 overflow-hidden">
-                                        <img src={craft.image} alt={craft.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                    </div>
-                                    <div className="p-4">
-                                        <h3 className="font-semibold text-foreground">{craft.name}</h3>
-                                        <p className="text-xs text-[#C9A04F] mb-1">{craft.origin}</p>
-                                        <p className="text-sm text-muted-foreground">{craft.desc}</p>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    {craftLoading ? "..." : "Tanya AI"}
+                                </button>
+                            </div>
                         </div>
+
+                        {/* AI Response */}
+                        {craftLoading && (
+                            <div className="bg-card border border-[#C9A04F]/30 rounded-xl p-6 animate-pulse">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-8 h-8 rounded-full bg-[#C9A04F]/20 flex items-center justify-center">
+                                        <Sparkles className="w-4 h-4 text-[#C9A04F] animate-spin" />
+                                    </div>
+                                    <span className="text-[#C9A04F] font-medium">AI sedang berpikir...</span>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="h-4 bg-secondary rounded w-full" />
+                                    <div className="h-4 bg-secondary rounded w-3/4" />
+                                    <div className="h-4 bg-secondary rounded w-5/6" />
+                                </div>
+                            </div>
+                        )}
+
+                        {craftResponse && !craftLoading && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-card border border-[#C9A04F]/30 rounded-xl p-6"
+                            >
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-8 h-8 rounded-full bg-[#C9A04F]/20 flex items-center justify-center">
+                                        <Sparkles className="w-4 h-4 text-[#C9A04F]" />
+                                    </div>
+                                    <span className="text-[#C9A04F] font-medium">AI Culture Assistant</span>
+                                </div>
+                                <div className="prose prose-invert prose-sm max-w-none">
+                                    {craftResponse.split('\n').map((line, i) => {
+                                        if (line.startsWith('**') && line.endsWith('**')) {
+                                            return <h3 key={i} className="text-lg font-bold text-foreground mt-4 mb-2">{line.replace(/\*\*/g, '')}</h3>;
+                                        }
+                                        if (line.startsWith('**')) {
+                                            return <p key={i} className="font-semibold text-foreground">{line.replace(/\*\*/g, '')}</p>;
+                                        }
+                                        if (line.startsWith('- ')) {
+                                            return <li key={i} className="text-muted-foreground ml-4">{line.substring(2)}</li>;
+                                        }
+                                        if (line.startsWith('*') && line.endsWith('*')) {
+                                            return <p key={i} className="text-sm italic text-muted-foreground mt-4">{line.replace(/\*/g, '')}</p>;
+                                        }
+                                        if (line.trim() === '') {
+                                            return <br key={i} />;
+                                        }
+                                        return <p key={i} className="text-muted-foreground leading-relaxed">{line}</p>;
+                                    })}
+                                </div>
+                                <div className="flex items-center gap-4 mt-6 pt-4 border-t border-border">
+                                    <button onClick={() => { setCraftResponse(null); setCraftQuery(""); }} className="text-sm text-muted-foreground hover:text-foreground">
+                                        Tanya lagi
+                                    </button>
+                                    <button onClick={() => toast.success("Disimpan!")} className="text-sm text-[#C9A04F] hover:text-[#B8860B]">
+                                        Simpan
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Craft Cards */}
+                        {!craftResponse && !craftLoading && (
+                            <>
+                                <p className="text-sm text-muted-foreground text-center mb-4">Atau pilih kerajinan populer:</p>
+                                <div className="grid gap-6 md:grid-cols-3">
+                                    {[
+                                        { name: "Batik", origin: "Jawa", image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop", desc: "Kain dengan motif malam", query: "batik" },
+                                        { name: "Wayang Kulit", origin: "Jawa", image: "https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=300&h=200&fit=crop", desc: "Seni pertunjukan boneka", query: "wayang" },
+                                        { name: "Songket", origin: "Sumatera", image: "https://images.unsplash.com/photo-1533669955142-6a73332af4db?w=300&h=200&fit=crop", desc: "Tenun benang emas", query: "songket" },
+                                        { name: "Ukiran Jepara", origin: "Jawa Tengah", image: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=300&h=200&fit=crop", desc: "Seni ukir kayu", query: "ukiran jepara" },
+                                        { name: "Tenun Ikat", origin: "NTT", image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=300&h=200&fit=crop", desc: "Kain tenun tradisional", query: "tenun ikat" },
+                                        { name: "Keramik", origin: "Kasongan", image: "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=300&h=200&fit=crop", desc: "Seni gerabah Yogya", query: "keramik kasongan" },
+                                    ].map((craft, i) => (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            transition={{ delay: i * 0.1 }}
+                                            onClick={() => {
+                                                setCraftQuery(craft.name);
+                                                handleCraftQuery(craft.query);
+                                            }}
+                                            className={cn(
+                                                "bg-card border border-border rounded-xl overflow-hidden group cursor-pointer hover:shadow-xl transition-all",
+                                                selectedCraft === craft.name && "border-[#C9A04F] ring-2 ring-[#C9A04F]/20"
+                                            )}
+                                        >
+                                            <div className="h-40 overflow-hidden relative">
+                                                <img src={craft.image} alt={craft.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4">
+                                                    <span className="text-white text-sm font-medium flex items-center gap-2">
+                                                        <Sparkles className="w-4 h-4" /> Tanya AI
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="p-4">
+                                                <h3 className="font-semibold text-foreground">{craft.name}</h3>
+                                                <p className="text-xs text-[#C9A04F] mb-1">{craft.origin}</p>
+                                                <p className="text-sm text-muted-foreground">{craft.desc}</p>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -697,3 +1016,4 @@ const Culture = memo(function Culture() {
 });
 
 export default Culture;
+

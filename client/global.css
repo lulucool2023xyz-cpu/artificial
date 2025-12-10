@@ -88,61 +88,98 @@
     /* Terracotta */
     --indonesian-amber: 43 96% 70%;
     /* Amber/Emas terang */
+    
+    /* ===========================================
+       STANDARDIZED COLOR PALETTE - Orenax Theme
+       =========================================== */
+    
+    /* Brand Gold Colors */
+    --brand-gold-50: 45 100% 96%;
+    --brand-gold-100: 45 100% 92%;
+    --brand-gold-200: 43 96% 82%;
+    --brand-gold-300: 43 96% 70%;
+    --brand-gold-400: 43 96% 56%;
+    --brand-gold-500: 43 100% 50%;
+    --brand-gold-600: 38 100% 45%;
+    --brand-gold-700: 35 100% 40%;
+    --brand-gold-800: 30 90% 32%;
+    --brand-gold-900: 25 80% 25%;
+    
+    /* Status Colors */
+    --status-success: 142 70% 45%;
+    --status-success-light: 142 70% 55%;
+    --status-warning: 38 92% 50%;
+    --status-warning-light: 38 92% 60%;
+    --status-error: 0 84% 60%;
+    --status-error-light: 0 84% 70%;
+    --status-info: 210 100% 60%;
+    --status-info-light: 210 100% 70%;
+    
+    /* Interactive States */
+    --interactive-hover: 0 0% 100% / 0.1;
+    --interactive-active: 0 0% 100% / 0.2;
+    --interactive-focus: 43 96% 56%;
+    
+    /* Shadow Colors */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-gold: 0 0 20px rgba(201, 160, 79, 0.3);
   }
 
   .light {
-    /* Light Theme - Soft Warm White with Excellent Contrast */
-    /* Base: Warm off-white, not harsh pure white */
-    --background: 45 20% 97%;
-    --foreground: 20 20% 20%;
+    /* Light Theme - Soft Neutral with Easy-on-Eyes Design */
+    /* Base: Soft gray-white, much easier on eyes than pure white */
+    --background: 220 14% 96%;
+    --foreground: 220 15% 20%;
 
-    /* Cards: Slightly warmer than background for subtle depth */
-    --card: 45 15% 99%;
-    --card-foreground: 20 20% 15%;
+    /* Cards: Slightly lighter for subtle depth */
+    --card: 220 14% 98%;
+    --card-foreground: 220 15% 18%;
 
-    --popover: 45 15% 99%;
-    --popover-foreground: 20 20% 15%;
+    --popover: 220 14% 98%;
+    --popover-foreground: 220 15% 18%;
 
-    /* Primary: Deep warm brown-gold for excellent contrast */
-    --primary: 35 50% 35%;
+    /* Primary: Deep amber-gold for excellent contrast */
+    --primary: 38 70% 40%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Soft warm gray */
-    --secondary: 40 10% 92%;
-    --secondary-foreground: 20 15% 25%;
+    /* Secondary: Soft neutral gray */
+    --secondary: 220 10% 91%;
+    --secondary-foreground: 220 12% 28%;
 
-    /* Muted: Subtle warm gray */
-    --muted: 40 8% 88%;
-    --muted-foreground: 20 10% 45%;
+    /* Muted: Subtle gray */
+    --muted: 220 8% 86%;
+    --muted-foreground: 220 8% 50%;
 
-    /* Accent: Light warm gold tint */
-    --accent: 42 30% 94%;
-    --accent-foreground: 20 20% 18%;
+    /* Accent: Light gold tint */
+    --accent: 40 25% 93%;
+    --accent-foreground: 220 15% 20%;
 
-    --destructive: 0 70% 50%;
+    --destructive: 0 65% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border: Soft warm gray, visible but not harsh */
-    --border: 35 12% 85%;
-    --input: 40 15% 95%;
-    --ring: 35 50% 40%;
+    /* Border: Soft gray, visible but not harsh */
+    --border: 220 10% 84%;
+    --input: 220 12% 94%;
+    --ring: 38 60% 45%;
 
-    /* Sidebar: Warm cream tones */
-    --sidebar-background: 42 18% 96%;
-    --sidebar-foreground: 20 20% 20%;
-    --sidebar-primary: 35 45% 38%;
+    /* Sidebar: Soft neutral tones */
+    --sidebar-background: 220 12% 95%;
+    --sidebar-foreground: 220 15% 22%;
+    --sidebar-primary: 38 65% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 42 20% 92%;
-    --sidebar-accent-foreground: 20 15% 25%;
-    --sidebar-border: 35 12% 82%;
-    --sidebar-ring: 35 50% 40%;
+    --sidebar-accent: 220 12% 90%;
+    --sidebar-accent-foreground: 220 12% 28%;
+    --sidebar-border: 220 10% 82%;
+    --sidebar-ring: 38 60% 45%;
 
-    /* Glow: Warm amber for subtle highlights */
-    --glow: 40 70% 45%;
+    /* Glow: Amber for subtle highlights */
+    --glow: 38 60% 50%;
 
-    /* Indonesian Gold - Rich amber for light theme (not too bright) */
-    --indonesian-gold: 38 80% 38%;
-    --indonesian-gold-dark: 35 75% 28%;
+    /* Indonesian Gold - Rich amber for light theme */
+    --indonesian-gold: 38 75% 42%;
+    --indonesian-gold-dark: 35 70% 32%;
   }
 }
 
@@ -284,6 +321,123 @@
     border-color: rgba(255, 255, 255, 0.6);
     box-shadow: 0 0 30px rgba(255, 255, 255, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1);
     transform: scale(1.02);
+  }
+
+  /* ===========================================
+     GOLD THEME UTILITY CLASSES - Orenax Brand
+     =========================================== */
+  
+  /* Gold Text */
+  .text-brand-gold {
+    color: hsl(var(--brand-gold-400));
+  }
+  
+  .text-brand-gold-light {
+    color: hsl(var(--brand-gold-300));
+  }
+  
+  .text-brand-gold-dark {
+    color: hsl(var(--brand-gold-600));
+  }
+  
+  /* Gold Backgrounds */
+  .bg-brand-gold {
+    background-color: hsl(var(--brand-gold-400));
+  }
+  
+  .bg-brand-gold-gradient {
+    background: linear-gradient(135deg, hsl(var(--brand-gold-400)) 0%, hsl(var(--brand-gold-600)) 100%);
+  }
+  
+  .bg-brand-gold-subtle {
+    background-color: hsl(var(--brand-gold-400) / 0.1);
+  }
+  
+  /* Gold Borders */
+  .border-brand-gold {
+    border-color: hsl(var(--brand-gold-400));
+  }
+  
+  /* Gold Shadows */
+  .shadow-gold {
+    box-shadow: 0 0 20px rgba(201, 160, 79, 0.3);
+  }
+  
+  .shadow-gold-lg {
+    box-shadow: 0 0 40px rgba(201, 160, 79, 0.4);
+  }
+  
+  /* Gold Hover Effects */
+  .hover\:glow-gold:hover {
+    box-shadow: 0 0 30px rgba(201, 160, 79, 0.5);
+  }
+  
+  /* Status Colors Utility */
+  .text-status-success {
+    color: hsl(var(--status-success));
+  }
+  
+  .text-status-warning {
+    color: hsl(var(--status-warning));
+  }
+  
+  .text-status-error {
+    color: hsl(var(--status-error));
+  }
+  
+  .text-status-info {
+    color: hsl(var(--status-info));
+  }
+  
+  .bg-status-success {
+    background-color: hsl(var(--status-success));
+  }
+  
+  .bg-status-warning {
+    background-color: hsl(var(--status-warning));
+  }
+  
+  .bg-status-error {
+    background-color: hsl(var(--status-error));
+  }
+  
+  .bg-status-info {
+    background-color: hsl(var(--status-info));
+  }
+  
+  /* Interactive States */
+  .interactive-hover:hover {
+    background-color: hsl(var(--interactive-hover));
+  }
+  
+  .interactive-active:active {
+    background-color: hsl(var(--interactive-active));
+  }
+  
+  .focus-gold:focus {
+    outline: 2px solid hsl(var(--brand-gold-400));
+    outline-offset: 2px;
+  }
+  
+  /* Touch-friendly targets */
+  @media (pointer: coarse) {
+    .touch\:min-h-\[48px\] {
+      min-height: 48px;
+    }
+    
+    .touch\:min-h-\[52px\] {
+      min-height: 52px;
+    }
+    
+    .touch\:py-3 {
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+    
+    .touch\:py-3\.5 {
+      padding-top: 0.875rem;
+      padding-bottom: 0.875rem;
+    }
   }
 
   /* Deep Thinking Mode Animation */
@@ -1006,4 +1160,150 @@ textarea:focus-visible {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ==========================================
+   LANDING PAGE PERFORMANCE OPTIMIZATIONS
+   ========================================== */
+
+/* Use content-visibility for sections below the fold */
+section:not(:first-of-type) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}
+
+/* Optimize images */
+img {
+  content-visibility: auto;
+  contain: layout style paint;
+}
+
+/* Lazy load backgrounds for sections */
+.lazy-bg {
+  background-image: none !important;
+}
+
+.lazy-bg.loaded {
+  background-image: var(--bg-image) !important;
+  transition: opacity 0.3s ease;
+}
+
+/* Optimize heavy visual elements */
+.section-container {
+  contain: layout style;
+}
+
+/* Reduce paint on gallery sections */
+.gallery-section {
+  contain: strict;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
+/* Optimize 3D ring gallery */
+.three-d-ring-container {
+  contain: strict;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
+/* Reduce memory usage for offscreen elements */
+[data-offscreen="true"] {
+  content-visibility: hidden;
+  contain: strict;
+}
+
+/* Improve scroll performance */
+.scroll-container {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-container {
+    scroll-behavior: auto;
+  }
+}
+
+/* Image loading placeholder */
+.img-placeholder {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted) / 0.3) 25%,
+    hsl(var(--muted) / 0.5) 50%,
+    hsl(var(--muted) / 0.3) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Shimmer translate animation for skeleton loading */
+@keyframes shimmer-translate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer-translate 2s infinite;
+}
+
+/* Progress bar animation for loading states */
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .img-placeholder {
+    animation: none;
+    background: hsl(var(--muted) / 0.4);
+  }
+}
+
+/* WebP fallback indicator for debugging */
+.webp-support::before {
+  content: "WebP";
+}
+
+/* Optimize font rendering */
+body {
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reduce layout thrashing */
+.fixed-size {
+  contain: size layout style paint;
+}
+
+/* Critical rendering path optimization */
+.above-fold {
+  content-visibility: visible;
+}
+
+.below-fold {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
 }

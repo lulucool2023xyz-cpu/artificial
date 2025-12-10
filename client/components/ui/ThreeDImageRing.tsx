@@ -1,8 +1,56 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, easeOut } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+// Simple image preloader hook
+function useImagePreloader(images: string[]) {
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const loaded = new Set<string>();
+
+    const loadImage = (src: string): Promise<void> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          if (mounted) {
+            loaded.add(src);
+            setLoadedImages(new Set(loaded));
+          }
+          resolve();
+        };
+        img.onerror = () => resolve(); // Don't block on error
+        img.src = src;
+      });
+    };
+
+    // Load images with a small delay between each to avoid overwhelming the browser
+    const loadSequentially = async () => {
+      for (let i = 0; i < images.length; i++) {
+        await loadImage(images[i]);
+        // Small delay between images
+        if (i < images.length - 1) {
+          await new Promise(r => setTimeout(r, 50));
+        }
+      }
+      if (mounted) {
+        setIsLoading(false);
+      }
+    };
+
+    loadSequentially();
+
+    return () => {
+      mounted = false;
+    };
+  }, [images]);
+
+  return { loadedImages, isLoading };
+}
 
 export interface ThreeDImageRingProps {
   /** Array of image URLs to display in the ring */
@@ -80,6 +128,7 @@ export function ThreeDImageRing({
 }: ThreeDImageRingProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const rotationY = useMotionValue(initialRotation);
   const startX = useRef<number>(0);
@@ -89,8 +138,12 @@ export function ThreeDImageRing({
 
   const [currentScale, setCurrentScale] = useState(1);
   const [showImages, setShowImages] = useState(false);
+  const [isInView, setIsInView] = useState(false);
 
   const angle = useMemo(() => 360 / images.length, [images.length]);
+  
+  // Preload images when component is in view
+  const { loadedImages, isLoading } = useImagePreloader(isInView ? images : []);
 
   const getBgPos = (imageIndex: number, currentRot: number, scale: number) => {
     const scaledImageDistance = imageDistance * scale;
@@ -128,9 +181,38 @@ export function ThreeDImageRing({
     return () => window.removeEventListener("resize", handleResize);
   }, [mobileBreakpoint, mobileScaleFactor]);
 
+  // Intersection Observer for lazy loading
   useEffect(() => {
-    setShowImages(true);
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            observerRef.current?.disconnect();
+          }
+        });
+      },
+      {
+        rootMargin: '200px', // Start loading 200px before entering viewport
+        threshold: 0.01,
+      }
+    );
+
+    if (containerRef.current) {
+      observerRef.current.observe(containerRef.current);
+    }
+
+    return () => {
+      observerRef.current?.disconnect();
+    };
   }, []);
+
+  useEffect(() => {
+    // Only show images after they're loaded and in view
+    if (isInView && !isLoading) {
+      setShowImages(true);
+    }
+  }, [isInView, isLoading]);
 
   // Auto-rotation effect with throttled updates (30fps instead of 60fps)
   useEffect(() => {
@@ -233,6 +315,17 @@ export function ThreeDImageRing({
       onMouseDown={draggable ? handleDragStart : undefined}
       onTouchStart={draggable ? handleDragStart : undefined}
     >
+      {/* Loading indicator */}
+      {isInView && isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center z-20">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-indonesian-gold/30 border-t-indonesian-gold rounded-full animate-spin" />
+            <span className="text-sm text-muted-foreground">
+              Loading {loadedImages.size}/{images.length}
+            </span>
+          </div>
+        </div>
+      )}
       <div
         style={{
           perspective: `${perspective}px`,

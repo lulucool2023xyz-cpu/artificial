@@ -274,14 +274,13 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
               className={cn(
                 "absolute left-1/2 -translate-x-1/2 mt-3 w-64 sm:w-72",
                 "rounded-2xl backdrop-blur-xl border shadow-2xl overflow-hidden",
-                themeStyles.dropdown,
-                themeStyles.text
+                // Fixed: Use explicit dark background for dropdown
+                "bg-[#0A0A0A]/95 border-white/10 text-white"
               )}
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              style={customStyles}
             >
               <div className="p-4 space-y-1">
                 {links.map((link, index) => (
@@ -295,7 +294,7 @@ export const MorphingNavigation: React.FC<MorphingNavigationProps> = ({
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-xl",
                       "font-medium text-sm tracking-wide",
-                      "hover:bg-white/10 hover:text-white active:text-white",
+                      "text-gray-300 hover:bg-white/10 hover:text-white",
                       "transition-all duration-200"
                     )}
                   >

@@ -20,7 +20,11 @@ import {
   MoreHorizontal,
   Trash2,
   Pin,
-  Edit3
+  Edit3,
+  Sparkles,
+  Palette,
+  Globe,
+  Compass
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -221,8 +225,9 @@ export const ChatSidebar = memo(function ChatSidebar({
               <Tooltip text="Chat yang baru dibuka">
                 <button
                   className={cn(
-                    "w-full flex items-center justify-center p-3 rounded-lg transition-all duration-200",
-                    "text-[#A0A0A0] hover:text-white hover:bg-white/10"
+                    "w-full flex items-center justify-center p-3 min-h-[48px] rounded-lg transition-all duration-200",
+                    "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                    "touch:min-h-[52px]" // Larger touch target on touch devices
                   )}
                 >
                   <Clock className="w-5 h-5" />
@@ -233,8 +238,9 @@ export const ChatSidebar = memo(function ChatSidebar({
                 <button
                   onClick={() => setRecentExpanded(!recentExpanded)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
-                    "text-[#A0A0A0] hover:text-white hover:bg-white/10"
+                    "w-full flex items-center gap-3 px-3 py-3 min-h-[48px] rounded-lg transition-all duration-200",
+                    "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                    "touch:min-h-[52px] touch:py-3.5" // Larger touch target on touch devices
                   )}
                 >
                   <Clock className="w-5 h-5 flex-shrink-0" />
@@ -254,8 +260,9 @@ export const ChatSidebar = memo(function ChatSidebar({
                         <div
                           key={chat.id}
                           className={cn(
-                            "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 cursor-pointer relative group",
+                            "flex items-center gap-2 px-3 py-3 min-h-[44px] rounded-lg transition-all duration-200 cursor-pointer relative group",
                             "text-[#A0A0A0] hover:text-white hover:bg-[#2A2A2A]",
+                            "touch:min-h-[48px] touch:py-3.5", // Better touch target
                             chat.pinned && "bg-[#C9A04F]/10 border-l-2 border-[#C9A04F]"
                           )}
                           onMouseEnter={() => setHoveredChat(chat.id)}
@@ -263,8 +270,8 @@ export const ChatSidebar = memo(function ChatSidebar({
                           onClick={() => navigate(`/chat/${chat.id}`)}
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs truncate">{truncateText(chat.title)}</p>
-                            <p className="text-[10px] text-[#666] mt-0.5">{chat.timestamp}</p>
+                            <p className="text-sm truncate">{truncateText(chat.title)}</p>
+                            <p className="text-xs text-[#666] mt-0.5">{chat.timestamp}</p>
                           </div>
 
                           {/* Hover Menu */}
@@ -310,8 +317,9 @@ export const ChatSidebar = memo(function ChatSidebar({
               <Tooltip text="Chat yang kamu simpan">
                 <button
                   className={cn(
-                    "w-full flex items-center justify-center p-3 rounded-lg transition-all duration-200",
-                    "text-[#A0A0A0] hover:text-white hover:bg-white/10"
+                    "w-full flex items-center justify-center p-3 min-h-[48px] rounded-lg transition-all duration-200",
+                    "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                    "touch:min-h-[52px]"
                   )}
                 >
                   <Bookmark className="w-5 h-5" />
@@ -322,8 +330,9 @@ export const ChatSidebar = memo(function ChatSidebar({
                 <button
                   onClick={() => setSavedExpanded(!savedExpanded)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
-                    "text-[#A0A0A0] hover:text-white hover:bg-white/10"
+                    "w-full flex items-center gap-3 px-3 py-3 min-h-[48px] rounded-lg transition-all duration-200",
+                    "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                    "touch:min-h-[52px] touch:py-3.5"
                   )}
                 >
                   <Bookmark className="w-5 h-5 flex-shrink-0" />
@@ -343,14 +352,15 @@ export const ChatSidebar = memo(function ChatSidebar({
                         <div
                           key={chat.id}
                           className={cn(
-                            "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 cursor-pointer",
-                            "text-[#A0A0A0] hover:text-white hover:bg-[#2A2A2A]"
+                            "flex items-center gap-2 px-3 py-3 min-h-[44px] rounded-lg transition-all duration-200 cursor-pointer",
+                            "text-[#A0A0A0] hover:text-white hover:bg-[#2A2A2A]",
+                            "touch:min-h-[48px] touch:py-3.5"
                           )}
                           onClick={() => navigate(`/chat/${chat.id}`)}
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs truncate">{truncateText(chat.title)}</p>
-                            <p className="text-[10px] text-[#666] mt-0.5">{chat.timestamp}</p>
+                            <p className="text-sm truncate">{truncateText(chat.title)}</p>
+                            <p className="text-xs text-[#666] mt-0.5">{chat.timestamp}</p>
                           </div>
                         </div>
                       ))
@@ -371,6 +381,111 @@ export const ChatSidebar = memo(function ChatSidebar({
             )}
           </div>
 
+          {/* Quick Access Section - 3 Menus above History */}
+          {!isCollapsed && (
+            <div className="mb-3">
+              <p className="text-[10px] uppercase tracking-wider text-[#666] px-3 mb-2">Quick Access</p>
+            </div>
+          )}
+          
+          {/* Explore Culture */}
+          <div className="mb-1">
+            {isCollapsed ? (
+              <Tooltip text="Explore Culture">
+                <Link
+                  to="/culture"
+                  className={cn(
+                    "w-full flex items-center justify-center p-3 min-h-[48px] rounded-lg transition-all duration-200",
+                    "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                    "touch:min-h-[52px]",
+                    location.pathname === "/culture" && "bg-[#C9A04F]/20 text-[#C9A04F]"
+                  )}
+                >
+                  <Sparkles className="w-5 h-5" />
+                </Link>
+              </Tooltip>
+            ) : (
+              <Link
+                to="/culture"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-3 min-h-[48px] rounded-lg transition-all duration-200",
+                  "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                  "touch:min-h-[52px] touch:py-3.5",
+                  location.pathname === "/culture" && "bg-[#C9A04F]/20 text-[#C9A04F] font-medium"
+                )}
+              >
+                <Sparkles className="w-5 h-5 flex-shrink-0 text-[#C9A04F]" />
+                <span className="text-sm flex-1">Explore Culture</span>
+              </Link>
+            )}
+          </div>
+
+          {/* Creative Studio */}
+          <div className="mb-1">
+            {isCollapsed ? (
+              <Tooltip text="Creative Studio">
+                <Link
+                  to="/creative"
+                  className={cn(
+                    "w-full flex items-center justify-center p-3 min-h-[48px] rounded-lg transition-all duration-200",
+                    "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                    "touch:min-h-[52px]",
+                    location.pathname === "/creative" && "bg-[#C9A04F]/20 text-[#C9A04F]"
+                  )}
+                >
+                  <Palette className="w-5 h-5" />
+                </Link>
+              </Tooltip>
+            ) : (
+              <Link
+                to="/creative"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-3 min-h-[48px] rounded-lg transition-all duration-200",
+                  "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                  "touch:min-h-[52px] touch:py-3.5",
+                  location.pathname === "/creative" && "bg-[#C9A04F]/20 text-[#C9A04F] font-medium"
+                )}
+              >
+                <Palette className="w-5 h-5 flex-shrink-0 text-purple-400" />
+                <span className="text-sm flex-1">Creative Studio</span>
+              </Link>
+            )}
+          </div>
+
+          {/* Discover Indonesia */}
+          <div className="mb-3">
+            {isCollapsed ? (
+              <Tooltip text="Discover Indonesia">
+                <Link
+                  to="/culture"
+                  onClick={() => {/* Navigate to map */}}
+                  className={cn(
+                    "w-full flex items-center justify-center p-3 min-h-[48px] rounded-lg transition-all duration-200",
+                    "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                    "touch:min-h-[52px]"
+                  )}
+                >
+                  <Compass className="w-5 h-5" />
+                </Link>
+              </Tooltip>
+            ) : (
+              <Link
+                to="/culture"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-3 min-h-[48px] rounded-lg transition-all duration-200",
+                  "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                  "touch:min-h-[52px] touch:py-3.5"
+                )}
+              >
+                <Compass className="w-5 h-5 flex-shrink-0 text-emerald-400" />
+                <span className="text-sm flex-1">Discover Indonesia</span>
+              </Link>
+            )}
+          </div>
+
+          {/* Divider */}
+          {!isCollapsed && <div className="border-t border-white/10 my-3" />}
+
           {/* My Prompts */}
           <div className="mb-2">
             {isCollapsed ? (
@@ -378,8 +493,9 @@ export const ChatSidebar = memo(function ChatSidebar({
                 <Link
                   to="/chat/prompts"
                   className={cn(
-                    "w-full flex items-center justify-center p-3 rounded-lg transition-all duration-200",
+                    "w-full flex items-center justify-center p-3 min-h-[48px] rounded-lg transition-all duration-200",
                     "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                    "touch:min-h-[52px]",
                     location.pathname === "/chat/prompts" && "bg-[#C9A04F]/20 text-[#C9A04F] border-l-[3px] border-[#C9A04F]"
                   )}
                 >
@@ -390,8 +506,9 @@ export const ChatSidebar = memo(function ChatSidebar({
               <Link
                 to="/chat/prompts"
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-3 min-h-[48px] rounded-lg transition-all duration-200",
                   "text-[#A0A0A0] hover:text-white hover:bg-white/10",
+                  "touch:min-h-[52px] touch:py-3.5",
                   location.pathname === "/chat/prompts" && "bg-[#C9A04F]/20 text-[#C9A04F] border-l-[3px] border-[#C9A04F] font-semibold"
                 )}
               >
