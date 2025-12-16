@@ -1,0 +1,10 @@
+* [33m51d2b04[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m feat: Enable Google Search by default, improve Creative canvas UI, fix IndonesiaMap duplicates, enhance mobile responsiveness
+* [33m2dea4de[m feat: Complete UI/UX improvements and production-ready enhancements
+* [33m1c6cb16[m Add subscription page with pricing tiers, fix navigation, enhance Indonesia map error handling, and add subscription links to landing page
+* [33madaac1c[m fix: update pnpm-lock.yaml for railwa build and update map components
+* [33m09f7174[m Update frontend: Integrate Indonesia Map, fix UI components, and optimize performance
+* [33m1979202[m feat(frontend): enhanced creative studio chat input and ui fixes
+* [33m2813618[m feat: integrate image generation API and fix mobile header
+* [33m5708b79[m feat: fix dock navigation, mobile sidebar, page transitions & performance optimizations
+* [33m58c9e1f[m feat: enhance creative studio animations and responsive design
+* [33me30ab49[m fix(auth): prevent freeze on logout by clearing state immediately
