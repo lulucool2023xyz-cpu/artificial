@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Mic, Camera, Settings, User, History, Menu, X, Zap, Brain, Gauge, Trash2, ChevronDown, Plus, LogOut, MessageSquare, Search, Save, Bell, Copy, RotateCcw, Sun, Moon, Monitor, Paperclip, File as FileIcon, Image as ImageIcon, FileText, Newspaper, Sparkles, HelpCircle, Clock, Palette, CreditCard, AlignJustify, BookOpen, PenTool, ExternalLink } from 'lucide-react';
+import { Send, Mic, Camera, Settings, User, History, Menu, X, Zap, Brain, Gauge, Trash2, ChevronDown, Plus, LogOut, MessageSquare, Search, Save, Bell, Copy, RotateCcw, Sun, Moon, Monitor, Paperclip, File as FileIcon, Image as ImageIcon, FileText, Newspaper, Sparkles, HelpCircle, Clock, Palette, CreditCard, AlignJustify, BookOpen, PenTool, ExternalLink, Bookmark } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface AIChatbotProps {
-  initialView?: 'chat' | 'history' | 'profile' | 'settings';
+  initialView?: 'chat' | 'history' | 'profile' | 'settings' | 'prompts' | 'saved' | 'models';
 }
 
 /**
@@ -623,24 +623,32 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       // Build tools array
       const tools: ChatTool[] = [];
       if (googleSearchEnabled) {
+        // Google Search tool uses empty object - dynamicRetrievalConfig is not valid
         tools.push({
-          googleSearch: {
-            dynamicRetrievalConfig: {
-              mode: 'MODE_DYNAMIC',
-              dynamicThreshold: 0.5
-            }
-          }
+          googleSearch: {}
         });
+        console.log('[Tools] Google Search enabled');
       }
 
-      // Build thinking config
+      // Build thinking config based on model type
       let thinkingConfig: ThinkingConfig | undefined;
       const modelInfo = availableModels.find(m => m.name === selectedModel);
       if (thinkingModeEnabled && modelInfo?.supportsThinking) {
-        thinkingConfig = {
-          thinkingBudget: thinkingBudget,
-          includeThoughts: showThoughts
-        };
+        if (modelInfo.thinkingType === 'level') {
+          // Gemini 3 models use thinkingLevel ('low' or 'high')
+          thinkingConfig = {
+            thinkingLevel: thinkingBudget > 8192 ? 'high' : 'low',
+            includeThoughts: showThoughts
+          };
+          console.log('[Thinking] Using thinkingLevel:', thinkingConfig);
+        } else {
+          // Gemini 2.5 models use thinkingBudget (token count)
+          thinkingConfig = {
+            thinkingBudget: thinkingBudget,
+            includeThoughts: showThoughts
+          };
+          console.log('[Thinking] Using thinkingBudget:', thinkingConfig);
+        }
       }
 
       // Prepare contents for Gemini API format
@@ -714,8 +722,19 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             throw new Error(chunk.message || 'Streaming error');
           }
 
+          // Handle thought chunks - update UI immediately when thoughts arrive
           if (chunk.thought) {
             accumulatedThoughts.push(chunk.thought);
+            // Update UI immediately when thoughts arrive (not just on text)
+            requestAnimationFrame(() => {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === botMessageId
+                    ? { ...msg, thoughts: [...accumulatedThoughts] }
+                    : msg
+                )
+              );
+            });
           }
 
           // Capture grounding metadata from Google Search
@@ -723,7 +742,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             accumulatedGroundingMetadata = chunk.groundingMetadata;
           }
 
-
+          // Handle text chunks
           if (chunk.text) {
             accumulatedText += chunk.text;
 
@@ -732,7 +751,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               setMessages(prev =>
                 prev.map(msg =>
                   msg.id === botMessageId
-                    ? { ...msg, text: accumulatedText, thoughts: accumulatedThoughts }
+                    ? { ...msg, text: accumulatedText, thoughts: [...accumulatedThoughts] }
                     : msg
                 )
               );
@@ -1295,16 +1314,16 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                   msg.type === 'user' ? 'justify-end animate-slide-in-right' : 'justify-start animate-slide-in-left'
                 )}>
                   <div className={cn(
-                    "max-w-full sm:max-w-[85%] lg:max-w-[75%]",
-                    msg.type === 'user' ? '' : 'flex flex-col gap-2'
+                    msg.type === 'user'
+                      ? "max-w-full sm:max-w-[85%] lg:max-w-[75%]"
+                      : "max-w-full flex flex-col gap-2" // AI responses: full width, ChatGPT-style
                   )}>
                     <div className={cn(
-                      "px-5 py-4 sm:px-6 sm:py-5 rounded-2xl",
                       msg.type === 'user'
-                        ? "bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/10 text-foreground border border-[#FFD700]/50 rounded-tr-sm"
+                        ? "px-5 py-4 sm:px-6 sm:py-5 rounded-2xl bg-black/80 dark:bg-black/60 text-foreground border-2 border-[#FFD700] rounded-tr-sm"
                         : msg.type === 'error'
-                          ? "bg-red-500/10 border border-red-500/30 text-foreground rounded-tl-sm"
-                          : "bg-background/50 dark:bg-card/50 border-2 border-[#FFD700]/50 rounded-tl-sm"
+                          ? "px-5 py-4 sm:px-6 sm:py-5 rounded-2xl bg-red-500/10 border border-red-500/30 text-foreground rounded-tl-sm"
+                          : "py-4" // ChatGPT-style: no bubble, no border, more padding for readability
                     )}>
                       {msg.type === 'error' ? (
                         <div className="flex flex-col gap-2">
@@ -1350,7 +1369,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
                               )}
                             </div>
                           )}
-                          <div className="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:mb-4 prose-li:my-1 prose-ul:my-3 prose-ol:my-3 prose-headings:mb-3 prose-headings:mt-4 prose-pre:my-4 prose-sm sm:prose-base prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
+                          <div className="prose dark:prose-invert max-w-none prose-p:leading-loose prose-p:mb-5 prose-p:text-lg sm:prose-p:text-xl prose-li:my-2 prose-ul:my-4 prose-ol:my-4 prose-headings:mb-4 prose-headings:mt-6 prose-pre:my-5 prose-xl sm:prose-2xl prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
@@ -2712,6 +2731,75 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     </div>
   );
 
+  // Render My Prompts page
+  const renderPrompts = () => (
+    <div className="p-8 max-w-3xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold font-heading">My Prompts</h2>
+        <button className="flex items-center gap-2 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-lg">
+          <Plus className="w-4 h-4" />
+          Prompt Baru
+        </button>
+      </div>
+
+      <div className="text-center py-16">
+        <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground mb-4">Belum ada prompt tersimpan</p>
+        <p className="text-sm text-muted-foreground">Simpan prompt favorit Anda untuk akses cepat</p>
+      </div>
+    </div>
+  );
+
+  // Render Saved Chats page
+  const renderSaved = () => (
+    <div className="p-8 max-w-3xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold font-heading">Saved Chats</h2>
+      </div>
+
+      <div className="text-center py-16">
+        <Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground mb-4">Belum ada chat tersimpan</p>
+        <p className="text-sm text-muted-foreground">Simpan percakapan penting untuk referensi nanti</p>
+      </div>
+    </div>
+  );
+
+  // Render AI Models page
+  const renderModels = () => (
+    <div className="p-8 max-w-4xl mx-auto">
+      <h2 className="text-2xl font-semibold mb-6 font-heading">AI Models</h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {availableModels.length > 0 ? availableModels.map(model => (
+          <div
+            key={model.name}
+            className={cn(
+              "bg-card border rounded-xl p-5 transition-all cursor-pointer",
+              selectedModel === model.name
+                ? "border-[#FFD700] shadow-lg shadow-[#FFD700]/20"
+                : "border-border hover:border-[#FFD700]/50"
+            )}
+            onClick={() => setSelectedModel(model.name)}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">{model.displayName}</h3>
+              {selectedModel === model.name && (
+                <span className="px-2 py-1 rounded-full text-xs bg-[#FFD700]/20 text-[#FFD700]">Active</span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">{model.description}</p>
+          </div>
+        )) : (
+          <div className="col-span-2 text-center py-8">
+            <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">Memuat model tersedia...</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   // Navigation links for MorphingNavigation
   const navLinks: MorphingNavigationLink[] = [
     { id: 'library', label: 'Library', href: '/library', icon: <BookOpen className="w-4 h-4" /> },
@@ -2848,64 +2936,67 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
           {/* Separator */}
           <div className="my-2 border-t border-border" />
 
-          {/* Customize - Mobile Responsive */}
+          {/* My Prompts - Mobile Responsive */}
           <button
             onClick={() => {
-              navigate('/chat/profile');
+              navigate('/chat/prompts');
               if (isMobileView) setSidebarOpen(false);
             }}
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
               sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
-              currentView === 'profile'
+              currentView === 'prompts'
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
-            aria-label="Customize"
-            aria-current={currentView === 'profile' ? "page" : undefined}
-            title={sidebarMinimized ? "Customize" : undefined}
+            aria-label="My Prompts"
+            aria-current={currentView === 'prompts' ? "page" : undefined}
+            title={sidebarMinimized ? "My Prompts" : undefined}
           >
-            <Palette className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Customize</span>}
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">My Prompts</span>}
           </button>
 
-          {/* Settings - Mobile Responsive */}
+          {/* Saved Chats - Mobile Responsive */}
           <button
             onClick={() => {
-              navigate('/chat/settings');
+              navigate('/chat/saved');
               if (isMobileView) setSidebarOpen(false);
             }}
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
               sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
-              currentView === 'settings'
+              currentView === 'saved'
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
-            aria-label="Settings"
-            aria-current={currentView === 'settings' ? "page" : undefined}
-            title={sidebarMinimized ? "Settings" : undefined}
+            aria-label="Saved Chats"
+            aria-current={currentView === 'saved' ? "page" : undefined}
+            title={sidebarMinimized ? "Saved Chats" : undefined}
           >
-            <Settings className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Settings</span>}
+            <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Saved Chats</span>}
           </button>
 
-          {/* Subscription - Mobile Responsive */}
+          {/* AI Models - Mobile Responsive */}
           <button
-            onClick={() => navigate('/chat/subscription')}
+            onClick={() => {
+              navigate('/chat/models');
+              if (isMobileView) setSidebarOpen(false);
+            }}
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
               sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
-            aria-label="Subscription"
-            title={sidebarMinimized ? "Subscription" : undefined}
+            aria-label="AI Models"
+            title={sidebarMinimized ? "AI Models" : undefined}
           >
-            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Subscription</span>}
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">AI Models</span>}
           </button>
 
           {/* History - Non-clickable Header */}
@@ -3149,6 +3240,9 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         {currentView === 'profile' && <div className="flex-1 overflow-y-auto">{renderProfile()}</div>}
         {currentView === 'history' && <div className="flex-1 overflow-y-auto">{renderHistory()}</div>}
         {currentView === 'settings' && <div className="flex-1 overflow-y-auto">{renderSettings()}</div>}
+        {currentView === 'prompts' && <div className="flex-1 overflow-y-auto">{renderPrompts()}</div>}
+        {currentView === 'saved' && <div className="flex-1 overflow-y-auto">{renderSaved()}</div>}
+        {currentView === 'models' && <div className="flex-1 overflow-y-auto">{renderModels()}</div>}
       </div>
 
       {/* Overlay with Backdrop Blur */}

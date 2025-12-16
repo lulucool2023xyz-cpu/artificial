@@ -250,14 +250,13 @@ export interface ChatPart {
 
 export interface ThinkingConfig {
     thinkingBudget?: number; // 0-24576 for Flash, 128-32768 for Pro, -1 for dynamic
+    thinkingLevel?: 'low' | 'high'; // For Gemini 3 models
     includeThoughts?: boolean;
 }
 
 export interface GoogleSearchConfig {
-    dynamicRetrievalConfig?: {
-        mode?: 'MODE_DYNAMIC' | 'MODE_UNSPECIFIED';
-        dynamicThreshold?: number;
-    };
+    // Google Search uses empty object - no config needed
+    [key: string]: unknown;
 }
 
 export interface ChatTool {
@@ -300,6 +299,16 @@ export interface ChatStreamChunk {
         }>;
         webSearchQueries?: string[];
     };
+    // Function calling support
+    functionCall?: {
+        name: string;
+        args: Record<string, unknown>;
+    };
+    // Code execution support
+    codeExecutionResult?: {
+        outcome: 'OUTCOME_OK' | 'OUTCOME_FAILED';
+        output?: string;
+    };
     error?: boolean;
     message?: string;
 }
@@ -315,16 +324,27 @@ export const chatApi = {
         const url = `${API_BASE_URL}/api/v2/chat/stream`;
         const token = getAccessToken();
 
+        const requestPayload = {
+            ...request,
+            stream: true,
+        };
+
+        // Debug: Log request payload including thinkingConfig
+        console.log('[API] Sending chat request:', {
+            model: request.model,
+            hasThinkingConfig: !!request.thinkingConfig,
+            thinkingConfig: request.thinkingConfig,
+            hasTools: !!request.tools?.length,
+            tools: request.tools,
+        });
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             },
-            body: JSON.stringify({
-                ...request,
-                stream: true,
-            }),
+            body: JSON.stringify(requestPayload),
         });
 
         if (!response.ok) {
@@ -363,6 +383,15 @@ export const chatApi = {
 
                     try {
                         const chunk: ChatStreamChunk = JSON.parse(data);
+
+                        // Debug: Log thought chunks when received
+                        if (chunk.thought) {
+                            console.log('[API] Received thought chunk:', chunk.thought);
+                        }
+                        if (chunk.text) {
+                            console.log('[API] Received text chunk length:', chunk.text.length);
+                        }
+
                         yield chunk;
 
                         if (chunk.done) {

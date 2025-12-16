@@ -108,16 +108,6 @@ const idMappings: Record<string, string> = {
     "IDSG": "ID-SG", "IDGO": "ID-GO", "IDSR": "ID-SR", "IDMA": "ID-MA",
     "IDMU": "ID-MU", "IDPB": "ID-PB", "IDPD": "ID-PD", "IDPT": "ID-PT",
     "IDPP": "ID-PP", "IDPS": "ID-PS",
-    // Alternative codes (without hyphen)
-    "IDAC": "ID-AC", "IDSU": "ID-SU", "IDSB": "ID-SB", "IDRI": "ID-RI",
-    "IDJA": "ID-JA", "IDSS": "ID-SS", "IDBE": "ID-BE", "IDLA": "ID-LA",
-    "IDBB": "ID-BB", "IDKR": "ID-KR", "IDJK": "ID-JK", "IDJB": "ID-JB",
-    "IDJT": "ID-JT", "IDYO": "ID-YO", "IDJI": "ID-JI", "IDBT": "ID-BT",
-    "IDBA": "ID-BA", "IDNB": "ID-NB", "IDNT": "ID-NT", "IDKB": "ID-KB",
-    "IDKT": "ID-KT", "IDKS": "ID-KS", "IDKI": "ID-KI", "IDKU": "ID-KU",
-    "IDSA": "ID-SA", "IDST": "ID-ST", "IDSN": "ID-SN", "IDSG": "ID-SG",
-    "IDGO": "ID-GO", "IDSR": "ID-SR", "IDMA": "ID-MA", "IDMU": "ID-MU",
-    "IDPB": "ID-PB", "IDPA": "ID-PA",
     // Common name mappings
     "aceh": "ID-AC", "sumut": "ID-SU", "sumbar": "ID-SB", "riau": "ID-RI",
     "jambi": "ID-JA", "sumsel": "ID-SS", "bengkulu": "ID-BE", "lampung": "ID-LA",
@@ -138,8 +128,8 @@ interface IndonesiaMapProps {
     compact?: boolean;
 }
 
-const IndonesiaMap = memo(function IndonesiaMap({ 
-    onProvinceClick, 
+const IndonesiaMap = memo(function IndonesiaMap({
+    onProvinceClick,
     className,
     showStats = true,
     showLegend = true,
@@ -150,6 +140,7 @@ const IndonesiaMap = memo(function IndonesiaMap({
     const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [svgContent, setSvgContent] = useState<string>(''); // Store SVG as HTML string
     const containerRef = useRef<HTMLDivElement>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -174,182 +165,151 @@ const IndonesiaMap = memo(function IndonesiaMap({
         return null;
     }, [normalizeId]);
 
-    // Style an SVG element for interactivity
-    const styleElement = useCallback((element: SVGElement, id: string, name: string) => {
-        try {
-            // Check if this element corresponds to a known province
-            const provinceInfo = getProvinceData(id) || getProvinceData(name);
-            
-            if (!provinceInfo) {
-                // Skip elements without province data
-                return;
-            }
-
-            // Apply base styles
-            element.style.fill = selectedProvince === provinceInfo.id ? '#C9A04F' : '#374151';
-            element.style.stroke = '#C9A04F';
-            element.style.strokeWidth = '0.5';
-            element.style.cursor = 'pointer';
-            element.style.transition = 'all 0.2s ease';
-
-            // Highlight if selected
-            if (selectedProvince === provinceInfo.id) {
-                element.style.filter = 'brightness(1.3) drop-shadow(0 0 8px rgba(201, 160, 79, 0.5))';
-            }
-
-            // Add event listeners
-            element.addEventListener('mouseenter', (e) => {
-                element.style.fill = '#C9A04F';
-                element.style.strokeWidth = '1.5';
-                element.style.filter = 'drop-shadow(0 0 6px rgba(201, 160, 79, 0.6))';
-
-                const provinceInfo = getProvinceData(id) || getProvinceData(name);
-                if (provinceInfo) {
-                    setHoveredProvince(provinceInfo.id);
-                }
-
-                const mouseEvent = e as MouseEvent;
-                setMousePos({ x: mouseEvent.clientX, y: mouseEvent.clientY });
-            });
-
-            element.addEventListener('mousemove', (e) => {
-                const mouseEvent = e as MouseEvent;
-                setMousePos({ x: mouseEvent.clientX, y: mouseEvent.clientY });
-            });
-
-            element.addEventListener('mouseleave', () => {
-                const normalizedId = normalizeId(id) || normalizeId(name);
-                if (normalizedId !== selectedProvince) {
-                    element.style.fill = '#374151';
-                    element.style.strokeWidth = '0.5';
-                    element.style.filter = 'none';
-                }
-                setHoveredProvince(null);
-            });
-
-            element.addEventListener('click', () => {
-                const provinceInfo = getProvinceData(id) || getProvinceData(name);
-                if (provinceInfo) {
-                    setSelectedProvince(provinceInfo.id);
-                    onProvinceClick?.(provinceInfo.id, provinceInfo.name, provinceInfo.culture, provinceInfo.capital);
-                }
-            });
-        } catch (error) {
-            console.error('Error styling element:', { id, name, error });
-        }
-    }, [getProvinceData, normalizeId, onProvinceClick, selectedProvince]);
-
-    // Load and enhance SVG
+    // Load SVG content only (without event listeners - those are added separately)
     useEffect(() => {
+        let isMounted = true;
+
         const loadSvg = async () => {
             setIsLoading(true);
             setError(null);
-            
+
             try {
                 console.log('Loading Indonesia map from /peta/id.svg');
                 const response = await fetch('/peta/id.svg');
-                
+
                 if (!response.ok) {
                     throw new Error(`Failed to load map: HTTP ${response.status}`);
                 }
-                
+
                 const svgText = await response.text();
                 console.log('SVG loaded, length:', svgText.length);
 
-                if (containerRef.current) {
-                    // Create a container for the SVG
-                    const parser = new DOMParser();
-                    const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
-                    const svgElement = svgDoc.querySelector('svg');
-                    
-                    // Check for parse errors
-                    const parseError = svgDoc.querySelector('parsererror');
-                    if (parseError) {
-                        console.error('SVG parse error:', parseError.textContent);
-                        throw new Error('Invalid SVG format');
-                    }
+                if (!isMounted) return;
 
-                    if (svgElement) {
-                        console.log('SVG element found, styling...');
-                        // Style the SVG
-                        svgElement.style.width = '100%';
-                        svgElement.style.height = 'auto';
-                        svgElement.style.maxHeight = compact ? '300px' : '500px';
-                        svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                // Parse and prepare SVG
+                const parser = new DOMParser();
+                const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+                const svgElement = svgDoc.querySelector('svg');
 
-                        // Find all interactive elements (paths, polygons, groups with IDs)
-                        const paths = svgElement.querySelectorAll('path');
-                        const polygons = svgElement.querySelectorAll('polygon');
-                        const groups = svgElement.querySelectorAll('g[id]');
+                // Check for parse errors
+                const parseError = svgDoc.querySelector('parsererror');
+                if (parseError) {
+                    console.error('SVG parse error:', parseError.textContent);
+                    throw new Error('Invalid SVG format');
+                }
 
-                        console.log(`Found ${paths.length} paths, ${polygons.length} polygons, ${groups.length} groups`);
+                if (svgElement) {
+                    console.log('SVG element found, preparing...');
+                    // Style the SVG
+                    svgElement.style.width = '100%';
+                    svgElement.style.height = 'auto';
+                    svgElement.style.maxHeight = compact ? '300px' : '500px';
+                    svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
-                        // Process paths
-                        let styledCount = 0;
-                        paths.forEach((path) => {
-                            const id = path.getAttribute('id') || path.getAttribute('data-id') || '';
-                            const name = path.getAttribute('name') || path.getAttribute('data-name') || path.getAttribute('title') || '';
-                            if (id || name) {
-                                styleElement(path as SVGElement, id, name);
-                                styledCount++;
-                            }
-                        });
+                    // Apply base styles to paths (without event listeners)
+                    const paths = svgElement.querySelectorAll('path');
+                    paths.forEach((path) => {
+                        path.style.fill = '#374151';
+                        path.style.stroke = '#C9A04F';
+                        path.style.strokeWidth = '0.5';
+                        path.style.cursor = 'pointer';
+                        path.style.transition = 'all 0.2s ease';
+                    });
 
-                        // Process polygons
-                        polygons.forEach((polygon) => {
-                            const id = polygon.getAttribute('id') || polygon.getAttribute('data-id') || '';
-                            const name = polygon.getAttribute('name') || polygon.getAttribute('data-name') || polygon.getAttribute('title') || '';
-                            if (id || name) {
-                                styleElement(polygon as SVGElement, id, name);
-                                styledCount++;
-                            }
-                        });
-
-                        // Process groups (if they represent provinces)
-                        groups.forEach((group) => {
-                            const id = group.getAttribute('id') || '';
-                            const name = group.getAttribute('name') || group.getAttribute('data-name') || group.getAttribute('title') || '';
-                            
-                            // Only style if it's a province group (has matching data)
-                            if (getProvinceData(id) || getProvinceData(name)) {
-                                const childPaths = group.querySelectorAll('path, polygon');
-                                childPaths.forEach((child) => {
-                                    styleElement(child as SVGElement, id, name);
-                                });
-                                styledCount++;
-                            }
-                        });
-
-                        console.log(`Styled ${styledCount} interactive elements`);
-
-                        // Clear and insert SVG
-                        const svgContainer = containerRef.current.querySelector('.svg-container');
-                        if (svgContainer) {
-                            svgContainer.innerHTML = '';
-                            svgContainer.appendChild(svgElement);
-                            svgRef.current = svgElement as unknown as SVGSVGElement;
-                            console.log('SVG successfully mounted to DOM');
-                        } else {
-                            console.error('SVG container not found');
-                            throw new Error('SVG container not found in DOM');
-                        }
-                        
-                        console.log('Map loaded successfully!');
-                        setIsLoading(false);
-                    } else {
-                        console.error('SVG element not found in parsed document');
-                        throw new Error('No SVG element found');
-                    }
+                    // Store SVG HTML
+                    setSvgContent(svgElement.outerHTML);
+                    console.log('SVG content stored');
+                    setIsLoading(false);
+                } else {
+                    throw new Error('No SVG element found');
                 }
             } catch (err) {
                 console.error('Error loading map:', err);
-                setError(err instanceof Error ? err.message : 'Gagal memuat peta Indonesia');
-                setIsLoading(false);
+                if (isMounted) {
+                    setError(err instanceof Error ? err.message : 'Gagal memuat peta Indonesia');
+                    setIsLoading(false);
+                }
             }
         };
 
         loadSvg();
-    }, [getProvinceData, styleElement, compact]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [compact]);
+
+    // Attach event listeners AFTER SVG is rendered in DOM
+    useEffect(() => {
+        if (!svgContent || isLoading || error) return;
+
+        // Wait for next tick to ensure DOM is updated
+        const timeoutId = setTimeout(() => {
+            const container = containerRef.current;
+            if (!container) return;
+
+            const svgElement = container.querySelector('svg');
+            if (!svgElement) {
+                console.log('SVG not found in DOM yet');
+                return;
+            }
+
+            console.log('Attaching event listeners to SVG paths...');
+
+            const paths = svgElement.querySelectorAll('path');
+            let attachedCount = 0;
+
+            paths.forEach((path) => {
+                const id = path.getAttribute('id') || path.getAttribute('data-id') || '';
+                const name = path.getAttribute('name') || path.getAttribute('data-name') || path.getAttribute('title') || '';
+
+                // Get province info
+                const provinceInfo = getProvinceData(id) || getProvinceData(name);
+                if (!provinceInfo) return;
+
+                attachedCount++;
+
+                // Mouse enter handler
+                path.addEventListener('mouseenter', (e: Event) => {
+                    const mouseEvent = e as MouseEvent;
+                    path.style.fill = '#C9A04F';
+                    path.style.strokeWidth = '1.5';
+                    path.style.filter = 'drop-shadow(0 0 6px rgba(201, 160, 79, 0.6))';
+
+                    setHoveredProvince(provinceInfo.id);
+                    setMousePos({ x: mouseEvent.clientX, y: mouseEvent.clientY });
+                });
+
+                // Mouse move handler
+                path.addEventListener('mousemove', (e: Event) => {
+                    const mouseEvent = e as MouseEvent;
+                    setMousePos({ x: mouseEvent.clientX, y: mouseEvent.clientY });
+                });
+
+                // Mouse leave handler
+                path.addEventListener('mouseleave', () => {
+                    if (selectedProvince !== provinceInfo.id) {
+                        path.style.fill = '#374151';
+                        path.style.strokeWidth = '0.5';
+                        path.style.filter = 'none';
+                    }
+                    setHoveredProvince(null);
+                });
+
+                // Click handler
+                path.addEventListener('click', () => {
+                    setSelectedProvince(provinceInfo.id);
+                    onProvinceClick?.(provinceInfo.id, provinceInfo.name, provinceInfo.culture, provinceInfo.capital);
+                });
+            });
+
+            console.log(`Event listeners attached to ${attachedCount} provinces`);
+        }, 100);
+
+        return () => {
+            clearTimeout(timeoutId);
+        };
+    }, [svgContent, isLoading, error, getProvinceData, onProvinceClick, selectedProvince]);
 
     const hoveredData = hoveredProvince ? provinceData[hoveredProvince] : null;
 
@@ -390,7 +350,7 @@ const IndonesiaMap = memo(function IndonesiaMap({
                         <span className="text-sm">Memuat peta Indonesia...</span>
                     </div>
                 )}
-                
+
                 {/* Error state */}
                 {error && !isLoading && (
                     <div className="flex flex-col items-center gap-3 text-center px-4">
@@ -400,6 +360,14 @@ const IndonesiaMap = memo(function IndonesiaMap({
                         <p className="text-red-400 text-sm">{error}</p>
                         <p className="text-muted-foreground text-xs">Pastikan file peta tersedia di /peta/id.svg</p>
                     </div>
+                )}
+
+                {/* SVG rendered using dangerouslySetInnerHTML for React safety */}
+                {!isLoading && !error && svgContent && (
+                    <div
+                        className="w-full h-full"
+                        dangerouslySetInnerHTML={{ __html: svgContent }}
+                    />
                 )}
             </div>
 

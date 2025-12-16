@@ -170,8 +170,8 @@ export const ChatSidebar = memo(function ChatSidebar({
                 onClick={handleNewChat}
                 className={cn(
                   "w-full flex items-center justify-center p-3 rounded-xl font-semibold",
-                  "bg-gradient-to-r from-[#C9A04F] to-[#B8860B] text-white",
-                  "hover:shadow-[0_0_20px_rgba(201,160,79,0.4)] transition-all duration-300",
+                  "bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-semibold",
+                  "hover:shadow-[0_0_20px_rgba(255,215,0,0.5)] transition-all duration-300",
                   "hover:scale-105 active:scale-95"
                 )}
                 aria-label="New Chat"
@@ -184,10 +184,10 @@ export const ChatSidebar = memo(function ChatSidebar({
               onClick={handleNewChat}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold",
-                "bg-gradient-to-r from-[#C9A04F] to-[#B8860B] text-white",
-                "hover:shadow-[0_0_20px_rgba(201,160,79,0.4)] transition-all duration-300",
+                "bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-semibold",
+                "hover:shadow-[0_0_20px_rgba(255,215,0,0.5)] transition-all duration-300",
                 "hover:scale-[1.02] active:scale-[0.98]",
-                "border border-[#C9A04F]/30"
+                "border border-[#FFD700]/30"
               )}
             >
               <Plus className="w-5 h-5" />
@@ -387,7 +387,7 @@ export const ChatSidebar = memo(function ChatSidebar({
               <p className="text-[10px] uppercase tracking-wider text-[#666] px-3 mb-2">Quick Access</p>
             </div>
           )}
-          
+
           {/* Explore Culture */}
           <div className="mb-1">
             {isCollapsed ? (
@@ -458,7 +458,7 @@ export const ChatSidebar = memo(function ChatSidebar({
               <Tooltip text="Discover Indonesia">
                 <Link
                   to="/culture"
-                  onClick={() => {/* Navigate to map */}}
+                  onClick={() => {/* Navigate to map */ }}
                   className={cn(
                     "w-full flex items-center justify-center p-3 min-h-[48px] rounded-lg transition-all duration-200",
                     "text-[#A0A0A0] hover:text-white hover:bg-white/10",

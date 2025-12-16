@@ -33,6 +33,9 @@ const ChatHistory = lazy(() => import("./pages/chat/history"));
 const ChatSettings = lazy(() => import("./pages/chat/settings"));
 const ChatProfile = lazy(() => import("./pages/chat/profile"));
 const ChatSubscription = lazy(() => import("./pages/chat/subscription"));
+const ChatPrompts = lazy(() => import("./pages/chat/prompts"));
+const ChatSaved = lazy(() => import("./pages/chat/saved"));
+const ChatModels = lazy(() => import("./pages/chat/models"));
 
 // Culture page
 const Culture = lazy(() => import("./pages/Culture"));
@@ -192,6 +195,30 @@ const App = () => (
                     element={
                       <ProtectedRoute>
                         <ChatSubscription />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chat/prompts"
+                    element={
+                      <ProtectedRoute>
+                        <ChatPrompts />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chat/saved"
+                    element={
+                      <ProtectedRoute>
+                        <ChatSaved />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chat/models"
+                    element={
+                      <ProtectedRoute>
+                        <ChatModels />
                       </ProtectedRoute>
                     }
                   />

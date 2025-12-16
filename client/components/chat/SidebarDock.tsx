@@ -14,8 +14,9 @@ import {
 import {
     Newspaper,
     History,
-    Palette,
-    CreditCard,
+    FileText,
+    Bookmark,
+    Sparkles,
     ChevronRight,
     LogOut,
     X,
@@ -183,8 +184,9 @@ export const SidebarDock = memo(function SidebarDock({
     ];
 
     const toolItems = [
-        { icon: <Palette className="w-5 h-5" />, label: "Customize", path: "/chat/profile" },
-        { icon: <CreditCard className="w-5 h-5" />, label: "Subscription", path: "/chat/subscription" },
+        { icon: <FileText className="w-5 h-5" />, label: "My Prompts", path: "/chat/prompts" },
+        { icon: <Bookmark className="w-5 h-5" />, label: "Saved Chats", path: "/chat/saved" },
+        { icon: <Sparkles className="w-5 h-5" />, label: "AI Models", path: "/chat/settings" },
     ];
 
     const handleNavigation = (path: string) => {

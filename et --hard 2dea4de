@@ -1,0 +1,49 @@
+[33m6e0ee88[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{0}: reset: moving to HEAD
+[33m6e0ee88[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{1}: reset: moving to HEAD
+[33m6e0ee88[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{2}: commit: banyak jir
+[33mea6f480[m HEAD@{3}: commit: update
+[33m51d2b04[m HEAD@{4}: rebase (finish): returning to refs/heads/main
+[33m51d2b04[m HEAD@{5}: rebase (pick): feat: Enable Google Search by default, improve Creative canvas UI, fix IndonesiaMap duplicates, enhance mobile responsiveness
+[33m2dea4de[m HEAD@{6}: rebase (continue): feat: Complete UI/UX improvements and production-ready enhancements
+[33m1c6cb16[m HEAD@{7}: pull --rebase origin main (start): checkout 1c6cb168377f21b5f7f37cd4c3b1f85180614d9d
+[33m4bd4de4[m HEAD@{8}: commit: feat: Enable Google Search by default, improve Creative canvas UI, fix IndonesiaMap duplicates, enhance mobile responsiveness
+[33mad6dc93[m HEAD@{9}: rebase (abort): returning to refs/heads/main
+[33m1c6cb16[m HEAD@{10}: pull origin main --rebase (start): checkout 1c6cb168377f21b5f7f37cd4c3b1f85180614d9d
+[33mad6dc93[m HEAD@{11}: commit: feat: Complete UI/UX improvements and production-ready enhancements
+[33madaac1c[m HEAD@{12}: commit: fix: update pnpm-lock.yaml for railwa build and update map components
+[33m09f7174[m HEAD@{13}: commit: Update frontend: Integrate Indonesia Map, fix UI components, and optimize performance
+[33m1979202[m HEAD@{14}: commit: feat(frontend): enhanced creative studio chat input and ui fixes
+[33m2813618[m HEAD@{15}: commit: feat: integrate image generation API and fix mobile header
+[33m5708b79[m HEAD@{16}: commit: feat: fix dock navigation, mobile sidebar, page transitions & performance optimizations
+[33m58c9e1f[m HEAD@{17}: pull origin main: Fast-forward
+[33me30ab49[m HEAD@{18}: commit: fix(auth): prevent freeze on logout by clearing state immediately
+[33m9d4e0c3[m HEAD@{19}: commit: fix(auth): allow browsing landing page while logged in, clear data on logout - Remove auto-redirect to /chat from AuthModal when already authenticated - Update socialLogin calls to use new signature - Clear chat history/settings on logout for clean slate
+[33m98f75de[m HEAD@{20}: commit: fix(auth): detect OAuth provider correctly, clear chat data on logout - Fix provider detection from URL instead of hardcoded google - Clear localStorage chat history/settings/profile on logout - Ensure clean slate when switching accounts
+[33m0d2f91e[m HEAD@{21}: commit: fix(auth): handle OAuth implicit flow tokens from URL hash fragment
+[33mc136a70[m HEAD@{22}: commit: feat(auth): implement OAuth flow and password reset - Add AuthCallback page for OAuth redirects - Update AuthContext with real OAuth flow - Add forgotPassword and updatePassword API functions - Update Login.tsx to use new socialLogin signature
+[33m0f09390[m HEAD@{23}: commit: Fix: Transcribe bug and smoother AI streaming with requestAnimationFrame
+[33mea93670[m HEAD@{24}: commit: UI/UX Enhancements: Voice recording, template cards, theme toggle, and more
+[33mc0f70df[m HEAD@{25}: commit: config: update API URL to production Railway
+[33m10e5255[m HEAD@{26}: commit: feat: enhance UI - soft cream light theme, 404 page, image compression, thinking display, fix syntax errors
+[33m1d4492d[m HEAD@{27}: commit: feat: Update chat UI with modern design improvements
+[33m8d5b218[m HEAD@{28}: commit: Add SmokeyCursor component with performance optimizations and fix Tailwind CSS warning
+[33me40e07e[m HEAD@{29}: commit: Special Changes untuk ikhwan
+[33m19d3d00[m HEAD@{30}: commit: fix: Final adjustments for mobile responsiveness and modal improvements
+[33mdb7c033[m HEAD@{31}: commit: fix: Allow Hyperspeed animation on mobile devices with adjusted quality settings
+[33m1a32f7a[m HEAD@{32}: commit: fix: Fix 3D image carousel mobile responsive layout and sizing issues
+[33m4371e57[m HEAD@{33}: commit: feat: Add custom scrollbar with modern design and indonesian-gold accent
+[33mae666b7[m HEAD@{34}: commit: fix: Fix modal z-index, enhance About Us with anime-themed cards, fix 3D carousel mobile responsive, and add forgot password link
+[33m4417e6a[m HEAD@{35}: commit: feat: Add comprehensive performance optimizations - Device capability detection, React.memo optimizations, lazy loading, WebGL optimizations, performance monitoring, and memory leak prevention
+[33m712477c[m HEAD@{36}: commit: feat: Update navigation, UI improvements, and bug fixes
+[33m34cf4a5[m HEAD@{37}: commit: Simplify catch-all route - remove unnecessary static asset check
+[33m640ad04[m HEAD@{38}: commit: Fix catch-all route to use app.use() instead of app.get('*') for Express 5 compatibility
+[33me75590c[m HEAD@{39}: commit: Use pnpm consistently in build script
+[33m21aaa73[m HEAD@{40}: commit: Remove server from .dockerignore to allow server files in Railway build
+[33m842e695[m HEAD@{41}: commit: Fix vite.config.server.ts to use import.meta.url for ES modules compatibility
+[33me04a30b[m HEAD@{42}: commit: Add server/node-build.ts for Railway deployment
+[33m1922645[m HEAD@{43}: commit: Update pnpm-lock.yaml to sync with package.json dependencies
+[33m5715dc7[m HEAD@{44}: Branch: renamed refs/heads/main to refs/heads/main
+[33m5715dc7[m HEAD@{46}: commit: Initial commit from workspace
+[33md00a47f[m HEAD@{47}: Branch: renamed refs/heads/main to refs/heads/main
+[33md00a47f[m HEAD@{49}: Branch: renamed refs/heads/master to refs/heads/main
+[33md00a47f[m HEAD@{51}: commit (initial): punyagw
