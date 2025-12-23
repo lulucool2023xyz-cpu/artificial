@@ -1,10 +1,11 @@
-import { memo, useState, useEffect, useCallback, useRef } from 'react';
+import { memo, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { MessageSquare, Send } from 'lucide-react';
 import { BackgroundGrid } from './BackgroundGrid';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BatikPattern } from './BatikPattern';
 import { WayangDecoration } from './WayangDecoration';
 import { OrnamentFrame } from './OrnamentFrame';
+import { useDeviceCapability } from '@/utils/deviceCapability';
 
 interface Message {
   id: number;
@@ -13,54 +14,76 @@ interface Message {
   isTyping?: boolean;
 }
 
+// Static conversation for mobile/low-end devices
+const staticConversation: Message[] = [
+  { id: 1, type: 'user', text: 'Apa yang bisa dilakukan di website ini?' },
+  { id: 2, type: 'bot', text: 'Website ini adalah platform AI Chat Indonesia yang menawarkan berbagai fitur canggih! Anda bisa melakukan percakapan natural dengan AI, mendapatkan bantuan coding, menganalisis data, serta brainstorming ide kreatif.' },
+  { id: 3, type: 'user', text: 'Bagaimana cara menggunakannya?' },
+  { id: 4, type: 'bot', text: 'Sangat mudah! Setelah login, pilih mode AI sesuai kebutuhan - Fast, Balance, atau Deep Learning. Lalu ketik pertanyaan atau upload file, dan AI siap membantu!' },
+];
+
 export const DemoPreviewSection = memo(function DemoPreviewSection() {
+  const deviceCapability = useDeviceCapability();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isInView, setIsInView] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
+  const animationRef = useRef<boolean>(true);
+
+  // Skip animation entirely on mobile/low-end devices - use static content
+  const shouldUseStaticContent = useMemo(() => {
+    return deviceCapability?.isMobile || deviceCapability?.isLowEnd;
+  }, [deviceCapability?.isMobile, deviceCapability?.isLowEnd]);
 
   const demoConversation = [
     { type: 'user' as const, text: 'Apa yang bisa dilakukan di website ini?' },
-    { type: 'bot' as const, text: 'Website ini adalah platform AI Chat Indonesia yang menawarkan berbagai fitur canggih! Anda bisa melakukan percakapan natural dengan AI, mendapatkan bantuan coding, menganalisis data, serta brainstorming ide kreatif.' },
+    { type: 'bot' as const, text: 'Website ini adalah platform AI Chat Indonesia dengan berbagai fitur canggih!' },
     { type: 'user' as const, text: 'Bagaimana cara menggunakannya?' },
-    { type: 'bot' as const, text: 'Sangat mudah! Setelah login, pilih mode AI sesuai kebutuhan - Fast, Balance, atau Deep Learning. Lalu ketik pertanyaan atau upload file, dan AI siap membantu! Riwayat chat tersimpan otomatis.' },
-    { type: 'user' as const, text: 'Apa keunggulannya?' },
-    { type: 'bot' as const, text: 'Platform ini menggunakan model AI terkini dengan kemampuan memahami Bahasa Indonesia, mendukung upload file, syntax highlighting untuk kode, dan desain yang terinspirasi budaya Indonesia!' },
+    { type: 'bot' as const, text: 'Sangat mudah! Setelah login, pilih mode AI dan mulai chat. Riwayat tersimpan otomatis.' },
   ];
 
+  // Intersection observer to pause animation when not visible
+  useEffect(() => {
+    if (shouldUseStaticContent) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsInView(entry.isIntersecting);
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [shouldUseStaticContent]);
+
   const typeMessage = async (text: string, messageId: number, isUser: boolean = false) => {
-    // Type character by character for smooth effect
+    if (!animationRef.current) return;
+
+    // Simplified typing - update in chunks instead of per character for better performance
+    const chunkSize = 5; // Type 5 characters at a time
     const chars = text.split('');
     let currentText = '';
 
-    for (let i = 0; i < chars.length; i++) {
-      currentText += chars[i];
+    for (let i = 0; i < chars.length; i += chunkSize) {
+      if (!animationRef.current) return;
+
+      currentText = chars.slice(0, i + chunkSize).join('');
       setMessages(prev =>
         prev.map(msg =>
           msg.id === messageId
-            ? { ...msg, text: currentText, isTyping: true }
+            ? { ...msg, text: currentText, isTyping: i + chunkSize < chars.length }
             : msg
         )
       );
 
-      // Smooth typing per character with consistent speed
-      const char = chars[i];
-      let delay;
-
-      if (char === ' ') {
-        // Quick space delay
-        delay = isUser ? 20 : 25;
-      } else if (char === ',' || char === '.') {
-        // Longer pause for punctuation
-        delay = isUser ? 100 : 120;
-      } else if (char === '!' || char === '?') {
-        // Even longer pause for sentence endings
-        delay = isUser ? 120 : 140;
-      } else {
-        // Normal character typing speed - very smooth
-        delay = isUser ? 25 : 30;
-        // Add slight random variation for natural feel
-        delay += Math.random() * 10;
-      }
-
+      // Longer delay between chunks to reduce re-renders
+      const delay = isUser ? 80 : 100;
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
@@ -73,59 +96,64 @@ export const DemoPreviewSection = memo(function DemoPreviewSection() {
     );
   };
 
-  const runAnimation = async () => {
-    if (isAnimating) return;
+  const runAnimation = useCallback(async () => {
+    if (isAnimating || !isInView || shouldUseStaticContent) return;
 
+    animationRef.current = true;
     setIsAnimating(true);
     setMessages([]);
 
     for (let i = 0; i < demoConversation.length; i++) {
+      if (!animationRef.current || !isInView) break;
+
       const conv = demoConversation[i];
       const messageId = Date.now() + i * 100;
 
       if (conv.type === 'user') {
-        // User message with smooth character-by-character typing
         setMessages(prev => [...prev, { id: messageId, type: 'user', text: '', isTyping: true }]);
         await new Promise(resolve => setTimeout(resolve, 300));
         await typeMessage(conv.text, messageId, true);
         await new Promise(resolve => setTimeout(resolve, 600));
       } else {
-        // Show typing indicator for bot (thinking delay)
         setMessages(prev => [...prev, { id: messageId, type: 'bot', text: '...', isTyping: true }]);
-        // AI thinking delay with smooth transition
-        await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 400));
-        // Start smooth character-by-character typing
+        await new Promise(resolve => setTimeout(resolve, 1000));
         await typeMessage(conv.text, messageId, false);
-        // Smooth pause after message
-        await new Promise(resolve => setTimeout(resolve, 900));
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
     }
 
-    // Smooth wait before restarting
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 4000));
     setIsAnimating(false);
-  };
+  }, [isAnimating, isInView, shouldUseStaticContent]);
 
+  // Start animation when in view
   useEffect(() => {
-    // Start first animation
-    runAnimation();
+    if (shouldUseStaticContent) {
+      // Use static content immediately
+      setMessages(staticConversation);
+      return;
+    }
 
-    // Cleanup on unmount
+    if (isInView && !isAnimating) {
+      runAnimation();
+    }
+
     return () => {
-      setIsAnimating(false);
-      setMessages([]);
+      animationRef.current = false;
     };
-  }, []);
+  }, [isInView, shouldUseStaticContent]);
 
+  // Restart animation when it finishes and still in view
   useEffect(() => {
-    // Restart animation when it finishes
-    if (!isAnimating) {
+    if (shouldUseStaticContent) return;
+
+    if (!isAnimating && isInView) {
       const timeout = setTimeout(() => {
         runAnimation();
       }, 2000);
       return () => clearTimeout(timeout);
     }
-  }, [isAnimating, runAnimation]);
+  }, [isAnimating, isInView, runAnimation, shouldUseStaticContent]);
 
   return (
     <section
@@ -205,8 +233,8 @@ export const DemoPreviewSection = memo(function DemoPreviewSection() {
                     {messages.map((message) => (
                       <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in-up mb-3 sm:mb-4`}>
                         <div className={`max-w-[90%] sm:max-w-[85%] md:max-w-[80%] rounded-2xl p-3 sm:p-4 text-xs sm:text-sm border ${message.type === 'user'
-                            ? 'bg-gradient-to-br from-indonesian-gold/30 to-indonesian-gold/20 text-white border-indonesian-gold/40 rounded-tr-sm shadow-lg'
-                            : 'bg-white/10 text-gray-200 border-white/10 rounded-tl-sm backdrop-blur-sm'
+                          ? 'bg-gradient-to-br from-indonesian-gold/30 to-indonesian-gold/20 text-white border-indonesian-gold/40 rounded-tr-sm shadow-lg'
+                          : 'bg-white/10 text-gray-200 border-white/10 rounded-tl-sm backdrop-blur-sm'
                           }`}>
                           {message.type === 'bot' && (
                             <div className="flex items-center gap-2 mb-2">

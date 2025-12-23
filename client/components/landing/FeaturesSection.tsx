@@ -5,6 +5,8 @@ import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BatikPattern } from './BatikPattern';
 import { WayangDecoration } from './WayangDecoration';
 import { OrnamentFrame } from './OrnamentFrame';
+import { memo, useMemo } from 'react';
+import { detectDeviceCapability } from '@/utils/deviceCapability';
 
 const features = [
   {
@@ -44,151 +46,141 @@ const features = [
   }
 ];
 
-import { memo } from 'react';
-
 export const FeaturesSection = memo(function FeaturesSection() {
+  // Check device capability once
+  const isMobile = useMemo(() => {
+    const capability = detectDeviceCapability();
+    return capability.isMobile;
+  }, []);
+
   return (
-    <section 
+    <section
       className="section-padding section-container bg-background relative overflow-hidden"
       aria-label="Features section"
     >
-      {/* Background elements */}
+      {/* Background elements - simplified on mobile */}
       <BackgroundGrid opacity="opacity-[0.02]" size="100px" />
-      <BatikPattern variant="kawung" opacity="opacity-[0.02]" speed={25} />
-      <WayangDecoration variant="center" size="sm" className="opacity-10" />
+      {!isMobile && (
+        <>
+          <BatikPattern variant="kawung" opacity="opacity-[0.02]" speed={25} />
+          <WayangDecoration variant="center" size="sm" className="opacity-10" />
+        </>
+      )}
 
       <div className="relative z-10 max-w-7xl mx-auto">
         {/* Section header */}
         <ScrollReveal delay={0.1} duration={0.7} distance={30}>
           <div className="text-center mb-16 sm:mb-20">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading mb-4 sm:mb-6">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading mb-4 sm:mb-6">
               <span className="text-foreground">Intelligent Capabilities</span>
               <br />
               <span className="text-indonesian-gold/70 text-2xl sm:text-3xl md:text-4xl font-light">
                 Kemampuan Cerdas
               </span>
-          </h2>
+            </h2>
             <div className="w-16 h-1 bg-gradient-to-r from-transparent via-indonesian-gold/60 to-transparent mx-auto opacity-60"></div>
-          <p className="text-muted-foreground text-lg mt-6 max-w-2xl mx-auto">
-            Five powerful AI features working together to create an unprecedented platform for human-machine interaction
-          </p>
-        </div>
+            <p className="text-muted-foreground text-lg mt-6 max-w-2xl mx-auto">
+              Five powerful AI features working together to create an unprecedented platform for human-machine interaction
+            </p>
+          </div>
         </ScrollReveal>
 
-        {/* Features grid */}
+        {/* Features grid - disable glow effects on mobile */}
         <GlowingCards
-          enableGlow={true}
+          enableGlow={!isMobile}
           glowRadius={30}
           glowOpacity={0.6}
           maxWidth="100%"
           preserveLayout={true}
         >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 items-stretch">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-              <ScrollReveal
-                key={index}
-                delay={0.2}
-                duration={0.7}
-                distance={30}
-                stagger={0.1}
-                index={index}
-              >
-              <div
-                className="group relative flex flex-col h-full"
-              >
-                <OrnamentFrame 
-                  variant="jawa" 
-                  className="flex-1 flex flex-col bg-gradient-to-br from-white/10 to-white/5 border border-indonesian-gold/20 rounded-xl backdrop-blur-sm cursor-pointer group-hover:shadow-2xl focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-black"
-                  style={{
-                    boxShadow: "inset 0 0 30px rgba(255, 255, 255, 0.05)",
-                    transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                    transform: 'scale(1)',
-                    willChange: 'transform, box-shadow, border-color',
-                    minHeight: '100%',
-                  } as React.CSSProperties}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.02)';
-                    e.currentTarget.style.boxShadow = "inset 0 0 40px rgba(255, 255, 255, 0.08), 0 0 30px rgba(217, 119, 6, 0.2)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.style.boxShadow = "inset 0 0 30px rgba(255, 255, 255, 0.05)";
-                  }}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 items-stretch">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <ScrollReveal
+                  key={index}
+                  delay={0.2}
+                  duration={0.7}
+                  distance={30}
+                  stagger={0.1}
+                  index={index}
                 >
-                  <div 
-                    className="flex-1 flex flex-col p-6 sm:p-8"
-                    role="article"
-                    aria-label={`${feature.title} feature`}
-                    tabIndex={0}
+                  <div
+                    className="group relative flex flex-col h-full"
                   >
-                  {/* Icon container */}
-                  <div className="mb-4 sm:mb-6 inline-flex">
-                    <div 
-                      className="p-3 sm:p-4 rounded-lg border group-hover:scale-110"
+                    <OrnamentFrame
+                      variant="jawa"
+                      className="flex-1 flex flex-col bg-gradient-to-br from-white/10 to-white/5 border border-indonesian-gold/20 rounded-xl backdrop-blur-sm cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-black"
                       style={{
-                        backgroundColor: `${feature.glowColor}30`,
-                        borderColor: `${feature.glowColor}60`,
-                        boxShadow: `0 0 20px ${feature.glowColor}30`,
-                        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                        willChange: 'transform',
-                      }}
+                        boxShadow: "inset 0 0 30px rgba(255, 255, 255, 0.05)",
+                        minHeight: '100%',
+                      } as React.CSSProperties}
                     >
-                      <Icon className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: feature.glowColor, filter: `drop-shadow(0 0 8px ${feature.glowColor})` }} />
-                    </div>
+                      <div
+                        className="flex-1 flex flex-col p-6 sm:p-8"
+                        role="article"
+                        aria-label={`${feature.title} feature`}
+                        tabIndex={0}
+                      >
+                        {/* Icon container */}
+                        <div className="mb-4 sm:mb-6 inline-flex">
+                          <div
+                            className="p-3 sm:p-4 rounded-lg border transition-transform duration-300 group-hover:scale-110"
+                            style={{
+                              backgroundColor: `${feature.glowColor}30`,
+                              borderColor: `${feature.glowColor}60`,
+                              boxShadow: `0 0 20px ${feature.glowColor}30`,
+                            }}
+                          >
+                            <Icon className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: feature.glowColor, filter: `drop-shadow(0 0 8px ${feature.glowColor})` }} />
+                          </div>
+                        </div>
+
+                        {/* Title */}
+                        <h3
+                          className="text-lg sm:text-xl font-bold font-heading mb-3 transition-transform duration-300 group-hover:scale-105"
+                          style={{
+                            color: feature.glowColor,
+                            textShadow: `0 0 20px ${feature.glowColor}40`,
+                          }}
+                        >
+                          {feature.title}
+                        </h3>
+
+                        {/* Description */}
+                        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed transition-colors duration-300 group-hover:text-foreground flex-1">
+                          {feature.description}
+                        </p>
+                      </div>
+
+                      {/* Bottom accent line */}
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-100 pointer-events-none rounded-b-xl transition-opacity duration-300"
+                        style={{
+                          background: `linear-gradient(to right, transparent, ${feature.glowColor}80, transparent)`,
+                          boxShadow: `0 0 10px ${feature.glowColor}60`,
+                        }}
+                      ></div>
+                    </OrnamentFrame>
+
+                    {/* Separator line on mobile */}
+                    {index < features.length - 1 && (
+                      <div className="md:hidden my-6 h-px bg-gradient-to-r from-transparent via-indonesian-gold/20 to-transparent"></div>
+                    )}
                   </div>
-
-                  {/* Title */}
-                  <h3 
-                    className="text-lg sm:text-xl font-bold font-heading mb-3 group-hover:scale-105"
-                    style={{ 
-                      color: feature.glowColor,
-                      textShadow: `0 0 20px ${feature.glowColor}40`,
-                      transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                      willChange: 'transform',
-                    }}
-                  >
-                    {feature.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed group-hover:text-foreground flex-1" style={{
-                    transition: 'color 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}>
-                    {feature.description}
-                  </p>
-                  </div>
-
-                  {/* Bottom accent line */}
-                  <div 
-                    className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-100 pointer-events-none rounded-b-xl"
-                    style={{
-                      background: `linear-gradient(to right, transparent, ${feature.glowColor}80, transparent)`,
-                      boxShadow: `0 0 10px ${feature.glowColor}60`,
-                      transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}
-                  ></div>
-                </OrnamentFrame>
-
-                {/* Separator line on mobile */}
-                {index < features.length - 1 && (
-                  <div className="md:hidden my-6 h-px bg-gradient-to-r from-transparent via-indonesian-gold/20 to-transparent"></div>
-                )}
-              </div>
-              </ScrollReveal>
-            );
-          })}
-        </div>
+                </ScrollReveal>
+              );
+            })}
+          </div>
         </GlowingCards>
 
         {/* Bottom accent */}
         <ScrollReveal delay={0.8} duration={0.7} distance={20}>
-        <div className="mt-16 sm:mt-20 text-center">
-          <div className="inline-block px-6 py-2 border border-border rounded-full text-sm text-muted-foreground opacity-70 hover-glow cursor-default">
-            All features working in perfect harmony
+          <div className="mt-16 sm:mt-20 text-center">
+            <div className="inline-block px-6 py-2 border border-border rounded-full text-sm text-muted-foreground opacity-70 hover-glow cursor-default">
+              All features working in perfect harmony
+            </div>
           </div>
-        </div>
         </ScrollReveal>
       </div>
     </section>

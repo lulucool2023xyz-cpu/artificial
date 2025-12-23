@@ -1,5 +1,6 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { detectDeviceCapability } from '@/utils/deviceCapability';
 
 interface BatikPatternProps {
   variant?: 'parang' | 'kawung' | 'mega-mendung' | 'ceplok';
@@ -14,6 +15,12 @@ export const BatikPattern = memo(function BatikPattern({
   className,
   speed = 30,
 }: BatikPatternProps) {
+  // Check device capability - disable animation on mobile/low-end
+  const shouldAnimate = useMemo(() => {
+    const capability = detectDeviceCapability();
+    return !capability.isMobile && !capability.isLowEnd;
+  }, []);
+
   const patterns = {
     parang: {
       backgroundImage: `repeating-linear-gradient(
@@ -53,7 +60,8 @@ export const BatikPattern = memo(function BatikPattern({
       className={cn('absolute inset-0 pointer-events-none', opacity, className)}
       style={{
         ...patterns[variant],
-        animation: `batik-float ${speed}s ease-in-out infinite`,
+        // Only animate on capable devices
+        animation: shouldAnimate ? `batik-float ${speed}s ease-in-out infinite` : 'none',
       }}
       aria-hidden="true"
     />

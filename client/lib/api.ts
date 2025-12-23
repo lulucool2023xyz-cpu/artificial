@@ -452,3 +452,291 @@ export const modelsApi = {
     },
 };
 
+// ============================================
+// CULTURE API (AI Culture Assistant)
+// ============================================
+
+export interface CultureQueryRequest {
+    query: string;
+    type?: 'story' | 'craft' | 'ritual' | 'province' | 'identify';
+    includeThinking?: boolean;
+    enableSearch?: boolean;
+}
+
+export interface CultureResponse {
+    content: string;
+    sources?: Array<{ title: string; url: string }>;
+    thoughts?: string[];
+}
+
+export const cultureApi = {
+    /**
+     * Query AI for cultural information with thinking mode
+     */
+    getCultureInfo: async (request: CultureQueryRequest): Promise<CultureResponse> => {
+        const systemInstruction = `Kamu adalah asisten budaya Indonesia yang ahli. Berikan informasi yang akurat, mendalam, dan menarik tentang budaya Indonesia.
+Format respons dalam markdown dengan:
+- Bold (**) untuk judul dan kata penting
+- Bullet points (-) untuk daftar
+- Penjelasan yang jelas dan terstruktur
+
+Jika diminta tentang cerita rakyat, sertakan:
+1. Asal daerah
+2. Tokoh utama
+3. Ringkasan cerita
+4. Pelajaran moral
+
+Jika diminta tentang kerajinan, sertakan:
+1. Asal daerah
+2. Teknik pembuatan
+3. Makna filosofis
+4. Status UNESCO jika ada`;
+
+        const typePrompts: Record<string, string> = {
+            story: 'Ceritakan legenda/cerita rakyat Indonesia tentang: ',
+            craft: 'Jelaskan kerajinan tradisional Indonesia tentang: ',
+            ritual: 'Jelaskan ritual/tradisi adat Indonesia tentang: ',
+            province: 'Jelaskan budaya dan tradisi dari provinsi: ',
+            identify: 'Identifikasi dan jelaskan warisan budaya Indonesia ini: ',
+        };
+
+        const prompt = request.type
+            ? `${typePrompts[request.type]}${request.query}`
+            : request.query;
+
+        try {
+            const chatRequest: ChatStreamRequest = {
+                prompt,
+                model: 'gemini-2.5-flash',
+                systemInstruction,
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 2048,
+                },
+                thinkingConfig: request.includeThinking ? {
+                    thinkingBudget: 4096,
+                    includeThoughts: true,
+                } : undefined,
+                tools: request.enableSearch ? [{ googleSearch: {} }] : undefined,
+            };
+
+            // Use non-streaming for simpler response handling
+            const response = await chatApi.chat(chatRequest);
+
+            const sources: Array<{ title: string; url: string }> = [];
+            if (response.groundingMetadata?.groundingChunks) {
+                for (const chunk of response.groundingMetadata.groundingChunks) {
+                    if (chunk.web) {
+                        sources.push({
+                            title: chunk.web.title || 'Source',
+                            url: chunk.web.uri,
+                        });
+                    }
+                }
+            }
+
+            return {
+                content: response.message?.content || response.text || '',
+                sources: sources.length > 0 ? sources : undefined,
+                thoughts: response.thoughts,
+            };
+        } catch (error) {
+            console.error('Culture API error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Stream cultural information (for longer responses)
+     */
+    streamCultureInfo: async function* (
+        request: CultureQueryRequest
+    ): AsyncGenerator<{ text?: string; thought?: string; done: boolean; sources?: Array<{ title: string; url: string }> }, void, unknown> {
+        const systemInstruction = `Kamu adalah asisten budaya Indonesia yang ahli. Berikan informasi yang akurat, mendalam, dan menarik tentang budaya Indonesia dalam format markdown.`;
+
+        const prompt = request.query;
+
+        const chatRequest: ChatStreamRequest = {
+            prompt,
+            model: 'gemini-2.5-flash',
+            systemInstruction,
+            stream: true,
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 4096,
+            },
+            thinkingConfig: request.includeThinking ? {
+                thinkingBudget: 4096,
+                includeThoughts: true,
+            } : undefined,
+            tools: request.enableSearch ? [{ googleSearch: {} }] : undefined,
+        };
+
+        const sources: Array<{ title: string; url: string }> = [];
+
+        for await (const chunk of chatApi.streamChat(chatRequest)) {
+            // Collect sources from grounding metadata
+            if (chunk.groundingMetadata?.groundingChunks) {
+                for (const gc of chunk.groundingMetadata.groundingChunks) {
+                    if (gc.web && !sources.some(s => s.url === gc.web?.uri)) {
+                        sources.push({
+                            title: gc.web.title || 'Source',
+                            url: gc.web.uri,
+                        });
+                    }
+                }
+            }
+
+            yield {
+                text: chunk.text,
+                thought: chunk.thought,
+                done: chunk.done || false,
+                sources: sources.length > 0 ? sources : undefined,
+            };
+
+            if (chunk.done) break;
+        }
+    },
+};
+
+// ============================================
+// TTS API (Text-to-Speech)
+// ============================================
+
+export interface TtsVoice {
+    name: string;
+    displayName: string;
+    description?: string;
+    languageCodes?: string[];
+}
+
+export interface SingleTtsRequest {
+    text: string;
+    voiceName?: string;
+    model?: string;
+}
+
+export interface MultiTtsRequest {
+    text: string;
+    speakerConfigs: Array<{
+        speaker: string;
+        voiceName: string;
+    }>;
+    model?: string;
+}
+
+export interface TtsResponse {
+    audioUrl?: string;
+    mimeType?: string;
+    durationMs?: number;
+    model?: string;
+    voice?: string;
+    error?: string;
+}
+
+export const ttsApi = {
+    /**
+     * Get available TTS voices
+     */
+    getVoices: async (): Promise<{ voices: TtsVoice[] }> => {
+        return apiCall<{ voices: TtsVoice[] }>('/api/v2/tts/voices', {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Synthesize speech from text (single voice)
+     */
+    synthesizeSingle: async (request: SingleTtsRequest): Promise<TtsResponse> => {
+        return apiCall<TtsResponse>('/api/v2/tts/single', {
+            method: 'POST',
+            body: JSON.stringify({
+                text: request.text,
+                voiceName: request.voiceName || 'Kore',
+                model: request.model || 'gemini-2.5-flash-preview-tts',
+            }),
+        });
+    },
+
+    /**
+     * Synthesize speech from text (multi-speaker)
+     */
+    synthesizeMulti: async (request: MultiTtsRequest): Promise<TtsResponse> => {
+        return apiCall<TtsResponse>('/api/v2/tts/multi', {
+            method: 'POST',
+            body: JSON.stringify({
+                text: request.text,
+                speakerConfigs: request.speakerConfigs,
+                model: request.model || 'gemini-2.5-flash-preview-tts',
+            }),
+        });
+    },
+
+    /**
+     * Get TTS service status
+     */
+    getStatus: async (): Promise<{ status: string; model: string }> => {
+        return apiCall<{ status: string; model: string }>('/api/v2/tts/status', {
+            method: 'GET',
+        });
+    },
+};
+
+// ============================================
+// MUSIC GENERATION API
+// ============================================
+
+export interface MusicPrompt {
+    text: string;
+    weight?: number; // 0.0 to 1.0, default 1.0
+}
+
+export interface MusicRequest {
+    prompts: MusicPrompt[];
+    durationSeconds?: number; // 5-30 seconds
+    bpm?: number; // 60-200
+    temperature?: number; // 0.0-2.0, default 1.0
+    scale?: 'MAJOR' | 'MINOR' | 'PENTATONIC' | 'CHROMATIC';
+    density?: 'LOW' | 'MEDIUM' | 'HIGH';
+    brightness?: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
+export interface MusicResponse {
+    audioUrl?: string;
+    mimeType?: string;
+    durationMs?: number;
+    model?: string;
+    sampleRate?: number;
+    error?: string;
+}
+
+export const musicApi = {
+    /**
+     * Generate music from prompts
+     */
+    generate: async (request: MusicRequest): Promise<MusicResponse> => {
+        return apiCall<MusicResponse>('/api/v2/music/generate', {
+            method: 'POST',
+            body: JSON.stringify({
+                prompts: request.prompts,
+                durationSeconds: request.durationSeconds || 15,
+                generationConfig: {
+                    bpm: request.bpm,
+                    temperature: request.temperature || 1.0,
+                    scale: request.scale,
+                    density: request.density,
+                    brightness: request.brightness,
+                },
+            }),
+        });
+    },
+
+    /**
+     * Get music generation service status
+     */
+    getStatus: async (): Promise<{ status: string; model: string }> => {
+        return apiCall<{ status: string; model: string }>('/api/v2/music/status', {
+            method: 'GET',
+        });
+    },
+};

@@ -212,9 +212,8 @@ export function AuthModal({ isOpen, onClose, initialTab = "login" }: AuthModalPr
         right: 0,
         bottom: 0,
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    // Removed click-outside-to-close to prevent accidental closes when selecting text
+    // User must click X button to close modal
     >
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" style={{ zIndex: 99998 }} />

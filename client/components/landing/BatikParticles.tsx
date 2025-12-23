@@ -1,5 +1,6 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { detectDeviceCapability } from '@/utils/deviceCapability';
 
 interface BatikParticlesProps {
   count?: number;
@@ -12,7 +13,26 @@ export const BatikParticles = memo(function BatikParticles({
 }: BatikParticlesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Check device capability - disable on mobile/low-end for better performance
+  const shouldRender = useMemo(() => {
+    const capability = detectDeviceCapability();
+    // Disable BatikParticles on all mobile and low-end devices
+    return !capability.isMobile && !capability.isLowEnd;
+  }, []);
+
+  // Reduce particle count even on capable devices
+  const optimizedCount = useMemo(() => {
+    if (!shouldRender) return 0;
+    const capability = detectDeviceCapability();
+    // Max 8 particles even on high-end devices
+    if (capability.recommendedQuality === 'high') return Math.min(count, 8);
+    return Math.min(count, 4);
+  }, [count, shouldRender]);
+
   useEffect(() => {
+    // Skip if we shouldn't render
+    if (!shouldRender || optimizedCount === 0) return;
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -25,7 +45,7 @@ export const BatikParticles = memo(function BatikParticles({
       size: number;
     }> = [];
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < optimizedCount; i++) {
       const particle = document.createElement('div');
       const size = Math.random() * 4 + 2; // 2-6px
       const x = Math.random() * 100;
@@ -40,7 +60,8 @@ export const BatikParticles = memo(function BatikParticles({
       particle.style.borderRadius = '50%';
       particle.style.background = 'radial-gradient(circle, rgba(217, 119, 6, 0.3), rgba(139, 69, 19, 0.1))';
       particle.style.pointerEvents = 'none';
-      particle.style.animation = `batik-particle ${10 + Math.random() * 20}s linear infinite`;
+      // Use longer animation duration for better performance
+      particle.style.animation = `batik-particle ${20 + Math.random() * 30}s linear infinite`;
       particle.style.animationDelay = `${Math.random() * 5}s`;
 
       container.appendChild(particle);
@@ -54,7 +75,12 @@ export const BatikParticles = memo(function BatikParticles({
         }
       });
     };
-  }, [count]);
+  }, [optimizedCount, shouldRender]);
+
+  // Don't render anything on mobile/low-end
+  if (!shouldRender) {
+    return null;
+  }
 
   return (
     <div

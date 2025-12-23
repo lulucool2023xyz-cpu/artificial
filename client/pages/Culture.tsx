@@ -1,5 +1,7 @@
 import { memo, useState, useCallback, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
     Sparkles,
     BookOpen,
@@ -29,6 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { cultureApi } from "@/lib/api";
 import { AppLayout, type SidebarItem } from "@/components/layout/AppLayout";
 import IndonesiaMap from "@/components/ui/IndonesiaMap";
 
@@ -82,7 +85,7 @@ Dengan bantuan jin, Bandung hampir berhasil. Namun Roro Jonggrang menyuruh para 
 Marah besar, Bandung mengutuk Roro Jonggrang menjadi batu—menjadi arca Dewi Durga di Candi Prambanan.
 
 **Pelajaran**: Kesombongan dan tipu daya dapat membawa akibat yang buruk.`,
-    
+
     "malin kundang": `**Malin Kundang** adalah legenda dari Sumatera Barat tentang anak durhaka.
 
 Malin adalah anak miskin yang pergi merantau mencari kehidupan lebih baik. Setelah menjadi kaya dan menikahi putri bangsawan, ia kembali ke kampung halamannya dengan kapal besar.
@@ -134,13 +137,13 @@ Dalang memainkan puluhan wayang, menyanyikan tembang, dan bercerita sepanjang ma
 // Generate mock AI response based on query
 const generateMockAIResponse = (query: string): string => {
     const lowerQuery = query.toLowerCase();
-    
+
     for (const [key, response] of Object.entries(mockAIResponses)) {
         if (lowerQuery.includes(key)) {
             return response;
         }
     }
-    
+
     // Default response if no match found
     return `Terima kasih atas pertanyaan Anda tentang "${query}".
 
@@ -169,7 +172,7 @@ const Culture = memo(function Culture() {
     const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
     const [feedbackGiven, setFeedbackGiven] = useState<"up" | "down" | null>(null);
     const [zoomLevel, setZoomLevel] = useState(100);
-    
+
     // AI Chat states for story/craft sections
     const [storyQuery, setStoryQuery] = useState("");
     const [storyResponse, setStoryResponse] = useState<string | null>(null);
@@ -181,31 +184,49 @@ const Culture = memo(function Culture() {
     const [selectedCraft, setSelectedCraft] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
-    // Handle AI query for story
-    const handleStoryQuery = useCallback((query: string) => {
+
+    // Handle AI query for story - using real Gemini API
+    const handleStoryQuery = useCallback(async (query: string) => {
         setStoryLoading(true);
         setStoryResponse(null);
-        
-        // Simulate AI thinking delay
-        setTimeout(() => {
-            const response = generateMockAIResponse(query);
-            setStoryResponse(response);
+
+        try {
+            const result = await cultureApi.getCultureInfo({
+                query,
+                type: 'story',
+                includeThinking: false,
+                enableSearch: true,
+            });
+            setStoryResponse(result.content);
+        } catch (error) {
+            console.error('Story query error:', error);
+            toast.error('Gagal mengambil informasi. Silakan coba lagi.');
+            setStoryResponse(null);
+        } finally {
             setStoryLoading(false);
-        }, 1500);
+        }
     }, []);
-    
-    // Handle AI query for craft
-    const handleCraftQuery = useCallback((query: string) => {
+
+    // Handle AI query for craft - using real Gemini API
+    const handleCraftQuery = useCallback(async (query: string) => {
         setCraftLoading(true);
         setCraftResponse(null);
-        
-        // Simulate AI thinking delay
-        setTimeout(() => {
-            const response = generateMockAIResponse(query);
-            setCraftResponse(response);
+
+        try {
+            const result = await cultureApi.getCultureInfo({
+                query,
+                type: 'craft',
+                includeThinking: false,
+                enableSearch: true,
+            });
+            setCraftResponse(result.content);
+        } catch (error) {
+            console.error('Craft query error:', error);
+            toast.error('Gagal mengambil informasi. Silakan coba lagi.');
+            setCraftResponse(null);
+        } finally {
             setCraftLoading(false);
-        }, 1500);
+        }
     }, []);
 
     // Sidebar items for Culture
@@ -509,24 +530,9 @@ const Culture = memo(function Culture() {
                                     <span className="text-[#C9A04F] font-medium">AI Culture Assistant</span>
                                 </div>
                                 <div className="prose prose-invert prose-sm max-w-none">
-                                    {storyResponse.split('\n').map((line, i) => {
-                                        if (line.startsWith('**') && line.endsWith('**')) {
-                                            return <h3 key={i} className="text-lg font-bold text-foreground mt-4 mb-2">{line.replace(/\*\*/g, '')}</h3>;
-                                        }
-                                        if (line.startsWith('**')) {
-                                            return <p key={i} className="font-semibold text-foreground">{line.replace(/\*\*/g, '')}</p>;
-                                        }
-                                        if (line.startsWith('- ')) {
-                                            return <li key={i} className="text-muted-foreground ml-4">{line.substring(2)}</li>;
-                                        }
-                                        if (line.startsWith('*') && line.endsWith('*')) {
-                                            return <p key={i} className="text-sm italic text-muted-foreground mt-4">{line.replace(/\*/g, '')}</p>;
-                                        }
-                                        if (line.trim() === '') {
-                                            return <br key={i} />;
-                                        }
-                                        return <p key={i} className="text-muted-foreground leading-relaxed">{line}</p>;
-                                    })}
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {storyResponse}
+                                    </ReactMarkdown>
                                 </div>
                                 <div className="flex items-center gap-4 mt-6 pt-4 border-t border-border">
                                     <button onClick={() => { setStoryResponse(null); setStoryQuery(""); }} className="text-sm text-muted-foreground hover:text-foreground">
@@ -649,24 +655,9 @@ const Culture = memo(function Culture() {
                                     <span className="text-[#C9A04F] font-medium">AI Culture Assistant</span>
                                 </div>
                                 <div className="prose prose-invert prose-sm max-w-none">
-                                    {craftResponse.split('\n').map((line, i) => {
-                                        if (line.startsWith('**') && line.endsWith('**')) {
-                                            return <h3 key={i} className="text-lg font-bold text-foreground mt-4 mb-2">{line.replace(/\*\*/g, '')}</h3>;
-                                        }
-                                        if (line.startsWith('**')) {
-                                            return <p key={i} className="font-semibold text-foreground">{line.replace(/\*\*/g, '')}</p>;
-                                        }
-                                        if (line.startsWith('- ')) {
-                                            return <li key={i} className="text-muted-foreground ml-4">{line.substring(2)}</li>;
-                                        }
-                                        if (line.startsWith('*') && line.endsWith('*')) {
-                                            return <p key={i} className="text-sm italic text-muted-foreground mt-4">{line.replace(/\*/g, '')}</p>;
-                                        }
-                                        if (line.trim() === '') {
-                                            return <br key={i} />;
-                                        }
-                                        return <p key={i} className="text-muted-foreground leading-relaxed">{line}</p>;
-                                    })}
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {craftResponse}
+                                    </ReactMarkdown>
                                 </div>
                                 <div className="flex items-center gap-4 mt-6 pt-4 border-t border-border">
                                     <button onClick={() => { setCraftResponse(null); setCraftQuery(""); }} className="text-sm text-muted-foreground hover:text-foreground">
@@ -814,26 +805,26 @@ const Culture = memo(function Culture() {
                             <h3 className="text-lg font-semibold text-foreground mb-4 text-center">Sorotan Budaya Nusantara</h3>
                             <div className="grid gap-4 md:grid-cols-3">
                                 {[
-                                    { 
-                                        region: "Warisan UNESCO", 
+                                    {
+                                        region: "Warisan UNESCO",
                                         items: ["Batik", "Wayang", "Angklung", "Tari Saman"],
                                         icon: "🏛️",
                                         color: "from-[#C9A04F]/20 to-[#B8860B]/10 border-[#C9A04F]/30"
                                     },
-                                    { 
-                                        region: "Tarian Tradisional", 
+                                    {
+                                        region: "Tarian Tradisional",
                                         items: ["Tari Kecak", "Tari Pendet", "Tari Piring", "Tari Jaipong"],
                                         icon: "💃",
                                         color: "from-purple-500/20 to-purple-600/10 border-purple-500/30"
                                     },
-                                    { 
-                                        region: "Kerajinan Khas", 
+                                    {
+                                        region: "Kerajinan Khas",
                                         items: ["Songket", "Tenun Ikat", "Ukiran Jepara", "Keris"],
                                         icon: "🎨",
                                         color: "from-cyan-500/20 to-cyan-600/10 border-cyan-500/30"
                                     },
                                 ].map((item, i) => (
-                                    <motion.div 
+                                    <motion.div
                                         key={i}
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}

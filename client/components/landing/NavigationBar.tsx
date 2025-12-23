@@ -34,7 +34,7 @@ const menuStructure: MenuItem[] = [
       { label: 'Playground', path: '/product/playground' },
     ],
   },
-  { label: 'Pricing', path: '/chat/subscription' },
+  { label: 'Pricing', path: '/pricing' },
   {
     label: 'Resources',
     path: '/resources',

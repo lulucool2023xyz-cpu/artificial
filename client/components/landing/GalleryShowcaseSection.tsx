@@ -20,32 +20,59 @@ const galleryImages = [
   '/tarian.jpeg',
 ];
 
+// Static grid component for mobile - much lighter than 3D ring
+const StaticImageGallery = memo(function StaticImageGallery({ images }: { images: string[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 p-4">
+      {images.slice(0, 4).map((src, index) => (
+        <div
+          key={index}
+          className="aspect-[4/3] rounded-xl overflow-hidden border border-indonesian-gold/20 shadow-lg"
+        >
+          <img
+            src={src}
+            alt={`Gallery image ${index + 1}`}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      ))}
+    </div>
+  );
+});
+
 export const GalleryShowcaseSection = memo(function GalleryShowcaseSection() {
   const deviceCapability = useDeviceCapability();
 
-  // Reduce image count for low-end and mobile devices for better performance
+  // Use static grid on mobile for better performance
+  const shouldUseStaticGrid = useMemo(() => {
+    return deviceCapability?.isMobile || deviceCapability?.isLowEnd;
+  }, [deviceCapability?.isMobile, deviceCapability?.isLowEnd]);
+
+  // Reduce image count for devices
   const optimizedImages = useMemo(() => {
-    if (deviceCapability?.isMobile) {
-      // Only 3 images for mobile to reduce lag
-      return galleryImages.slice(0, 3);
+    if (shouldUseStaticGrid) {
+      // Only 4 images for static grid
+      return galleryImages.slice(0, 4);
     }
-    if (deviceCapability?.isLowEnd) {
-      // 5 images for low-end devices
-      return galleryImages.slice(0, 5);
-    }
-    return galleryImages;
-  }, [deviceCapability?.isLowEnd, deviceCapability?.isMobile]);
+    // 6 images for 3D ring on capable devices
+    return galleryImages.slice(0, 6);
+  }, [shouldUseStaticGrid]);
 
   return (
     <section
       className="section-padding section-container bg-background relative overflow-hidden"
       aria-label="Gallery showcase section"
     >
-      {/* Background elements */}
+      {/* Background elements - simplified on mobile */}
       <BackgroundGrid opacity="opacity-[0.02]" size="100px" />
-      <BatikPattern variant="kawung" opacity="opacity-[0.02]" speed={25} />
-      <WayangDecoration variant="left" size="md" className="opacity-10" />
-      <WayangDecoration variant="right" size="md" className="opacity-10" />
+      {!deviceCapability?.isMobile && (
+        <>
+          <BatikPattern variant="kawung" opacity="opacity-[0.02]" speed={25} />
+          <WayangDecoration variant="left" size="md" className="opacity-10" />
+          <WayangDecoration variant="right" size="md" className="opacity-10" />
+        </>
+      )}
 
       <div className="relative z-10 max-w-7xl mx-auto">
         {/* Section header */}
@@ -60,57 +87,52 @@ export const GalleryShowcaseSection = memo(function GalleryShowcaseSection() {
             </h2>
             <div className="w-16 h-1 bg-gradient-to-r from-transparent via-indonesian-gold/60 to-transparent mx-auto opacity-60 mb-4"></div>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Explore our capabilities through an immersive 3D gallery experience
+              {shouldUseStaticGrid
+                ? 'Jelajahi galeri budaya Indonesia'
+                : 'Explore our capabilities through an immersive 3D gallery experience'}
             </p>
           </div>
         </ScrollReveal>
 
-        {/* 3D Image Ring Gallery */}
+        {/* Gallery - Static grid on mobile, 3D ring on desktop */}
         <ScrollReveal delay={0.2} duration={0.8} distance={30}>
-          <div
-            style={{
-              boxShadow: "inset 0 0 40px rgba(255, 255, 255, 0.05), 0 0 60px rgba(217, 119, 6, 0.1)",
-              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = "inset 0 0 50px rgba(255, 255, 255, 0.08), 0 0 80px rgba(217, 119, 6, 0.2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = "inset 0 0 40px rgba(255, 255, 255, 0.05), 0 0 60px rgba(217, 119, 6, 0.1)";
-            }}
+          <OrnamentFrame
+            variant="jawa"
+            className="bg-gradient-to-br from-white/5 to-white/2 border border-indonesian-gold/20 rounded-2xl backdrop-blur-sm overflow-hidden"
           >
-            <OrnamentFrame
-              variant="jawa"
-              className="bg-gradient-to-br from-white/5 to-white/2 border border-indonesian-gold/20 rounded-2xl backdrop-blur-sm overflow-hidden"
-            >
+            {shouldUseStaticGrid ? (
+              // Static image grid for mobile - much lighter
+              <StaticImageGallery images={optimizedImages} />
+            ) : (
+              // 3D ring only for capable devices
               <div className="p-4 sm:p-8 lg:p-12">
                 <div
                   className="w-full flex items-center justify-center relative"
                   style={{
-                    height: deviceCapability?.isMobile ? '400px' : deviceCapability?.isLowEnd ? '500px' : '600px',
-                    minHeight: deviceCapability?.isMobile ? '350px' : '400px',
+                    height: '600px',
+                    minHeight: '400px',
                   }}
                 >
                   <ThreeDImageRing
                     images={optimizedImages}
-                    width={deviceCapability?.isMobile ? 280 : deviceCapability?.isLowEnd ? 500 : 900}
-                    perspective={deviceCapability?.isMobile ? 800 : deviceCapability?.isLowEnd ? 1200 : 1800}
-                    imageDistance={deviceCapability?.isMobile ? 350 : deviceCapability?.isLowEnd ? 550 : 750}
+                    width={900}
+                    perspective={1800}
+                    imageDistance={750}
                     initialRotation={180}
-                    animationDuration={deviceCapability?.isLowEnd ? 1.0 : 1.5}
-                    staggerDelay={deviceCapability?.isLowEnd ? 0.1 : 0.15}
-                    draggable={!deviceCapability?.isLowEnd}
+                    animationDuration={1.5}
+                    staggerDelay={0.15}
+                    draggable={true}
                     mobileBreakpoint={768}
-                    mobileScaleFactor={deviceCapability?.isMobile ? 0.5 : deviceCapability?.isLowEnd ? 0.6 : 0.8}
+                    mobileScaleFactor={0.8}
                     backgroundColor="transparent"
                     containerClassName="w-full h-full"
-                    autoRotate={!deviceCapability?.isLowEnd}
+                    autoRotate={true}
                     autoRotateSpeed={0.15}
                     imageScale={0.85}
                   />
                 </div>
 
-                {/* Instructions */}
+                {/* Instructions - only show for 3D ring */}
                 <div className="mt-8 text-center">
                   <p className="text-sm text-muted-foreground mb-2">
                     <span className="text-indonesian-gold/70">Drag atau scroll</span> untuk memutar galeri
@@ -120,8 +142,8 @@ export const GalleryShowcaseSection = memo(function GalleryShowcaseSection() {
                   </p>
                 </div>
               </div>
-            </OrnamentFrame>
-          </div>
+            )}
+          </OrnamentFrame>
         </ScrollReveal>
       </div>
     </section>

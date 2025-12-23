@@ -38,7 +38,7 @@ const SignUp = memo(function SignUp() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signup, socialLogin, isAuthenticated, isLoading: authLoading } = useAuth();
-  
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -79,8 +79,8 @@ const SignUp = memo(function SignUp() {
     }
     if (!formData.email) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
     }
     if (!formData.password) {
       newErrors.password = "Password is required";
@@ -102,32 +102,32 @@ const SignUp = memo(function SignUp() {
 
     // Attempt signup
     const success = await signup(formData.fullName, formData.email, formData.password);
-    
+
     if (success) {
       const from = (location.state as any)?.from?.pathname || "/chat";
       navigate(from, { replace: true });
     } else {
       setErrors({ email: "Sign up failed. Please try again." });
     }
-    
+
     setIsLoading(false);
   };
 
   const handleSocialSignUp = async (provider: "google" | "facebook" | "github") => {
     setIsLoading(true);
-    
+
     // Simulate OAuth flow - in production, this would open OAuth popup
     const userData = {
       email: `user${Math.random().toString(36).substring(7)}@${provider === "google" ? "gmail.com" : provider === "facebook" ? "facebook.com" : "github.com"}`,
       name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
     };
-    
+
     const success = await socialLogin(provider, userData);
     if (success) {
       const from = (location.state as any)?.from?.pathname || "/chat";
       navigate(from, { replace: true });
     }
-    
+
     setIsLoading(false);
   };
 
@@ -163,7 +163,7 @@ const SignUp = memo(function SignUp() {
           <section className="section-container section-padding relative overflow-hidden">
             <BackgroundGrid opacity="opacity-[0.02]" size="100px" />
             <BatikPattern variant="parang" opacity="opacity-[0.02]" speed={30} />
-            
+
             <div className="relative z-10 max-w-6xl mx-auto">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                 {/* Left Side - Illustration */}
@@ -338,8 +338,8 @@ const SignUp = memo(function SignUp() {
                               formData.confirmPassword && formData.password === formData.confirmPassword && !errors.confirmPassword
                                 ? "border-green-500"
                                 : errors.confirmPassword
-                                ? "border-red-500 shake"
-                                : "border-white/10"
+                                  ? "border-red-500 shake"
+                                  : "border-white/10"
                             )}
                             placeholder="Confirm your password"
                             disabled={isLoading}

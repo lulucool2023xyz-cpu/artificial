@@ -70,8 +70,23 @@ function DockItem({
         spring
     );
     const [showLabel, setShowLabel] = useState(false);
-    const [isActivated, setIsActivated] = useState(false);
-    const activationTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Detect if device is touch-only (no mouse)
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+    useEffect(() => {
+        // Check for touch device
+        const checkTouchDevice = () => {
+            setIsTouchDevice(
+                'ontouchstart' in window ||
+                navigator.maxTouchPoints > 0 ||
+                window.matchMedia('(pointer: coarse)').matches
+            );
+        };
+        checkTouchDevice();
+        window.addEventListener('resize', checkTouchDevice);
+        return () => window.removeEventListener('resize', checkTouchDevice);
+    }, []);
 
     useEffect(() => {
         const unsubscribe = isHovered.on("change", (value) =>
@@ -80,40 +95,10 @@ function DockItem({
         return () => unsubscribe();
     }, [isHovered]);
 
-    // Clear activation after 2 seconds of inactivity
-    useEffect(() => {
-        return () => {
-            if (activationTimerRef.current) {
-                clearTimeout(activationTimerRef.current);
-            }
-        };
-    }, []);
-
     const handleClick = () => {
-        if (isActivated) {
-            // Second click - navigate
-            onClick();
-            setIsActivated(false);
-            setShowLabel(false);
-            if (activationTimerRef.current) {
-                clearTimeout(activationTimerRef.current);
-            }
-        } else {
-            // First click - show label and activate
-            setIsActivated(true);
-            setShowLabel(true);
-            isHovered.set(1);
-
-            // Reset after 2 seconds
-            if (activationTimerRef.current) {
-                clearTimeout(activationTimerRef.current);
-            }
-            activationTimerRef.current = setTimeout(() => {
-                setIsActivated(false);
-                setShowLabel(false);
-                isHovered.set(0);
-            }, 2000);
-        }
+        // On touch devices, navigate directly on first tap (no two-tap activation)
+        // On desktop with mouse, also navigate directly (hover shows label)
+        onClick();
     };
 
     return (
@@ -121,21 +106,16 @@ function DockItem({
             ref={ref}
             style={{ width: size, height: size }}
             onHoverStart={() => {
-                isHovered.set(1);
-                // On hover, reset activation state for desktop
-                setIsActivated(false);
+                // Only show label on hover for desktop (non-touch devices)
+                if (!isTouchDevice) {
+                    isHovered.set(1);
+                }
             }}
             onHoverEnd={() => {
-                if (!isActivated) {
-                    isHovered.set(0);
-                }
+                isHovered.set(0);
             }}
             onFocus={() => isHovered.set(1)}
-            onBlur={() => {
-                if (!isActivated) {
-                    isHovered.set(0);
-                }
-            }}
+            onBlur={() => isHovered.set(0)}
             onClick={handleClick}
             className="relative inline-flex items-center justify-center rounded-full 
       bg-background shadow-md cursor-pointer"
@@ -150,19 +130,18 @@ function DockItem({
                 </span>
             )}
             <AnimatePresence>
-                {showLabel && (
+                {showLabel && !isTouchDevice && (
                     <motion.div
                         initial={{ opacity: 0, y: 0, scale: 0.8 }}
                         animate={{ opacity: 1, y: -10, scale: 1 }}
                         exit={{ opacity: 0, y: 0, scale: 0.8 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className={`absolute -top-6 left-1/2 w-fit whitespace-pre rounded-md 
-            border border-border px-2 py-0.5 text-xs text-foreground
-            ${isActivated ? 'bg-white/95 text-black border-white/50' : 'bg-card'}`}
+                        className="absolute -top-6 left-1/2 w-fit whitespace-pre rounded-md 
+            border border-border px-2 py-0.5 text-xs text-foreground bg-card"
                         style={{ x: "-50%" }}
                         role="tooltip"
                     >
-                        {isActivated ? `Tap to open ${label}` : label}
+                        {label}
                     </motion.div>
                 )}
             </AnimatePresence>

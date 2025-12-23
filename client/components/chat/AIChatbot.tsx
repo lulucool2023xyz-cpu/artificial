@@ -2889,6 +2889,27 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         </div>
 
         <nav className="flex-1 p-3 sm:p-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Main navigation">
+          {/* New Chat Button - Primary Action */}
+          <button
+            onClick={() => {
+              startNewChat();
+              if (isMobileView) setSidebarOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl font-semibold transition-all",
+              "bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black hover:shadow-lg hover:shadow-[#FFD700]/30",
+              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center" : "px-3 sm:px-4 py-2.5 sm:py-3"
+            )}
+            aria-label="New Chat"
+            title={sidebarMinimized ? "New Chat" : undefined}
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-semibold whitespace-nowrap truncate">+ New Project</span>}
+          </button>
+
+          {/* Separator */}
+          <div className="my-3" />
+
           {/* News Chat - Mobile Responsive */}
           <button
             onClick={() => {
@@ -2900,14 +2921,14 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
               sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               currentView === 'chat'
-                ? "bg-gradient-to-r from-[#FFD700]/20 to-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30"
+                ? "bg-[#FFD700] text-black font-medium"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
             aria-label="News Chat"
             aria-current={currentView === 'chat' ? "page" : undefined}
             title={sidebarMinimized ? "News Chat" : undefined}
           >
-            <Newspaper className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <Newspaper className={cn("w-4 h-4 sm:w-5 sm:h-5 shrink-0", currentView !== 'chat' && "text-[#FFD700]")} />
             {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">News Chat</span>}
           </button>
 
@@ -2922,14 +2943,14 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
               sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               currentView === 'history'
-                ? "bg-gradient-to-r from-[#FFD700]/20 to-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30"
+                ? "bg-[#FFD700] text-black font-medium"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
             aria-label="Recent Chat"
             aria-current={currentView === 'history' ? "page" : undefined}
             title={sidebarMinimized ? "Recent Chat" : undefined}
           >
-            <History className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <History className={cn("w-4 h-4 sm:w-5 sm:h-5 shrink-0", currentView !== 'history' && "text-[#FFD700]")} />
             {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Recent Chat</span>}
           </button>
 
@@ -2947,14 +2968,14 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
               sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               currentView === 'prompts'
-                ? "bg-secondary text-foreground"
+                ? "bg-[#FFD700] text-black font-medium"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
             aria-label="My Prompts"
             aria-current={currentView === 'prompts' ? "page" : undefined}
             title={sidebarMinimized ? "My Prompts" : undefined}
           >
-            <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <FileText className={cn("w-4 h-4 sm:w-5 sm:h-5 shrink-0", currentView !== 'prompts' && "text-[#FFD700]")} />
             {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">My Prompts</span>}
           </button>
 
@@ -2969,14 +2990,14 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
               sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
               currentView === 'saved'
-                ? "bg-secondary text-foreground"
+                ? "bg-[#FFD700] text-black font-medium"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
             aria-label="Saved Chats"
             aria-current={currentView === 'saved' ? "page" : undefined}
             title={sidebarMinimized ? "Saved Chats" : undefined}
           >
-            <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <Bookmark className={cn("w-4 h-4 sm:w-5 sm:h-5 shrink-0", currentView !== 'saved' && "text-[#FFD700]")} />
             {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">Saved Chats</span>}
           </button>
 
@@ -2995,7 +3016,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             aria-label="AI Models"
             title={sidebarMinimized ? "AI Models" : undefined}
           >
-            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-[#FFD700]" />
             {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">AI Models</span>}
           </button>
 

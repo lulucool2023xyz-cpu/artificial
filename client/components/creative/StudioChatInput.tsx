@@ -299,7 +299,7 @@ export const StudioChatInput = memo(function StudioChatInput({
             </div>
 
             <div className="px-3 sm:px-4 pb-3 sm:pb-4 overflow-visible">
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 overflow-y-visible">
+                <div className="flex items-center gap-2 sm:gap-2 overflow-x-auto scrollbar-hide pb-1 overflow-y-visible">
                     {/* Category Dropdown */}
                     {(type === "image" || type === "video") && (
                         <div className="relative flex-shrink-0 overflow-visible" ref={categoryRef}>
@@ -307,18 +307,18 @@ export const StudioChatInput = memo(function StudioChatInput({
                                 ref={categoryBtnRef}
                                 onClick={() => showCategoryDropdown ? setShowCategoryDropdown(false) : openCategoryDropdown()}
                                 className={cn(
-                                    "flex items-center gap-2 px-3 py-2 rounded-xl",
+                                    "flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-xl",
                                     "bg-secondary/80 border border-border",
-                                    "hover:bg-secondary transition-colors",
+                                    "hover:bg-secondary active:bg-secondary/70 transition-colors",
                                     showCategoryDropdown && "bg-secondary border-primary/30"
                                 )}
                             >
                                 <currentCategory.icon className="w-4 h-4 text-primary" />
-                                <span className="text-xs font-medium text-foreground hidden sm:inline">
+                                <span className="text-xs font-medium text-foreground max-w-[80px] sm:max-w-none truncate">
                                     {currentCategory.label}
                                 </span>
                                 <ChevronDown className={cn(
-                                    "w-3 h-3 text-muted-foreground transition-transform",
+                                    "w-3 h-3 text-muted-foreground transition-transform flex-shrink-0",
                                     showCategoryDropdown && "rotate-180"
                                 )} />
                             </button>
@@ -354,19 +354,19 @@ export const StudioChatInput = memo(function StudioChatInput({
                                                         setShowCategoryDropdown(false);
                                                     }}
                                                     className={cn(
-                                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
+                                                        "w-full flex items-center gap-3 px-3 py-3 min-h-[48px] rounded-lg text-left transition-colors",
                                                         (type === "image" ? imageCategory : videoCategory) === cat.id
                                                             ? "bg-primary/10 text-primary"
-                                                            : "text-foreground hover:bg-secondary"
+                                                            : "text-foreground hover:bg-secondary active:bg-secondary/70"
                                                     )}
                                                 >
-                                                    <cat.icon className="w-4 h-4" />
+                                                    <cat.icon className="w-5 h-5" />
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-sm font-medium">{cat.label}</p>
-                                                        <p className="text-[10px] text-muted-foreground">{cat.description}</p>
+                                                        <p className="text-xs text-muted-foreground">{cat.description}</p>
                                                     </div>
                                                     {(type === "image" ? imageCategory : videoCategory) === cat.id && (
-                                                        <Check className="w-4 h-4 text-primary" />
+                                                        <Check className="w-5 h-5 text-primary" />
                                                     )}
                                                 </button>
                                             ))}
@@ -389,15 +389,15 @@ export const StudioChatInput = memo(function StudioChatInput({
                     {/* Aspect Ratio Compact */}
                     <button
                         onClick={() => setShowSettingsPanel(!showSettingsPanel)}
-                        className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors flex-shrink-0"
+                        className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-lg bg-secondary/50 hover:bg-secondary active:bg-secondary/70 transition-colors flex-shrink-0"
                     >
-                        <currentAspect.icon className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-[10px] text-muted-foreground">{aspectRatio}</span>
+                        <currentAspect.icon className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">{aspectRatio}</span>
                     </button>
 
                     {/* Output Count */}
-                    <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-secondary/50 flex-shrink-0">
-                        <span className="text-[10px] text-muted-foreground">x{outputCount}</span>
+                    <div className="flex items-center gap-1 px-3 py-2 min-h-[40px] rounded-lg bg-secondary/50 flex-shrink-0">
+                        <span className="text-xs text-muted-foreground">x{outputCount}</span>
                     </div>
 
                     {/* Settings Button */}
@@ -406,13 +406,13 @@ export const StudioChatInput = memo(function StudioChatInput({
                             ref={settingsBtnRef}
                             onClick={() => showSettingsPanel ? setShowSettingsPanel(false) : openSettingsPanel()}
                             className={cn(
-                                "p-2 rounded-lg transition-colors",
-                                "bg-secondary/50 hover:bg-secondary",
+                                "p-2.5 min-h-[44px] min-w-[44px] rounded-lg transition-colors flex items-center justify-center",
+                                "bg-secondary/50 hover:bg-secondary active:bg-secondary/70",
                                 showSettingsPanel && "bg-secondary ring-1 ring-primary/30"
                             )}
                             title="Settings"
                         >
-                            <Settings2 className="w-4 h-4 text-muted-foreground" />
+                            <Settings2 className="w-5 h-5 text-muted-foreground" />
                         </button>
 
                         {/* Settings Panel - Positioned above button */}
@@ -437,24 +437,24 @@ export const StudioChatInput = memo(function StudioChatInput({
                                         </button>
                                     </div>
 
-                                    <div className="p-3 space-y-4 max-h-[50vh] overflow-y-auto">
+                                    <div className="p-3 sm:p-4 space-y-5 max-h-[70vh] overflow-y-auto">
                                         {/* Aspect Ratio */}
                                         <div>
-                                            <p className="text-xs text-muted-foreground mb-2">Aspect Ratio</p>
-                                            <div className="grid grid-cols-5 gap-1">
+                                            <p className="text-xs font-medium text-muted-foreground mb-3">Aspect Ratio</p>
+                                            <div className="grid grid-cols-5 gap-1.5">
                                                 {aspectRatios.map((ratio) => (
                                                     <button
                                                         key={ratio.id}
                                                         onClick={() => onAspectRatioChange?.(ratio.id)}
                                                         className={cn(
-                                                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                                                            "flex flex-col items-center gap-1.5 p-2.5 min-h-[56px] rounded-lg transition-colors",
                                                             aspectRatio === ratio.id
                                                                 ? "bg-primary/10 text-primary border border-primary/30"
-                                                                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+                                                                : "bg-secondary/50 text-muted-foreground hover:bg-secondary active:bg-secondary/70"
                                                         )}
                                                     >
-                                                        <ratio.icon className="w-4 h-4" />
-                                                        <span className="text-[9px]">{ratio.id}</span>
+                                                        <ratio.icon className="w-5 h-5" />
+                                                        <span className="text-[10px] font-medium">{ratio.id}</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -462,17 +462,17 @@ export const StudioChatInput = memo(function StudioChatInput({
 
                                         {/* Output Count */}
                                         <div>
-                                            <p className="text-xs text-muted-foreground mb-2">Outputs per prompt</p>
-                                            <div className="flex gap-1">
+                                            <p className="text-xs font-medium text-muted-foreground mb-3">Outputs per prompt</p>
+                                            <div className="flex gap-2">
                                                 {[1, 2, 4].map((count) => (
                                                     <button
                                                         key={count}
                                                         onClick={() => onOutputCountChange?.(count)}
                                                         className={cn(
-                                                            "flex-1 py-2 rounded-lg text-xs font-medium transition-colors",
+                                                            "flex-1 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-colors",
                                                             outputCount === count
                                                                 ? "bg-primary text-primary-foreground"
-                                                                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+                                                                : "bg-secondary/50 text-muted-foreground hover:bg-secondary active:bg-secondary/70"
                                                         )}
                                                     >
                                                         {count}
@@ -483,8 +483,8 @@ export const StudioChatInput = memo(function StudioChatInput({
 
                                         {/* Model Selection */}
                                         <div>
-                                            <p className="text-xs text-muted-foreground mb-2">Model</p>
-                                            <div className="space-y-1">
+                                            <p className="text-xs font-medium text-muted-foreground mb-3">Model</p>
+                                            <div className="space-y-1.5">
                                                 {(type === "image" ? availableImageModels : videoModels).map((model) => (
                                                     <button
                                                         key={model.id}
@@ -496,18 +496,18 @@ export const StudioChatInput = memo(function StudioChatInput({
                                                             }
                                                         }}
                                                         className={cn(
-                                                            "w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors",
+                                                            "w-full flex items-center justify-between px-3 py-3 min-h-[52px] rounded-lg text-left transition-colors",
                                                             (type === "image" ? imageModel : videoModel) === model.id
                                                                 ? "bg-primary/10 border border-primary/30"
-                                                                : "bg-secondary/50 hover:bg-secondary"
+                                                                : "bg-secondary/50 hover:bg-secondary active:bg-secondary/70"
                                                         )}
                                                     >
                                                         <div>
-                                                            <p className="text-xs font-medium text-foreground">{model.name}</p>
-                                                            <p className="text-[10px] text-muted-foreground">{model.description}</p>
+                                                            <p className="text-sm font-medium text-foreground">{model.name}</p>
+                                                            <p className="text-xs text-muted-foreground">{model.description}</p>
                                                         </div>
                                                         {(type === "image" ? imageModel : videoModel) === model.id && (
-                                                            <Check className="w-4 h-4 text-primary" />
+                                                            <Check className="w-5 h-5 text-primary flex-shrink-0" />
                                                         )}
                                                     </button>
                                                 ))}
@@ -549,16 +549,16 @@ export const StudioChatInput = memo(function StudioChatInput({
                         onClick={onSubmit}
                         disabled={isLoading || !value.trim()}
                         className={cn(
-                            "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0",
+                            "w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0",
                             isLoading || !value.trim()
                                 ? "bg-muted text-muted-foreground cursor-not-allowed"
                                 : "bg-primary text-primary-foreground hover:opacity-90 hover:scale-105 active:scale-95"
                         )}
                     >
                         {isLoading ? (
-                            <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-current rounded-full animate-spin" />
+                            <div className="w-5 h-5 border-2 border-muted-foreground/30 border-t-current rounded-full animate-spin" />
                         ) : (
-                            <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <ArrowUp className="w-5 h-5" />
                         )}
                     </button>
                 </div>

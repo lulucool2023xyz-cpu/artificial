@@ -16,6 +16,8 @@ import { ThemeProvider } from "next-themes";
 import { handleError, logError } from "@/lib/errorHandler";
 import { initPerformanceMonitoring } from "@/utils/performance";
 import { ConditionalSmokeyCursor } from "@/components/ConditionalSmokeyCursor";
+import { CommandPalette } from "@/components/CommandPalette";
+import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -148,6 +150,8 @@ const App = () => (
             >
               <ConditionalSmokeyCursor />
               <ScrollToTop />
+              <CommandPalette />
+              <GlobalShortcuts />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Auth Routes - Public */}
@@ -256,6 +260,7 @@ const App = () => (
                   {/* Public Routes - No Authentication Required */}
                   <Route path="/" element={<Index />} />
                   <Route path="/get-started" element={<GetStarted />} />
+                  <Route path="/pricing" element={<ChatSubscription />} /> {/* Public pricing page */}
 
                   {/* Product Routes - Public Preview */}
                   <Route path="/product/features" element={<ProductFeatures />} />
