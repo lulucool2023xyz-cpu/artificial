@@ -172,6 +172,18 @@ const Culture = memo(function Culture() {
     const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
     const [feedbackGiven, setFeedbackGiven] = useState<"up" | "down" | null>(null);
     const [zoomLevel, setZoomLevel] = useState(100);
+    const [analysisResult, setAnalysisResult] = useState<{
+        title: string;
+        location: string;
+        confidence: number;
+        summary: string;
+        whatIsThis: string;
+        whereFrom: { city: string; description: string };
+        howItsMade: Array<{ step: number; title: string; description: string }>;
+        meaning: { symbolism: string; usage: string; history: string };
+    } | null>(null);
+    const [provinceInfo, setProvinceInfo] = useState<string | null>(null);
+    const [mapLoading, setMapLoading] = useState(false);
 
     // AI Chat states for story/craft sections
     const [storyQuery, setStoryQuery] = useState("");
@@ -240,22 +252,63 @@ const Culture = memo(function Culture() {
         { id: "projects", label: "My Projects", icon: <FolderOpen className="w-5 h-5" />, active: category === "projects", badge: "5" },
     ];
 
-    const simulateAnalysis = useCallback(() => {
+    // Real image analysis using Gemini Vision API
+    const analyzeImage = useCallback(async (imageBase64: string) => {
         setAnalysisState("uploading");
         setLoadingProgress(0);
         setLoadingText("Mengunggah gambar...");
+        setAnalysisResult(null);
 
-        setTimeout(() => { setLoadingProgress(25); setLoadingText("Menganalisis motif..."); setAnalysisState("analyzing"); }, 1000);
-        setTimeout(() => { setLoadingProgress(50); setLoadingText("Sedang menganalisis detail..."); }, 3000);
-        setTimeout(() => { setLoadingProgress(75); setLoadingText("Hampir selesai..."); }, 5000);
-        setTimeout(() => { setLoadingProgress(100); setAnalysisState("complete"); toast.success("Analisis selesai!"); }, 7000);
+        try {
+            setLoadingProgress(25);
+            setLoadingText("Menganalisis gambar dengan AI...");
+            setAnalysisState("analyzing");
+
+            // Get MIME type from base64
+            const mimeMatch = imageBase64.match(/data:(image\/\w+);base64,/);
+            const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
+            setLoadingProgress(50);
+            setLoadingText("Mengidentifikasi warisan budaya...");
+
+            const result = await cultureApi.analyzeImage(imageBase64, mimeType);
+
+            setLoadingProgress(100);
+            setAnalysisResult(result);
+            setAnalysisState("complete");
+            toast.success("Analisis selesai!");
+        } catch (error) {
+            console.error('Image analysis error:', error);
+            toast.error('Gagal menganalisis gambar. Silakan coba lagi.');
+            setAnalysisState("error");
+        }
+    }, []);
+
+    // Handle province click on map - get AI info
+    const handleProvinceClick = useCallback(async (provinceName: string) => {
+        setMapLoading(true);
+        setProvinceInfo(null);
+
+        try {
+            const result = await cultureApi.getProvinceInfo(provinceName);
+            setProvinceInfo(result.content);
+        } catch (error) {
+            console.error('Province info error:', error);
+            toast.error('Gagal mengambil informasi provinsi.');
+        } finally {
+            setMapLoading(false);
+        }
     }, []);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (event) => { setUploadedImage(event.target?.result as string); simulateAnalysis(); };
+            reader.onload = (event) => {
+                const imageData = event.target?.result as string;
+                setUploadedImage(imageData);
+                analyzeImage(imageData);
+            };
             reader.readAsDataURL(file);
         }
     };
@@ -265,7 +318,11 @@ const Culture = memo(function Culture() {
         const file = e.dataTransfer.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (event) => { setUploadedImage(event.target?.result as string); simulateAnalysis(); };
+            reader.onload = (event) => {
+                const imageData = event.target?.result as string;
+                setUploadedImage(imageData);
+                analyzeImage(imageData);
+            };
             reader.readAsDataURL(file);
         }
     };
@@ -341,30 +398,12 @@ const Culture = memo(function Culture() {
                         )}
 
                         {/* Complete - Result Layout */}
-                        {analysisState === "complete" && uploadedImage && (
+                        {analysisState === "complete" && uploadedImage && analysisResult && (
                             <div className="flex flex-col lg:flex-row min-h-[calc(100vh-120px)]">
-                                {/* Left: Image + Markers */}
+                                {/* Left: Image */}
                                 <div className="lg:w-1/2 bg-black p-4 flex flex-col">
                                     <div className="relative flex-1 flex items-center justify-center overflow-hidden min-h-[300px]">
                                         <img src={uploadedImage} alt="Analyzed" className="max-w-full max-h-full object-contain transition-transform duration-200" style={{ transform: `scale(${zoomLevel / 100})` }} />
-                                        {mockAnalysisResult.markers.map((marker) => (
-                                            <div
-                                                key={marker.id}
-                                                className={cn("absolute w-8 h-8 rounded-full border-2 border-[#C9A04F] bg-black/50 flex items-center justify-center cursor-pointer transition-all hover:scale-110", hoveredMarker === marker.id && "scale-110 bg-[#C9A04F]/30")}
-                                                style={{ left: `${marker.x}%`, top: `${marker.y}%`, transform: "translate(-50%, -50%)" }}
-                                                onMouseEnter={() => setHoveredMarker(marker.id)}
-                                                onMouseLeave={() => setHoveredMarker(null)}
-                                            >
-                                                <span className="text-white text-xs font-bold">{marker.id}</span>
-                                                <AnimatePresence>
-                                                    {hoveredMarker === marker.id && (
-                                                        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-card text-foreground text-xs rounded-lg whitespace-nowrap z-10">
-                                                            {marker.label}
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        ))}
                                     </div>
                                     <div className="flex items-center justify-end gap-2 mt-4">
                                         <button onClick={() => setZoomLevel(prev => Math.max(50, prev - 25))} className="p-2 rounded-lg bg-secondary text-foreground"><ZoomOut className="w-4 h-4" /></button>
@@ -379,11 +418,11 @@ const Culture = memo(function Culture() {
                                     {/* Card 1: Summary */}
                                     <div className="bg-card border border-border rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-wider mb-3">🏛️ RINGKASAN</div>
-                                        <h3 className="text-xl font-bold text-foreground">{mockAnalysisResult.title}</h3>
-                                        <p className="text-[#C9A04F] text-sm mt-1">{mockAnalysisResult.location}</p>
+                                        <h3 className="text-xl font-bold text-foreground">{analysisResult.title}</h3>
+                                        <p className="text-[#C9A04F] text-sm mt-1">{analysisResult.location}</p>
                                         <div className="mt-4">
-                                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1"><span>Confidence</span><span className="text-[#C9A04F]">{mockAnalysisResult.confidence}%</span></div>
-                                            <div className="w-full bg-secondary rounded-full h-2"><div className="bg-gradient-to-r from-[#C9A04F] to-[#B8860B] h-2 rounded-full" style={{ width: `${mockAnalysisResult.confidence}%` }} /></div>
+                                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1"><span>Confidence</span><span className="text-[#C9A04F]">{analysisResult.confidence}%</span></div>
+                                            <div className="w-full bg-secondary rounded-full h-2"><div className="bg-gradient-to-r from-[#C9A04F] to-[#B8860B] h-2 rounded-full" style={{ width: `${analysisResult.confidence}%` }} /></div>
                                         </div>
                                         <div className="flex items-center gap-4 mt-4">
                                             <span className="text-xs text-muted-foreground">Hasil akurat?</span>
@@ -395,7 +434,7 @@ const Culture = memo(function Culture() {
                                     {/* Card 2: What Is This */}
                                     <div className="bg-card border border-border rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-wider mb-3">🔍 APA INI?</div>
-                                        <p className="text-sm text-muted-foreground leading-relaxed">{expandedCards.whatIsThis ? mockAnalysisResult.whatIsThis : mockAnalysisResult.summary}</p>
+                                        <p className="text-sm text-muted-foreground leading-relaxed">{expandedCards.whatIsThis ? analysisResult.whatIsThis : analysisResult.summary}</p>
                                         <button onClick={() => toggleCard("whatIsThis")} className="mt-3 text-[#C9A04F] text-sm hover:underline">{expandedCards.whatIsThis ? "Sembunyikan" : "Tampilkan Detail →"}</button>
                                     </div>
 
@@ -405,15 +444,15 @@ const Culture = memo(function Culture() {
                                         <div className="bg-secondary rounded-lg h-32 mb-3 flex items-center justify-center cursor-pointer hover:bg-secondary/80" onClick={() => setShowMapModal(true)}>
                                             <div className="text-center"><MapPin className="w-8 h-8 text-[#C9A04F] mx-auto mb-2" /><p className="text-xs text-muted-foreground">Klik untuk buka peta</p></div>
                                         </div>
-                                        <p className="text-foreground font-semibold">{mockAnalysisResult.whereFrom.city}</p>
-                                        <p className="text-sm text-muted-foreground mt-1">{mockAnalysisResult.whereFrom.description}</p>
+                                        <p className="text-foreground font-semibold">{analysisResult.whereFrom.city}</p>
+                                        <p className="text-sm text-muted-foreground mt-1">{analysisResult.whereFrom.description}</p>
                                     </div>
 
                                     {/* Card 4: How Made */}
                                     <div className="bg-card border border-border rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-wider mb-3">🎨 CARA PEMBUATAN</div>
                                         <div className="space-y-3">
-                                            {mockAnalysisResult.howItsMade.map((step) => (
+                                            {analysisResult.howItsMade.map((step) => (
                                                 <div key={step.step} className="flex items-start gap-3">
                                                     <div className="w-6 h-6 rounded-full bg-[#C9A04F] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{step.step}</span></div>
                                                     <div><p className="text-foreground text-sm font-medium">{step.title}</p><p className="text-muted-foreground text-xs">{step.description}</p></div>
@@ -426,26 +465,13 @@ const Culture = memo(function Culture() {
                                     <div className="bg-card border border-border rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-wider mb-3">📜 MAKNA & KONTEKS</div>
                                         <div className="space-y-4 text-sm">
-                                            <div><p className="text-foreground font-medium mb-1">Symbolism:</p><p className="text-muted-foreground">{mockAnalysisResult.meaning.symbolism}</p></div>
-                                            <div><p className="text-foreground font-medium mb-1">Usage:</p><p className="text-muted-foreground">{mockAnalysisResult.meaning.usage}</p></div>
-                                            <div><p className="text-foreground font-medium mb-1">History:</p><p className="text-muted-foreground">{mockAnalysisResult.meaning.history}</p></div>
+                                            <div><p className="text-foreground font-medium mb-1">Symbolism:</p><p className="text-muted-foreground">{analysisResult.meaning.symbolism}</p></div>
+                                            <div><p className="text-foreground font-medium mb-1">Usage:</p><p className="text-muted-foreground">{analysisResult.meaning.usage}</p></div>
+                                            <div><p className="text-foreground font-medium mb-1">History:</p><p className="text-muted-foreground">{analysisResult.meaning.history}</p></div>
                                         </div>
                                     </div>
 
-                                    {/* Card 6: Related Images */}
-                                    <div className="bg-card border border-border rounded-xl p-4">
-                                        <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-wider mb-3">🖼️ GAMBAR TERKAIT</div>
-                                        <div className="flex gap-3 overflow-x-auto pb-2">
-                                            {mockAnalysisResult.relatedImages.map((img) => (
-                                                <div key={img.id} className="flex-shrink-0 cursor-pointer group">
-                                                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-secondary"><img src={img.thumbnail} alt={img.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" /></div>
-                                                    <p className="text-[10px] text-muted-foreground mt-1 w-24 truncate">{img.title}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Card 7: Actions */}
+                                    {/* Card 6: Actions */}
                                     <div className="bg-card border border-border rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-wider mb-3">⚡ AKSI</div>
                                         <div className="space-y-3">
@@ -783,11 +809,8 @@ const Culture = memo(function Culture() {
                                     </div>
                                 }>
                                     <IndonesiaMap
-                                        onProvinceClick={(id, name, culture, capital) => {
-                                            toast.info(`🗺️ ${name}`, {
-                                                description: `📍 Ibukota: ${capital}\n🎭 Budaya: ${culture}`,
-                                                duration: 5000,
-                                            });
+                                        onProvinceClick={(id, name) => {
+                                            handleProvinceClick(name);
                                         }}
                                         className="w-full"
                                         showStats={true}
@@ -796,9 +819,30 @@ const Culture = memo(function Culture() {
                                 </Suspense>
                             </div>
                             <p className="text-center text-xs text-muted-foreground mt-4">
-                                🖱️ Arahkan kursor ke wilayah untuk melihat nama provinsi, klik untuk info budaya lengkap
+                                🖱️ Klik provinsi untuk informasi budaya lengkap dari AI
                             </p>
                         </div>
+
+                        {/* Province Info Panel */}
+                        {(mapLoading || provinceInfo) && (
+                            <div className="mt-6 bg-card border border-border rounded-2xl p-6">
+                                <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-wider mb-4">
+                                    📍 INFORMASI PROVINSI
+                                </div>
+                                {mapLoading ? (
+                                    <div className="flex items-center gap-3">
+                                        <Loader2 className="w-5 h-5 animate-spin text-[#C9A04F]" />
+                                        <span className="text-muted-foreground">Memuat informasi budaya...</span>
+                                    </div>
+                                ) : provinceInfo && (
+                                    <div className="prose prose-invert prose-sm max-w-none">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {provinceInfo}
+                                        </ReactMarkdown>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Cultural Highlights */}
                         <div className="mt-8">

@@ -22,6 +22,7 @@ import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
 const GetStarted = lazy(() => import("./pages/GetStarted"));
+const Pricing = lazy(() => import("./pages/Pricing"));
 
 // Auth pages
 const Login = lazy(() => import("./pages/auth/Login"));
@@ -38,6 +39,11 @@ const ChatSubscription = lazy(() => import("./pages/chat/subscription"));
 const ChatPrompts = lazy(() => import("./pages/chat/prompts"));
 const ChatSaved = lazy(() => import("./pages/chat/saved"));
 const ChatModels = lazy(() => import("./pages/chat/models"));
+const ChatLanguage = lazy(() => import("./pages/chat/language"));
+const ChatHelp = lazy(() => import("./pages/chat/help"));
+
+// Download page
+const Download = lazy(() => import("./pages/Download"));
 
 // Culture page
 const Culture = lazy(() => import("./pages/Culture"));
@@ -226,6 +232,25 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/chat/language"
+                    element={
+                      <ProtectedRoute>
+                        <ChatLanguage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/chat/help"
+                    element={
+                      <ProtectedRoute>
+                        <ChatHelp />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Download Route - Public */}
+                  <Route path="/download" element={<Download />} />
 
                   {/* Culture Route - Protected */}
                   <Route
@@ -260,7 +285,7 @@ const App = () => (
                   {/* Public Routes - No Authentication Required */}
                   <Route path="/" element={<Index />} />
                   <Route path="/get-started" element={<GetStarted />} />
-                  <Route path="/pricing" element={<ChatSubscription />} /> {/* Public pricing page */}
+                  <Route path="/pricing" element={<Pricing />} /> {/* Public pricing page with NavigationBar */}
 
                   {/* Product Routes - Public Preview */}
                   <Route path="/product/features" element={<ProductFeatures />} />

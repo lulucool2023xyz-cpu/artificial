@@ -9,6 +9,7 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: "login" | "signup";
+  onAuthSuccess?: () => void; // Callback after successful auth
 }
 
 interface PasswordStrength {

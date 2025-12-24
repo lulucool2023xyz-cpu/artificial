@@ -597,6 +597,112 @@ Jika diminta tentang kerajinan, sertakan:
             if (chunk.done) break;
         }
     },
+
+    /**
+     * Analyze an image to identify Indonesian cultural heritage
+     * Uses Gemini Vision API for image understanding
+     */
+    analyzeImage: async (imageBase64: string, mimeType: string = 'image/jpeg'): Promise<{
+        title: string;
+        location: string;
+        confidence: number;
+        summary: string;
+        whatIsThis: string;
+        whereFrom: { city: string; description: string };
+        howItsMade: Array<{ step: number; title: string; description: string }>;
+        meaning: { symbolism: string; usage: string; history: string };
+        error?: string;
+    }> => {
+        const systemInstruction = `Kamu adalah ahli warisan budaya Indonesia. Analisis gambar dan identifikasi warisan budaya yang terlihat.
+
+PENTING: Respons HARUS dalam format JSON yang valid dengan struktur berikut:
+{
+    "title": "Nama warisan budaya",
+    "location": "Daerah asal, Indonesia",
+    "confidence": 85,
+    "summary": "Ringkasan singkat 1-2 kalimat",
+    "whatIsThis": "Penjelasan detail tentang apa ini",
+    "whereFrom": {
+        "city": "Kota/Daerah asal",
+        "description": "Penjelasan sejarah daerah"
+    },
+    "howItsMade": [
+        { "step": 1, "title": "Langkah 1", "description": "Deskripsi langkah" }
+    ],
+    "meaning": {
+        "symbolism": "Makna simbolis",
+        "usage": "Cara penggunaan tradisional",
+        "history": "Sejarah singkat"
+    }
+}
+
+Berikan analisis mendalam berdasarkan visual yang terlihat.`;
+
+        try {
+            const response = await chatApi.chat({
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        { text: 'Identifikasi dan analisis warisan budaya Indonesia dalam gambar ini. Respond dalam format JSON.' },
+                        { inlineData: { mimeType, data: imageBase64.replace(/^data:image\/\w+;base64,/, '') } }
+                    ]
+                }],
+                model: 'gemini-2.5-flash',
+                systemInstruction,
+                generationConfig: {
+                    temperature: 0.3,
+                    maxOutputTokens: 2048,
+                },
+            });
+
+            const content = response.text || response.message?.content || '';
+
+            // Extract JSON from response
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                try {
+                    return JSON.parse(jsonMatch[0]);
+                } catch {
+                    // If JSON parsing fails, create structured response from text
+                    return {
+                        title: 'Warisan Budaya Indonesia',
+                        location: 'Indonesia',
+                        confidence: 70,
+                        summary: content.slice(0, 200),
+                        whatIsThis: content,
+                        whereFrom: { city: 'Indonesia', description: 'Warisan budaya Nusantara' },
+                        howItsMade: [{ step: 1, title: 'Pembuatan Tradisional', description: 'Dibuat dengan teknik tradisional' }],
+                        meaning: { symbolism: 'Simbol budaya', usage: 'Penggunaan tradisional', history: 'Warisan turun-temurun' }
+                    };
+                }
+            }
+
+            return {
+                title: 'Warisan Budaya Indonesia',
+                location: 'Indonesia',
+                confidence: 60,
+                summary: content.slice(0, 200),
+                whatIsThis: content,
+                whereFrom: { city: 'Indonesia', description: 'Warisan budaya Nusantara' },
+                howItsMade: [{ step: 1, title: 'Pembuatan Tradisional', description: 'Dibuat dengan teknik tradisional' }],
+                meaning: { symbolism: 'Simbol budaya', usage: 'Penggunaan tradisional', history: 'Warisan turun-temurun' }
+            };
+        } catch (error) {
+            console.error('Culture image analysis error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get province cultural information
+     */
+    getProvinceInfo: async (provinceName: string): Promise<CultureResponse> => {
+        return cultureApi.getCultureInfo({
+            query: provinceName,
+            type: 'province',
+            enableSearch: true,
+        });
+    },
 };
 
 // ============================================
@@ -737,6 +843,481 @@ export const musicApi = {
     getStatus: async (): Promise<{ status: string; model: string }> => {
         return apiCall<{ status: string; model: string }>('/api/v2/music/status', {
             method: 'GET',
+        });
+    },
+};
+
+// ============================================
+// PAYMENT & SUBSCRIPTION API (V2)
+// ============================================
+
+export type PlanId = 'pro' | 'enterprise';
+export type BillingCycle = 'monthly' | 'yearly';
+export type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired';
+
+export interface CreateOrderRequest {
+    planId: PlanId;
+    billingCycle: BillingCycle;
+}
+
+export interface CreateOrderResponse {
+    orderId: string;
+    snapToken: string;
+    amount: number;
+    currency: 'IDR';
+    expiresAt: string;
+}
+
+export interface VerifyPaymentRequest {
+    orderId: string;
+    transactionId?: string;
+}
+
+export interface VerifyPaymentResponse {
+    success: boolean;
+    subscription: {
+        planId: PlanId;
+        expiresAt: string;
+        status: SubscriptionStatus;
+    };
+    message: string;
+}
+
+export interface SubscriptionStatusResponse {
+    isActive: boolean;
+    plan: SubscriptionPlan;
+    expiresAt: string | null;
+    features: string[];
+    daysRemaining: number | null;
+}
+
+export const subscriptionApi = {
+    /**
+     * Create a payment order for subscription
+     */
+    createOrder: async (request: CreateOrderRequest): Promise<CreateOrderResponse> => {
+        return apiCall<CreateOrderResponse>('/api/v2/payment/create-order', {
+            method: 'POST',
+            body: JSON.stringify(request),
+        });
+    },
+
+    /**
+     * Verify payment after Midtrans callback
+     */
+    verifyPayment: async (request: VerifyPaymentRequest): Promise<VerifyPaymentResponse> => {
+        return apiCall<VerifyPaymentResponse>('/api/v2/payment/verify', {
+            method: 'POST',
+            body: JSON.stringify(request),
+        });
+    },
+
+    /**
+     * Get current user's subscription status
+     */
+    getStatus: async (): Promise<SubscriptionStatusResponse> => {
+        return apiCall<SubscriptionStatusResponse>('/api/v2/subscription/status', {
+            method: 'GET',
+        });
+    },
+};
+
+// ============================================
+// MEDIA HISTORY API (V2)
+// ============================================
+
+export type MediaType = 'image' | 'video' | 'music';
+
+export interface MediaMetadata {
+    width?: number;
+    height?: number;
+    format?: string;
+    size?: number;
+    duration?: number;
+}
+
+export interface MediaHistoryItem {
+    id: string;
+    type: MediaType;
+    url: string;
+    thumbnailUrl: string | null;
+    prompt: string;
+    model: string;
+    createdAt: string;
+    metadata: MediaMetadata;
+}
+
+export interface MediaHistoryParams {
+    type?: MediaType;
+    page?: number;
+    limit?: number;
+}
+
+export interface MediaHistoryResponse {
+    items: MediaHistoryItem[];
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+}
+
+export const mediaApi = {
+    /**
+     * Get user's media history (images, videos, music)
+     */
+    getHistory: async (params: MediaHistoryParams = {}): Promise<MediaHistoryResponse> => {
+        const searchParams = new URLSearchParams();
+        if (params.type) searchParams.append('type', params.type);
+        if (params.page) searchParams.append('page', params.page.toString());
+        if (params.limit) searchParams.append('limit', params.limit.toString());
+
+        const query = searchParams.toString();
+        return apiCall<MediaHistoryResponse>(`/api/v2/media/history${query ? `?${query}` : ''}`, {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Delete a media item
+     */
+    delete: async (id: string): Promise<{ success: boolean; message: string }> => {
+        return apiCall<{ success: boolean; message: string }>(`/api/v2/media/${id}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// ============================================
+// USER API KEYS API (V2)
+// ============================================
+
+export interface ApiKeyItem {
+    id: string;
+    name: string;
+    prefix: string;
+    createdAt: string;
+    lastUsed: string | null;
+    usageCount: number;
+}
+
+export interface ApiKeysListResponse {
+    keys: ApiKeyItem[];
+    limit: number;
+    remaining: number;
+}
+
+export interface CreateApiKeyRequest {
+    name: string;
+}
+
+export interface CreateApiKeyResponse {
+    id: string;
+    name: string;
+    key: string;  // Full key, shown only once!
+    prefix: string;
+    message: string;
+}
+
+export type UsagePeriod = 'daily' | 'monthly';
+
+export interface UsageStats {
+    chat: number;
+    image: number;
+    video: number;
+    music: number;
+    tts: number;
+}
+
+export interface ApiUsageResponse {
+    period: UsagePeriod;
+    date: string;
+    usage: UsageStats;
+    limits: UsageStats;
+    percentUsed: UsageStats;
+}
+
+export const apiKeysApi = {
+    /**
+     * List all API keys for the user
+     */
+    list: async (): Promise<ApiKeysListResponse> => {
+        return apiCall<ApiKeysListResponse>('/api/v2/user/api-keys', {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Create a new API key (key shown only once!)
+     */
+    create: async (request: CreateApiKeyRequest): Promise<CreateApiKeyResponse> => {
+        return apiCall<CreateApiKeyResponse>('/api/v2/user/api-keys', {
+            method: 'POST',
+            body: JSON.stringify(request),
+        });
+    },
+
+    /**
+     * Delete an API key
+     */
+    delete: async (id: string): Promise<{ success: boolean; message: string }> => {
+        return apiCall<{ success: boolean; message: string }>(`/api/v2/user/api-keys/${id}`, {
+            method: 'DELETE',
+        });
+    },
+
+    /**
+     * Get API usage statistics
+     */
+    getUsage: async (period: UsagePeriod = 'daily'): Promise<ApiUsageResponse> => {
+        return apiCall<ApiUsageResponse>(`/api/v2/user/api-usage?period=${period}`, {
+            method: 'GET',
+        });
+    },
+};
+
+// ============================================
+// CHAT SHARING API (V2)
+// ============================================
+
+export interface CreateShareRequest {
+    conversationId: string;
+    expiresIn?: number;  // hours
+}
+
+export interface CreateShareResponse {
+    shareId: string;
+    shareUrl: string;
+    expiresAt: string | null;
+    isPublic: boolean;
+}
+
+export interface SharedMessage {
+    role: 'user' | 'model';
+    content: string;
+    timestamp: string;
+}
+
+export interface SharedChatResponse {
+    id: string;
+    title: string;
+    messages: SharedMessage[];
+    messageCount: number;
+    createdAt: string;
+    author: {
+        name: string;
+        avatar: string | null;
+    };
+}
+
+export const shareApi = {
+    /**
+     * Create a shareable link for a conversation
+     */
+    create: async (request: CreateShareRequest): Promise<CreateShareResponse> => {
+        return apiCall<CreateShareResponse>('/api/v2/chat/share', {
+            method: 'POST',
+            body: JSON.stringify(request),
+        });
+    },
+
+    /**
+     * Get a shared chat (public, no auth required)
+     */
+    getShared: async (shareId: string): Promise<SharedChatResponse> => {
+        return apiCall<SharedChatResponse>(`/api/v2/shared/${shareId}`, {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Delete a share link
+     */
+    delete: async (shareId: string): Promise<{ success: boolean; message: string }> => {
+        return apiCall<{ success: boolean; message: string }>(`/api/v2/chat/share/${shareId}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// ============================================
+// PROMPTS MARKETPLACE API (V2)
+// ============================================
+
+export type PromptCategory =
+    | 'writing'
+    | 'coding'
+    | 'marketing'
+    | 'education'
+    | 'creative'
+    | 'business';
+
+export type PromptSortBy = 'popular' | 'recent' | 'rating';
+
+export interface PromptAuthor {
+    id: string;
+    name: string;
+    avatar: string | null;
+}
+
+export interface PromptItem {
+    id: string;
+    title: string;
+    description: string | null;
+    prompt: string;
+    category: PromptCategory | null;
+    author: PromptAuthor;
+    uses: number;
+    rating: number;
+    ratingCount: number;
+    isPublic: boolean;
+    isSaved: boolean;
+    createdAt: string;
+}
+
+export interface PromptsQueryParams {
+    category?: PromptCategory;
+    search?: string;
+    sort?: PromptSortBy;
+    page?: number;
+    limit?: number;
+}
+
+export interface PromptsListResponse {
+    prompts: PromptItem[];
+    total: number;
+    page: number;
+    hasMore: boolean;
+    categories: PromptCategory[];
+}
+
+export interface CreatePromptRequest {
+    title: string;
+    description?: string;
+    prompt: string;
+    category?: PromptCategory;
+    isPublic?: boolean;
+}
+
+export interface UpdatePromptRequest {
+    title?: string;
+    description?: string;
+    prompt?: string;
+    category?: PromptCategory;
+    isPublic?: boolean;
+}
+
+export interface UsePromptResponse {
+    success: boolean;
+    prompt: string;
+    variables: string[];
+}
+
+export const promptsApi = {
+    /**
+     * Browse public prompts marketplace
+     */
+    browseMarketplace: async (params: PromptsQueryParams = {}): Promise<PromptsListResponse> => {
+        const searchParams = new URLSearchParams();
+        if (params.category) searchParams.append('category', params.category);
+        if (params.search) searchParams.append('search', params.search);
+        if (params.sort) searchParams.append('sort', params.sort);
+        if (params.page) searchParams.append('page', params.page.toString());
+        if (params.limit) searchParams.append('limit', params.limit.toString());
+
+        const query = searchParams.toString();
+        return apiCall<PromptsListResponse>(`/api/v2/prompts/marketplace${query ? `?${query}` : ''}`, {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Get user's own prompts
+     */
+    getMyPrompts: async (params: PromptsQueryParams = {}): Promise<PromptsListResponse> => {
+        const searchParams = new URLSearchParams();
+        if (params.category) searchParams.append('category', params.category);
+        if (params.search) searchParams.append('search', params.search);
+        if (params.sort) searchParams.append('sort', params.sort);
+        if (params.page) searchParams.append('page', params.page.toString());
+        if (params.limit) searchParams.append('limit', params.limit.toString());
+
+        const query = searchParams.toString();
+        return apiCall<PromptsListResponse>(`/api/v2/prompts/mine${query ? `?${query}` : ''}`, {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Create a new prompt
+     */
+    create: async (request: CreatePromptRequest): Promise<{ id: string; title: string; message: string }> => {
+        return apiCall<{ id: string; title: string; message: string }>('/api/v2/prompts', {
+            method: 'POST',
+            body: JSON.stringify(request),
+        });
+    },
+
+    /**
+     * Update an existing prompt
+     */
+    update: async (id: string, request: UpdatePromptRequest): Promise<{ success: boolean; message: string }> => {
+        return apiCall<{ success: boolean; message: string }>(`/api/v2/prompts/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(request),
+        });
+    },
+
+    /**
+     * Delete a prompt
+     */
+    delete: async (id: string): Promise<{ success: boolean; message: string }> => {
+        return apiCall<{ success: boolean; message: string }>(`/api/v2/prompts/${id}`, {
+            method: 'DELETE',
+        });
+    },
+
+    /**
+     * Toggle save/unsave a prompt
+     */
+    toggleSave: async (id: string): Promise<{ success: boolean; isSaved: boolean }> => {
+        return apiCall<{ success: boolean; isSaved: boolean }>(`/api/v2/prompts/${id}/save`, {
+            method: 'POST',
+        });
+    },
+
+    /**
+     * Use a prompt - records usage and returns prompt with variables
+     */
+    use: async (id: string): Promise<UsePromptResponse> => {
+        return apiCall<UsePromptResponse>(`/api/v2/prompts/${id}/use`, {
+            method: 'POST',
+        });
+    },
+};
+
+// ============================================
+// EMAIL VERIFICATION API (V2)
+// ============================================
+
+export interface ResendVerificationRequest {
+    email: string;
+}
+
+export interface ResendVerificationResponse {
+    success: boolean;
+    message: string;
+    retryAfter: number;
+}
+
+export const emailVerificationApi = {
+    /**
+     * Resend verification email (rate limited - 60s)
+     */
+    resend: async (request: ResendVerificationRequest): Promise<ResendVerificationResponse> => {
+        return apiCall<ResendVerificationResponse>('/api/v2/auth/resend-verification', {
+            method: 'POST',
+            body: JSON.stringify(request),
         });
     },
 };

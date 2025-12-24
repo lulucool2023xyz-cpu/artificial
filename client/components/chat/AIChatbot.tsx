@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Mic, Camera, Settings, User, History, Menu, X, Zap, Brain, Gauge, Trash2, ChevronDown, Plus, LogOut, MessageSquare, Search, Save, Bell, Copy, RotateCcw, Sun, Moon, Monitor, Paperclip, File as FileIcon, Image as ImageIcon, FileText, Newspaper, Sparkles, HelpCircle, Clock, Palette, CreditCard, AlignJustify, BookOpen, PenTool, ExternalLink, Bookmark } from 'lucide-react';
+import { Send, Mic, Camera, Settings, User, History, Menu, X, Zap, Brain, Gauge, Trash2, ChevronDown, Plus, LogOut, MessageSquare, Search, Save, Bell, Copy, RotateCcw, Sun, Moon, Monitor, Paperclip, File as FileIcon, Image as ImageIcon, FileText, Newspaper, Sparkles, HelpCircle, Clock, Palette, CreditCard, AlignJustify, BookOpen, PenTool, ExternalLink, Bookmark, Video } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -62,7 +62,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarMinimized, setSidebarMinimized] = useState(true);
+  const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const sidebarToggleRef = useRef(false);
   const [currentView, setCurrentView] = useState(initialView);
   const [mode, setMode] = useState('balance');
@@ -2765,40 +2765,118 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
     </div>
   );
 
-  // Render AI Models page
-  const renderModels = () => (
-    <div className="p-8 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-6 font-heading">AI Models</h2>
+  // Render AI Models page with comprehensive model information
+  const renderModels = () => {
+    const modelCategories = [
+      {
+        title: "Chat & Text Models",
+        icon: <MessageSquare className="w-5 h-5" />,
+        models: [
+          { name: "Gemini 2.5 Pro", desc: "Model terkuat untuk reasoning kompleks", features: ["Deep Thinking", "1M context", "Multimodal"], tier: "Pro" },
+          { name: "Gemini 2.5 Flash", desc: "Cepat dan efisien untuk tugas harian", features: ["Fast response", "128K context"], tier: "Free" },
+          { name: "Gemini 2.0 Flash", desc: "Model dasar yang handal", features: ["Low latency", "32K context"], tier: "Free" },
+        ]
+      },
+      {
+        title: "Image Generation",
+        icon: <ImageIcon className="w-5 h-5" />,
+        models: [
+          { name: "Imagen 4.0", desc: "Generasi gambar AI terbaik dari Google", features: ["Photorealistic", "1024x1024", "Style control"], tier: "Pro" },
+          { name: "Imagen 3.0", desc: "Generasi gambar berkualitas tinggi", features: ["High quality", "Multiple styles"], tier: "Free" },
+        ]
+      },
+      {
+        title: "Video Generation",
+        icon: <Video className="w-5 h-5" />,
+        models: [
+          { name: "Veo 3.1", desc: "Model video generatif terdepan", features: ["8s duration", "1080p", "Motion control"], tier: "Pro" },
+          { name: "Veo 2.0", desc: "Video generation dasar", features: ["4s duration", "720p"], tier: "Pro" },
+        ]
+      },
+      {
+        title: "Audio & Voice",
+        icon: <Mic className="w-5 h-5" />,
+        models: [
+          { name: "Chirp TTS", desc: "Text-to-Speech natural Indonesia", features: ["Multi-voice", "Emotion control"], tier: "Free" },
+          { name: "Music AI", desc: "Generasi musik dari prompt", features: ["30s clips", "Multiple genres"], tier: "Pro" },
+        ]
+      },
+    ];
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {availableModels.length > 0 ? availableModels.map(model => (
-          <div
-            key={model.name}
-            className={cn(
-              "bg-card border rounded-xl p-5 transition-all cursor-pointer",
-              selectedModel === model.name
-                ? "border-[#FFD700] shadow-lg shadow-[#FFD700]/20"
-                : "border-border hover:border-[#FFD700]/50"
-            )}
-            onClick={() => setSelectedModel(model.name)}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">{model.displayName}</h3>
-              {selectedModel === model.name && (
-                <span className="px-2 py-1 rounded-full text-xs bg-[#FFD700]/20 text-[#FFD700]">Active</span>
-              )}
+    return (
+      <div className="p-4 sm:p-8 max-w-5xl mx-auto">
+        <div className="mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-2 font-heading">AI Models</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Semua model AI yang tersedia di Orenax. Upgrade ke Pro untuk akses penuh.
+          </p>
+        </div>
+
+        <div className="space-y-8">
+          {modelCategories.map((category, catIdx) => (
+            <div key={catIdx}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-[#FFD700]/10 flex items-center justify-center text-[#FFD700]">
+                  {category.icon}
+                </div>
+                <h3 className="text-base sm:text-lg font-semibold">{category.title}</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {category.models.map((model, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-card border border-border rounded-xl p-4 hover:border-[#FFD700]/50 transition-all"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm sm:text-base">{model.name}</h4>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-full text-xs font-medium",
+                        model.tier === "Pro"
+                          ? "bg-[#FFD700]/20 text-[#FFD700]"
+                          : "bg-green-500/20 text-green-500"
+                      )}>
+                        {model.tier}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-3">{model.desc}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {model.features.map((feat, fIdx) => (
+                        <span key={fIdx} className="text-xs bg-secondary px-2 py-0.5 rounded-full text-muted-foreground">
+                          {feat}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">{model.description}</p>
+          ))}
+        </div>
+
+        {/* Active Model Selection */}
+        <div className="mt-8 p-4 sm:p-6 bg-gradient-to-r from-[#FFD700]/10 to-[#FFA500]/10 border border-[#FFD700]/30 rounded-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h4 className="font-semibold mb-1">Model Aktif</h4>
+              <p className="text-sm text-muted-foreground">
+                {availableModels.find(m => m.name === selectedModel)?.displayName || selectedModel}
+              </p>
+            </div>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="px-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FFD700]"
+            >
+              {availableModels.map(model => (
+                <option key={model.name} value={model.name}>{model.displayName}</option>
+              ))}
+            </select>
           </div>
-        )) : (
-          <div className="col-span-2 text-center py-8">
-            <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Memuat model tersedia...</p>
-          </div>
-        )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Navigation links for MorphingNavigation
   const navLinks: MorphingNavigationLink[] = [
@@ -2889,7 +2967,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
         </div>
 
         <nav className="flex-1 p-3 sm:p-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Main navigation">
-          {/* New Chat Button - Primary Action */}
+          {/* New Chat Button - Primary Action with Gradient */}
           <button
             onClick={() => {
               startNewChat();
@@ -2904,33 +2982,11 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
             title={sidebarMinimized ? "New Chat" : undefined}
           >
             <Plus className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            {!sidebarMinimized && <span className="text-xs sm:text-sm font-semibold whitespace-nowrap truncate">+ New Project</span>}
+            {!sidebarMinimized && <span className="text-xs sm:text-sm font-semibold whitespace-nowrap truncate">New Chat</span>}
           </button>
 
           {/* Separator */}
           <div className="my-3" />
-
-          {/* News Chat - Mobile Responsive */}
-          <button
-            onClick={() => {
-              navigate('/chat');
-              if (isMobileView) setSidebarOpen(false);
-            }}
-            className={cn(
-              "w-full flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl transition-all",
-              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-              sidebarMinimized ? "px-2 sm:px-3 py-2 sm:py-3 justify-center hover:scale-110" : "px-3 sm:px-4 py-2.5 sm:py-3",
-              currentView === 'chat'
-                ? "bg-[#FFD700] text-black font-medium"
-                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-            )}
-            aria-label="News Chat"
-            aria-current={currentView === 'chat' ? "page" : undefined}
-            title={sidebarMinimized ? "News Chat" : undefined}
-          >
-            <Newspaper className={cn("w-4 h-4 sm:w-5 sm:h-5 shrink-0", currentView !== 'chat' && "text-[#FFD700]")} />
-            {!sidebarMinimized && <span className="text-xs sm:text-sm font-medium whitespace-nowrap truncate">News Chat</span>}
-          </button>
 
           {/* Recent Chat - Mobile Responsive */}
           <button
@@ -3166,11 +3222,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               </DropdownMenuSub>
 
               <DropdownMenuItem
-                onClick={() => {
-                  toast.info('Get help', {
-                    description: 'Contact us at support@orenax.com'
-                  });
-                }}
+                onClick={() => navigate('/chat/help')}
                 className="cursor-pointer"
               >
                 <div className="flex items-center gap-2 w-full font-base group">
@@ -3184,11 +3236,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
-                onClick={() => {
-                  toast.info('Upgrade plan', {
-                    description: 'Upgrade feature coming soon'
-                  });
-                }}
+                onClick={() => navigate('/chat/subscription')}
                 className="cursor-pointer"
               >
                 <div className="flex items-center gap-2 w-full text-sm group">
@@ -3202,11 +3250,7 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => {
-                  toast.info('Download', {
-                    description: 'Download feature coming soon'
-                  });
-                }}
+                onClick={() => navigate('/download')}
                 className="cursor-pointer"
               >
                 <div className="flex items-center gap-2 w-full text-sm group">
