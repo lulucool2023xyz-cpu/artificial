@@ -3,8 +3,9 @@
  * Handles communication with backend endpoints
  */
 
-// Base URL from environment variable
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// Base URL from environment variable (remove trailing slash if present)
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 
 // Token storage keys
 const ACCESS_TOKEN_KEY = 'auth_token';

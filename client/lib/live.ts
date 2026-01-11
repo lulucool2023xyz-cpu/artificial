@@ -278,7 +278,8 @@ export class LiveApiClient {
  * Create a Live API client instance
  */
 export function createLiveApiClient(config: Omit<LiveApiConfig, 'url'>): LiveApiClient {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const baseUrl = rawBaseUrl.replace(/\/+$/, ''); // Remove trailing slashes
     const wsUrl = baseUrl.replace(/^http/, 'ws').replace(/\/api.*$/, '') + '/live';
 
     return new LiveApiClient({
