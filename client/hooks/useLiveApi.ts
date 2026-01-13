@@ -1,6 +1,7 @@
 /**
  * useLiveApi Hook
- * React hook for Live API real-time communication
+ * React hook for Live API real-time communication with Gemini
+ * Supports audio streaming, transcription, and session management
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -10,15 +11,25 @@ import {
     LiveApiConnectionState,
     LiveApiVoice,
     ToolCallPayload,
+    UsageMetadataPayload,
     AUDIO_INPUT_CONFIG,
+    ThinkingConfig,
+    RealtimeInputConfig,
 } from '@/lib/live-api.types';
 
 export interface UseLiveApiOptions {
     model?: string;
     voice?: LiveApiVoice;
     systemInstruction?: string;
+    enableTranscription?: boolean;
+    thinkingConfig?: ThinkingConfig;
+    realtimeInputConfig?: RealtimeInputConfig;
     onTextResponse?: (text: string) => void;
+    onInputTranscription?: (text: string) => void;
+    onOutputTranscription?: (text: string) => void;
     onToolCall?: (calls: ToolCallPayload['functionCalls']) => void;
+    onInterrupted?: () => void;
+    onGoAway?: (timeLeft: string) => void;
     onError?: (error: { code: string; message: string }) => void;
 }
 
@@ -28,6 +39,8 @@ export interface UseLiveApiReturn {
     isRecording: boolean;
     isPlaying: boolean;
     transcript: string;
+    inputTranscript: string;
+    outputTranscript: string;
 
     // Actions
     connect: () => Promise<void>;
@@ -35,7 +48,8 @@ export interface UseLiveApiReturn {
     startRecording: () => Promise<void>;
     stopRecording: () => void;
     sendMessage: (text: string) => void;
-    sendToolResponse: (name: string, response: Record<string, unknown>) => void;
+    sendToolResponse: (id: string, name: string, response: Record<string, unknown>) => void;
+    sendAudioStreamEnd: () => void;
 
     // Voice options
     setVoice: (voice: LiveApiVoice) => void;
@@ -47,13 +61,15 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
     const [isRecording, setIsRecording] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [transcript, setTranscript] = useState('');
+    const [inputTranscript, setInputTranscript] = useState('');
+    const [outputTranscript, setOutputTranscript] = useState('');
     const [currentVoice, setCurrentVoice] = useState<LiveApiVoice>(options.voice || 'Kore');
 
     const clientRef = useRef<LiveApiClient | null>(null);
     const audioPlayerRef = useRef<AudioPlayer | null>(null);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
 
     // Initialize audio player
     useEffect(() => {
@@ -82,7 +98,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
             await audioPlayerRef.current?.init();
 
             clientRef.current = createLiveApiClient({
-                model: options.model || 'gemini-2.5-flash-native-audio-preview',
+                model: options.model || 'gemini-2.5-flash-native-audio-preview-12-2025',
                 voice: currentVoice,
                 systemInstruction: options.systemInstruction,
                 onConnect: () => setConnectionState('connected'),
@@ -94,9 +110,26 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                     setTranscript((prev) => prev + text);
                     options.onTextResponse?.(text);
                 },
+                onInputTranscription: (text) => {
+                    setInputTranscript(text);
+                    options.onInputTranscription?.(text);
+                },
+                onOutputTranscription: (text) => {
+                    setOutputTranscript((prev) => prev + text);
+                    options.onOutputTranscription?.(text);
+                },
                 onToolCall: options.onToolCall,
+                onInterrupted: () => {
+                    // Stop audio playback when interrupted
+                    audioPlayerRef.current?.stop();
+                    options.onInterrupted?.();
+                },
+                onGoAway: options.onGoAway,
                 onTurnComplete: () => {
-                    // Clear transcript after response complete
+                    // AI finished speaking
+                },
+                onGenerationComplete: () => {
+                    // Generation complete
                 },
                 onError: (error) => {
                     setConnectionState('error');
@@ -111,8 +144,13 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
             setConnectionState('connecting');
             await clientRef.current.connect();
 
-            // Setup session after connection
-            clientRef.current.setupSession();
+            // Setup session after connection with transcription enabled
+            clientRef.current.setupSession({
+                inputAudioTranscription: options.enableTranscription !== false ? {} : undefined,
+                outputAudioTranscription: options.enableTranscription !== false ? {} : undefined,
+                thinkingConfig: options.thinkingConfig,
+                realtimeInputConfig: options.realtimeInputConfig,
+            });
         } catch (error) {
             console.error('[useLiveApi] Connection failed:', error);
             setConnectionState('error');
@@ -127,11 +165,35 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
      * Disconnect from Live API
      */
     const disconnect = useCallback(() => {
-        stopRecording();
+        stopRecordingInternal();
         clientRef.current?.disconnect();
         clientRef.current = null;
         setConnectionState('disconnected');
         setTranscript('');
+        setInputTranscript('');
+        setOutputTranscript('');
+    }, []);
+
+    /**
+     * Internal stop recording
+     */
+    const stopRecordingInternal = useCallback(() => {
+        if (processorRef.current) {
+            processorRef.current.disconnect();
+            processorRef.current = null;
+        }
+
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
+
+        setIsRecording(false);
     }, []);
 
     /**
@@ -152,6 +214,8 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                     noiseSuppression: true,
                 },
             });
+
+            streamRef.current = stream;
 
             // Create audio context for processing
             audioContextRef.current = new AudioContext({
@@ -195,6 +259,8 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
 
             setIsRecording(true);
             setTranscript('');
+            setInputTranscript('');
+            setOutputTranscript('');
         } catch (error) {
             console.error('[useLiveApi] Failed to start recording:', error);
             options.onError?.({
@@ -208,17 +274,16 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
      * Stop recording
      */
     const stopRecording = useCallback(() => {
-        if (processorRef.current) {
-            processorRef.current.disconnect();
-            processorRef.current = null;
-        }
+        // Send audio stream end to flush any cached audio
+        clientRef.current?.sendAudioStreamEnd();
+        stopRecordingInternal();
+    }, [stopRecordingInternal]);
 
-        if (audioContextRef.current) {
-            audioContextRef.current.close();
-            audioContextRef.current = null;
-        }
-
-        setIsRecording(false);
+    /**
+     * Send audio stream end signal
+     */
+    const sendAudioStreamEnd = useCallback(() => {
+        clientRef.current?.sendAudioStreamEnd();
     }, []);
 
     /**
@@ -232,13 +297,14 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
 
         clientRef.current.sendTextMessage(text);
         setTranscript('');
+        setOutputTranscript('');
     }, []);
 
     /**
      * Send tool response
      */
     const sendToolResponse = useCallback(
-        (name: string, response: Record<string, unknown>) => {
+        (id: string, name: string, response: Record<string, unknown>) => {
             if (!clientRef.current?.isReady()) {
                 console.warn('[useLiveApi] Not ready to send tool response');
                 return;
@@ -250,7 +316,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                         name,
                         response,
                     },
-                },
+                } as any,
             ]);
         },
         []
@@ -275,12 +341,15 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
         isRecording,
         isPlaying,
         transcript,
+        inputTranscript,
+        outputTranscript,
         connect,
         disconnect,
         startRecording,
         stopRecording,
         sendMessage,
         sendToolResponse,
+        sendAudioStreamEnd,
         setVoice,
         currentVoice,
     };

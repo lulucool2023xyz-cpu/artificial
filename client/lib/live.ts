@@ -1,6 +1,7 @@
 /**
  * Live API Client
  * Real-time bidirectional communication with Gemini via WebSocket
+ * Supports audio streaming, transcription, VAD, and session management
  */
 
 import { io, Socket } from 'socket.io-client';
@@ -8,14 +9,21 @@ import {
     LiveApiConfig,
     LiveApiSetupConfig,
     RealtimeInputData,
-    ClientContentTurn,
+    ClientContent,
     ToolResponsePart,
     ServerContentPayload,
     ToolCallPayload,
+    ToolCallCancellationPayload,
+    GoAwayPayload,
+    SessionResumptionUpdatePayload,
+    TranscriptionPayload,
+    UsageMetadataPayload,
     SessionStatusPayload,
     ErrorPayload,
     AUDIO_INPUT_CONFIG,
     LiveApiConnectionState,
+    ThinkingConfig,
+    RealtimeInputConfig,
 } from './live-api.types';
 
 export class LiveApiClient {
@@ -96,7 +104,7 @@ export class LiveApiClient {
         this.connectionState = 'setup_pending';
 
         const setupConfig: LiveApiSetupConfig = {
-            model: customConfig?.model || this.config.model || 'gemini-2.5-flash-native-audio-preview',
+            model: customConfig?.model || this.config.model || 'gemini-2.5-flash-native-audio-preview-12-2025',
             generationConfig: {
                 responseModalities: ['AUDIO', 'TEXT'],
                 speechConfig: {
@@ -111,6 +119,22 @@ export class LiveApiClient {
                 maxOutputTokens: 4096,
                 ...customConfig?.generationConfig,
             },
+            // Enable transcription by default
+            inputAudioTranscription: customConfig?.inputAudioTranscription ?? {},
+            outputAudioTranscription: customConfig?.outputAudioTranscription ?? {},
+            // VAD configuration
+            realtimeInputConfig: customConfig?.realtimeInputConfig ?? {
+                automaticActivityDetection: {
+                    disabled: false,
+                    startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+                    endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
+                },
+            },
+            // Thinking config
+            thinkingConfig: customConfig?.thinkingConfig,
+            // Session resumption
+            sessionResumption: customConfig?.sessionResumption,
+            // System instruction
             ...(this.config.systemInstruction && {
                 systemInstruction: {
                     parts: [{ text: this.config.systemInstruction }],
@@ -119,12 +143,12 @@ export class LiveApiClient {
             ...customConfig,
         };
 
-        console.log('[LiveApi] Sending setup:', setupConfig);
+        console.log('[LiveApi] Sending setup:', setupConfig.model);
         this.socket.emit('setup', { setup: setupConfig });
     }
 
     /**
-     * Send real-time audio/video data
+     * Send real-time audio/video/text data
      */
     sendRealtimeInput(data: RealtimeInputData): void {
         if (!this.socket?.connected) {
@@ -132,16 +156,67 @@ export class LiveApiClient {
             return;
         }
 
-        this.socket.emit('realtimeInput', {
-            realtimeInput: {
-                mediaChunks: [
-                    {
-                        mimeType: data.audio?.mimeType || AUDIO_INPUT_CONFIG.mimeType,
-                        data: data.audio?.data || data.video?.data,
-                    },
-                ],
-            },
-        });
+        const input: RealtimeInputData = {};
+
+        if (data.audio) {
+            input.audio = {
+                data: data.audio.data,
+                mimeType: data.audio.mimeType || AUDIO_INPUT_CONFIG.mimeType,
+            };
+        }
+
+        if (data.video) {
+            input.video = {
+                data: data.video.data,
+                mimeType: data.video.mimeType,
+            };
+        }
+
+        if (data.text) {
+            input.text = data.text;
+        }
+
+        if (data.activityStart) {
+            input.activityStart = true;
+        }
+
+        if (data.activityEnd) {
+            input.activityEnd = true;
+        }
+
+        if (data.audioStreamEnd) {
+            input.audioStreamEnd = true;
+        }
+
+        this.socket.emit('realtimeInput', { realtimeInput: input });
+    }
+
+    /**
+     * Send audio stream end signal (when mic is paused/stopped)
+     */
+    sendAudioStreamEnd(): void {
+        if (!this.socket?.connected) {
+            console.warn('[LiveApi] Not connected, cannot send audioStreamEnd');
+            return;
+        }
+
+        this.socket.emit('audioStreamEnd');
+    }
+
+    /**
+     * Send activity start (when VAD is disabled)
+     */
+    sendActivityStart(): void {
+        if (!this.socket?.connected) return;
+        this.sendRealtimeInput({ activityStart: true });
+    }
+
+    /**
+     * Send activity end (when VAD is disabled)
+     */
+    sendActivityEnd(): void {
+        if (!this.socket?.connected) return;
+        this.sendRealtimeInput({ activityEnd: true });
     }
 
     /**
@@ -153,17 +228,24 @@ export class LiveApiClient {
             return;
         }
 
-        const clientContent: ClientContentTurn = {
-            role: 'user',
-            parts: [{ text }],
-        };
-
         this.socket.emit('clientContent', {
             clientContent: {
-                turns: [clientContent],
+                turns: text,
                 turnComplete: endOfTurn,
             },
         });
+    }
+
+    /**
+     * Send client content with turns
+     */
+    sendClientContent(content: ClientContent): void {
+        if (!this.socket?.connected) {
+            console.warn('[LiveApi] Not connected, cannot send content');
+            return;
+        }
+
+        this.socket.emit('clientContent', { clientContent: content });
     }
 
     /**
@@ -177,9 +259,19 @@ export class LiveApiClient {
 
         this.socket.emit('toolResponse', {
             toolResponse: {
-                functionResponses: responses.map((r) => r.functionResponse),
+                functionResponses: responses.map((r) => ({
+                    ...r.functionResponse,
+                    id: (r as any).id || crypto.randomUUID(),
+                })),
             },
         });
+    }
+
+    /**
+     * Get session status
+     */
+    getStatus(): void {
+        this.socket?.emit('getStatus');
     }
 
     /**
@@ -203,8 +295,8 @@ export class LiveApiClient {
         if (!this.socket) return;
 
         // Connected event
-        this.socket.on('connected', () => {
-            console.log('[LiveApi] Server acknowledged connection');
+        this.socket.on('connected', (payload: { sessionId: string; supportedModels?: string[] }) => {
+            console.log('[LiveApi] Server acknowledged connection, session:', payload.sessionId);
         });
 
         // Setup complete
@@ -229,9 +321,45 @@ export class LiveApiClient {
                 }
             }
 
+            if (payload.interrupted) {
+                this.config.onInterrupted?.();
+            }
+
+            if (payload.generationComplete) {
+                this.config.onGenerationComplete?.();
+            }
+
             if (payload.turnComplete) {
                 this.config.onTurnComplete?.();
             }
+        });
+
+        // Input transcription (user speech)
+        this.socket.on('inputTranscription', (payload: TranscriptionPayload) => {
+            console.log('[LiveApi] Input transcription:', payload.text);
+            this.config.onInputTranscription?.(payload.text);
+        });
+
+        // Output transcription (AI speech)
+        this.socket.on('outputTranscription', (payload: TranscriptionPayload) => {
+            console.log('[LiveApi] Output transcription:', payload.text);
+            this.config.onOutputTranscription?.(payload.text);
+        });
+
+        // Turn complete
+        this.socket.on('turnComplete', () => {
+            this.config.onTurnComplete?.();
+        });
+
+        // Generation complete
+        this.socket.on('generationComplete', () => {
+            this.config.onGenerationComplete?.();
+        });
+
+        // Interrupted
+        this.socket.on('interrupted', () => {
+            console.log('[LiveApi] Model was interrupted');
+            this.config.onInterrupted?.();
         });
 
         // Tool call
@@ -240,13 +368,36 @@ export class LiveApiClient {
             this.config.onToolCall?.(payload.functionCalls);
         });
 
+        // Tool call cancellation
+        this.socket.on('toolCallCancellation', (payload: ToolCallCancellationPayload) => {
+            console.log('[LiveApi] Tool call cancelled:', payload.ids);
+            this.config.onToolCallCancellation?.(payload.ids);
+        });
+
+        // GoAway (session ending soon)
+        this.socket.on('goAway', (payload: GoAwayPayload) => {
+            console.log('[LiveApi] GoAway received, time left:', payload.timeLeft);
+            this.config.onGoAway?.(payload.timeLeft);
+        });
+
+        // Session resumption update
+        this.socket.on('sessionResumptionUpdate', (payload: SessionResumptionUpdatePayload) => {
+            console.log('[LiveApi] Session resumption update:', payload);
+            this.config.onSessionResumptionUpdate?.(payload.newHandle, payload.resumable);
+        });
+
+        // Usage metadata
+        this.socket.on('usageMetadata', (payload: UsageMetadataPayload) => {
+            this.config.onUsageMetadata?.(payload);
+        });
+
         // Status updates
         this.socket.on('status', (payload: SessionStatusPayload) => {
             console.log('[LiveApi] Status:', payload);
         });
 
         // Session closed
-        this.socket.on('sessionClosed', (payload: { reason?: string }) => {
+        this.socket.on('sessionClosed', (payload: { reason?: string; code?: number }) => {
             console.log('[LiveApi] Session closed:', payload.reason);
             this.connectionState = 'disconnected';
             this.config.onDisconnect?.(payload.reason);
@@ -278,7 +429,7 @@ export class LiveApiClient {
  * Create a Live API client instance
  */
 export function createLiveApiClient(config: Omit<LiveApiConfig, 'url'>): LiveApiClient {
-    const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
     const baseUrl = rawBaseUrl.replace(/\/+$/, ''); // Remove trailing slashes
     const wsUrl = baseUrl.replace(/^http/, 'ws').replace(/\/api.*$/, '') + '/live';
 

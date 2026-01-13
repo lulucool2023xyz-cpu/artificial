@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useRef, useCallback } from 'react';
-import { X, Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
+import { X, Mic, MicOff, Volume2, Loader2, AudioLines } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createLiveApiClient } from '@/lib/live';
@@ -18,6 +18,11 @@ class AudioPlayer {
     private isPlaying = false;
     private nextPlayTime = 0;
     private currentSource: AudioBufferSourceNode | null = null;
+    private onPlayingChange?: (playing: boolean) => void;
+
+    constructor(onPlayingChange?: (playing: boolean) => void) {
+        this.onPlayingChange = onPlayingChange;
+    }
 
     private getContext(): AudioContext {
         if (!this.audioContext || this.audioContext.state === 'closed') {
@@ -62,10 +67,15 @@ class AudioPlayer {
     private playQueue(): void {
         if (this.audioQueue.length === 0) {
             this.isPlaying = false;
+            this.onPlayingChange?.(false);
             return;
         }
 
-        this.isPlaying = true;
+        if (!this.isPlaying) {
+            this.isPlaying = true;
+            this.onPlayingChange?.(true);
+        }
+
         const ctx = this.getContext();
         const buffer = this.audioQueue.shift()!;
         const source = ctx.createBufferSource();
@@ -99,6 +109,7 @@ class AudioPlayer {
         }
         this.isPlaying = false;
         this.nextPlayTime = 0;
+        this.onPlayingChange?.(false);
     }
 
     get playing(): boolean {
@@ -113,8 +124,8 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
     const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected' | 'ready'>('disconnected');
     const [isListening, setIsListening] = useState(false);
     const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-    const [transcript, setTranscript] = useState('');
-    const [aiResponse, setAiResponse] = useState('');
+    const [inputTranscript, setInputTranscript] = useState('');
+    const [outputTranscript, setOutputTranscript] = useState('');
     const [audioLevel, setAudioLevel] = useState(0);
 
     const liveClientRef = useRef<LiveApiClient | null>(null);
@@ -178,8 +189,8 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
         }
 
         setConnectionState('disconnected');
-        setTranscript('');
-        setAiResponse('');
+        setInputTranscript('');
+        setOutputTranscript('');
         setAudioLevel(0);
     }, []);
 
@@ -189,11 +200,13 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
 
         try {
             // Create audio player
-            audioPlayerRef.current = new AudioPlayer();
+            audioPlayerRef.current = new AudioPlayer((playing) => {
+                setIsAiSpeaking(playing);
+            });
 
             // Create Live API client
             const client = createLiveApiClient({
-                model: 'gemini-2.5-flash-native-audio-preview',
+                model: 'gemini-2.5-flash-native-audio-preview-12-2025',
                 voice: 'Kore',
                 systemInstruction: 'Kamu adalah asisten AI yang ramah dan membantu. Bicara dalam bahasa Indonesia dengan sopan dan jelas. Jawab dengan ringkas.',
                 onConnect: () => {
@@ -204,16 +217,35 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
                     setConnectionState('ready');
                 },
                 onAudioResponse: (base64Audio) => {
-                    // Stop user's mic when AI is speaking
-                    setIsAiSpeaking(true);
+                    // Play AI audio response
                     audioPlayerRef.current?.play(base64Audio);
                 },
                 onTextResponse: (text) => {
-                    setAiResponse(prev => prev + text);
+                    // Accumulate text response
+                    setOutputTranscript(prev => prev + text);
+                },
+                onInputTranscription: (text) => {
+                    // Show what user said
+                    setInputTranscript(text);
+                },
+                onOutputTranscription: (text) => {
+                    // Show what AI said (alternative to text response)
+                    setOutputTranscript(prev => prev + text);
+                },
+                onInterrupted: () => {
+                    // User interrupted AI, stop playback
+                    audioPlayerRef.current?.stop();
+                    setIsAiSpeaking(false);
                 },
                 onTurnComplete: () => {
-                    // AI finished speaking, can listen again
-                    setIsAiSpeaking(false);
+                    // AI finished speaking
+                },
+                onGenerationComplete: () => {
+                    // Generation complete
+                },
+                onGoAway: (timeLeft) => {
+                    console.log('[VoiceLive] Session ending soon:', timeLeft);
+                    toast.warning(`Sesi akan berakhir dalam ${timeLeft}`);
                 },
                 onError: (error) => {
                     console.error('[VoiceLive] Error:', error);
@@ -230,7 +262,12 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
             // Connect and setup session
             await client.connect();
             setConnectionState('connected');
-            client.setupSession();
+
+            // Setup with transcription enabled
+            client.setupSession({
+                inputAudioTranscription: {},
+                outputAudioTranscription: {},
+            });
 
         } catch (error) {
             console.error('[VoiceLive] Connection failed:', error);
@@ -271,9 +308,7 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
             processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
 
             processorRef.current.onaudioprocess = (e) => {
-                // Don't send audio while AI is speaking
-                if (isAiSpeaking) return;
-
+                // Don't send audio while AI is speaking (barge-in is handled by VAD)
                 const inputData = e.inputBuffer.getChannelData(0);
                 // Convert float32 to int16
                 const int16Data = new Int16Array(inputData.length);
@@ -306,13 +341,14 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
             updateAudioLevel();
 
             setIsListening(true);
-            setAiResponse('');
+            setInputTranscript('');
+            setOutputTranscript('');
 
         } catch (error) {
             console.error('[VoiceLive] Error starting microphone:', error);
             toast.error('Tidak bisa mengakses mikrofon');
         }
-    }, [isAiSpeaking]);
+    }, []);
 
     // Stop listening
     const stopListening = useCallback(() => {
@@ -335,6 +371,9 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
             audioContextRef.current.close();
             audioContextRef.current = null;
         }
+
+        // Send audio stream end to flush any buffered audio
+        liveClientRef.current?.sendAudioStreamEnd();
 
         setIsListening(false);
         setAudioLevel(0);
@@ -409,14 +448,18 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
                                     ? "bg-gradient-to-br from-green-400 to-green-600 shadow-green-500/20"
                                     : "bg-gradient-to-br from-[#FFD700] to-[#FFA500] shadow-[#FFD700]/20"
                             )}>
-                                <Volume2 className="w-5 h-5 text-black" />
+                                {isAiSpeaking ? (
+                                    <AudioLines className="w-5 h-5 text-black" />
+                                ) : (
+                                    <Volume2 className="w-5 h-5 text-black" />
+                                )}
                             </div>
                             <div>
                                 <h2 className="font-semibold text-white text-lg">Live Voice</h2>
                                 <p className="text-xs text-gray-500">
                                     {connectionState === 'connecting' && 'Menghubungkan...'}
                                     {connectionState === 'connected' && 'Menyiapkan...'}
-                                    {connectionState === 'ready' && (isAiSpeaking ? 'AI Berbicara' : 'Siap')}
+                                    {connectionState === 'ready' && (isAiSpeaking ? 'AI Berbicara' : isListening ? 'Mendengarkan...' : 'Siap')}
                                     {connectionState === 'disconnected' && 'Terputus'}
                                 </p>
                             </div>
@@ -461,7 +504,7 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
                         {/* Main Action Button */}
                         <motion.button
                             onClick={isListening ? stopListening : startListening}
-                            disabled={!isConnected || isAiSpeaking}
+                            disabled={!isConnected}
                             className={cn(
                                 "relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 disabled:opacity-50",
                                 isListening
@@ -471,7 +514,7 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
                                         : "bg-gradient-to-br from-[#FFD700] to-[#FFA500]"
                             )}
                             whileTap={{ scale: 0.95 }}
-                            whileHover={{ scale: isConnected && !isAiSpeaking ? 1.05 : 1 }}
+                            whileHover={{ scale: isConnected ? 1.05 : 1 }}
                         >
                             {/* Glow ring */}
                             <motion.div
@@ -491,7 +534,7 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
                             ) : isListening ? (
                                 <MicOff className="w-9 h-9 text-white relative z-10" />
                             ) : isAiSpeaking ? (
-                                <Volume2 className="w-9 h-9 text-white relative z-10" />
+                                <AudioLines className="w-9 h-9 text-white relative z-10" />
                             ) : (
                                 <Mic className="w-9 h-9 text-black relative z-10" />
                             )}
@@ -505,19 +548,39 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
                             {isAiSpeaking && 'AI sedang menjawab...'}
                         </p>
 
-                        {/* AI Response Display */}
-                        <div className="w-full min-h-[60px] mt-6 px-4">
+                        {/* Transcription Display */}
+                        <div className="w-full mt-6 px-4 space-y-3">
+                            {/* User input transcription */}
                             <AnimatePresence mode="wait">
-                                {aiResponse ? (
+                                {inputTranscript && (
                                     <motion.div
-                                        key="response"
+                                        key="input"
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -10 }}
                                         className="text-center"
                                     >
+                                        <p className="text-xs text-gray-500 mb-1">Anda:</p>
+                                        <p className="text-white/80 text-sm leading-relaxed">
+                                            "{inputTranscript}"
+                                        </p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* AI output transcription */}
+                            <AnimatePresence mode="wait">
+                                {outputTranscript ? (
+                                    <motion.div
+                                        key="output"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="text-center"
+                                    >
+                                        <p className="text-xs text-green-500/80 mb-1">AI:</p>
                                         <p className="text-white text-base leading-relaxed">
-                                            {aiResponse}
+                                            {outputTranscript}
                                         </p>
                                     </motion.div>
                                 ) : (
@@ -525,9 +588,9 @@ export const VoiceLiveModal = memo(function VoiceLiveModal({
                                         key="placeholder"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        className="text-center text-gray-600 text-sm"
+                                        className="text-center text-gray-600 text-sm min-h-[40px]"
                                     >
-                                        {isListening ? 'Mendengarkan...' : 'Respons AI akan muncul di sini'}
+                                        {isListening ? 'Mendengarkan...' : isAiSpeaking ? '' : 'Respons AI akan muncul di sini'}
                                     </motion.p>
                                 )}
                             </AnimatePresence>
