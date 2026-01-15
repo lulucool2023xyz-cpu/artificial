@@ -34,6 +34,8 @@ export interface UseLiveApiOptions {
     onInterrupted?: () => void;
     onGoAway?: (timeLeft: string) => void;
     onError?: (error: { code: string; message: string }) => void;
+    onConnect?: () => void;
+    onDisconnect?: (reason?: string) => void;
 }
 
 export interface UseLiveApiReturn {
@@ -113,6 +115,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                 onConnect: () => {
                     console.log('[useLiveApi] Connected to gateway');
                     setConnectionState('connected');
+                    options.onConnect?.();
                 },
 
                 onSetupComplete: () => {
@@ -165,10 +168,11 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                     options.onError?.(error);
                 },
 
-                onDisconnect: () => {
-                    console.log('[useLiveApi] Disconnected');
+                onDisconnect: (reason) => {
+                    console.log('[useLiveApi] Disconnected', reason);
                     setConnectionState('disconnected');
                     clientRef.current = null;
+                    options.onDisconnect?.(reason);
                 },
             });
 
@@ -306,14 +310,18 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                 });
             };
 
-            // Connect audio graph - DO NOT connect to destination to avoid echo!
-            // ScriptProcessor needs to be connected to work, so we use a silent gain node
+            // Connect audio graph
+            // ScriptProcessor needs to be connected to destination for onaudioprocess to fire in some browsers
+            // But we MUST mute it to prevent local echo/feedback loop
             const silentGain = audioContextRef.current.createGain();
-            silentGain.gain.value = 0; // Mute - no playback
-            silentGain.connect(audioContextRef.current.destination);
+            silentGain.gain.setValueAtTime(0, audioContextRef.current.currentTime);
 
+            // source -> processor -> silentGain -> destination
             source.connect(processorRef.current);
             processorRef.current.connect(silentGain);
+            silentGain.connect(audioContextRef.current.destination);
+
+            console.log('[useLiveApi] Audio graph set up: source -> processor -> silentGain(0) -> destination');
 
             // Update state
             isRecordingRef.current = true;
