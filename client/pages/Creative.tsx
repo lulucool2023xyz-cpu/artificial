@@ -45,7 +45,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TtsGenerator } from "@/components/creative/TtsGenerator";
 import { MusicGenerator } from "@/components/creative/MusicGenerator";
 import { LiveChat } from "@/components/creative/LiveChat";
-import { useLiveApi } from '@/hooks/useLiveApi';
+import { useLiveApi, useAudioPlayer, useMediaStream } from '@/hooks';
 
 // MOCK DATA
 const mockTemplates = [
@@ -220,17 +220,22 @@ const Creative = memo(function Creative() {
     const tourismVideoRef = useRef<HTMLVideoElement>(null);
     const tourismStreamRef = useRef<MediaStream | null>(null);
 
+    // Audio support for Tourism
+    const { queueAudio, stopPlayback } = useAudioPlayer();
+
     // Live API integration for Tourism
     const liveApiTourism = useLiveApi({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-        systemInstruction: 'You are an enthusiastic virtual tour guide. You see what the user sees through their camera. Describe landmarks, answer questions, and provide historical facts about what is visible.',
         onInputTranscription: (text) => console.log('🎤 USER:', text),
         onOutputTranscription: (text) => console.log('🤖 AI:', text),
+        onAudioResponse: (data, mime) => queueAudio(data, mime),
         onError: (err) => {
             console.error('Tourism API Error:', err);
-            toast.error('Tourism API Error', { description: err.message });
+            toast.error('Tourism API Error', { description: err });
         },
     });
+
+    // Audio capture for Tourism
+    const { startAudioCapture, stopAudioCapture } = useMediaStream({ video: false, audio: true }) as any;
 
     const videoIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -240,6 +245,8 @@ const Creative = memo(function Creative() {
             liveApiTourism.connect();
         } else {
             liveApiTourism.disconnect();
+            stopPlayback();
+            stopAudioCapture();
             if (videoIntervalRef.current) {
                 clearInterval(videoIntervalRef.current);
                 videoIntervalRef.current = null;
@@ -250,10 +257,21 @@ const Creative = memo(function Creative() {
 
     // Start streaming when ready
     useEffect(() => {
-        if (studio === 'tourism' && liveApiTourism.connectionState === 'ready' && cameraActive && tourismVideoRef.current) {
-            if (tourismStreamRef.current) {
-                liveApiTourism.startRecording(tourismStreamRef.current);
+        if (studio === 'tourism' && liveApiTourism.isConnected && cameraActive) {
+
+            if (!liveApiTourism.isSessionActive) {
+                liveApiTourism.startSession({
+                    systemInstruction: 'You are an enthusiastic virtual tour guide. You see what the user sees through their camera. Describe landmarks, answer questions, and provide historical facts about what is visible.'
+                });
             }
+
+            // Start Audio Stream
+            // We use existing tourismStreamRef if available, but useMediaStream hook handles capture logic better
+            // Ideally we pass stream to startAudioCapture, but our hook creates its own stream currently.
+            // Let's use startAudioCapture from hook which creates new stream
+            startAudioCapture((base64: string) => {
+                liveApiTourism.sendAudio(base64);
+            });
 
             // Start video loop (1 FPS)
             videoIntervalRef.current = setInterval(() => {
@@ -269,7 +287,7 @@ const Creative = memo(function Creative() {
                         try {
                             const base64 = canvas.toDataURL('image/jpeg', 0.5);
                             const data = base64.split(',')[1];
-                            liveApiTourism.sendVideoFrame(data);
+                            liveApiTourism.sendVideo(data);
                         } catch (e) {
                             // Ignore canvas taint errors
                         }
@@ -282,11 +300,13 @@ const Creative = memo(function Creative() {
                     clearInterval(videoIntervalRef.current);
                     videoIntervalRef.current = null;
                 }
-                liveApiTourism.stopRecording();
+                stopAudioCapture();
+                // We don't stop session automatically to avoid reconnection churn, or do we?
+                // liveApiTourism.endSession(); 
             };
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [studio, liveApiTourism.connectionState, cameraActive]);
+    }, [studio, liveApiTourism.isConnected, liveApiTourism.isSessionActive, cameraActive]);
 
     // Commercial Maker states
     const [commercialImages, setCommercialImages] = useState<File[]>([]);
@@ -312,7 +332,11 @@ const Creative = memo(function Creative() {
     // Live Tourism camera handlers
     const startTourismCamera = async () => {
         try {
-            await liveApiTourism.resumeAudio();
+            // No resumeAudio needed manually, handle interactively or via useAudioPlayer if needed
+            // But browser policy needs interaction. AudioContext in useAudioPlayer usually handles resume on play.
+            // We can strictly resume if we had access, but useAudioPlayer hides it.
+            // Luckily startAudioCapture creates a context.
+
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: "environment" },
                 audio: true
@@ -1702,11 +1726,11 @@ Generated by Orenax AI Script Writer`;
                             {cameraActive && (
                                 <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
                                     <div className={cn("w-2 h-2 rounded-full transition-colors",
-                                        liveApiTourism.connectionState === 'ready' ? "bg-green-500 animate-pulse" :
-                                            liveApiTourism.connectionState === 'connecting' ? "bg-yellow-500" : "bg-red-500"
+                                        liveApiTourism.isSessionActive ? "bg-green-500 animate-pulse" :
+                                            liveApiTourism.isConnected ? "bg-yellow-500" : "bg-red-500"
                                     )} />
                                     <span className="text-white text-xs font-medium">
-                                        {liveApiTourism.connectionState === 'ready' ? 'AI Guide Active' : liveApiTourism.connectionState}
+                                        {liveApiTourism.isSessionActive ? 'AI Guide Active' : liveApiTourism.isConnected ? 'Connected' : 'Disconnected'}
                                     </span>
                                 </div>
                             )}
