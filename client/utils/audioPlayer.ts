@@ -160,6 +160,16 @@ export class AudioPlayer {
     }
 
     /**
+     * Resume audio context manually
+     */
+    async resume(): Promise<void> {
+        if (this.audioContext?.state === 'suspended') {
+            await this.audioContext.resume();
+            console.log('[AudioPlayer] Context resumed by user action');
+        }
+    }
+
+    /**
      * Cleanup resources
      */
     async dispose(): Promise<void> {

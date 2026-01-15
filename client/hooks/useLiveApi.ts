@@ -56,6 +56,7 @@ export interface UseLiveApiReturn {
     sendVideoFrame: (data: string, mimeType?: string) => void;
     sendToolResponse: (id: string, name: string, response: Record<string, unknown>) => void;
     sendAudioStreamEnd: () => void;
+    resumeAudio: () => Promise<void>;
 
     // Voice options
     setVoice: (voice: LiveApiVoice) => void;
@@ -389,6 +390,16 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
     }, []);
 
     /**
+     * Resume audio contexts
+     */
+    const resumeAudio = useCallback(async () => {
+        if (audioContextRef.current?.state === 'suspended') {
+            await audioContextRef.current.resume();
+        }
+        await audioPlayerRef.current?.resume();
+    }, []);
+
+    /**
      * Send tool/function response
      */
     const sendToolResponse = useCallback(
@@ -436,6 +447,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
         sendVideoFrame,
         sendToolResponse,
         sendAudioStreamEnd,
+        resumeAudio,
         setVoice,
         currentVoice,
     };

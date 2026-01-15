@@ -224,7 +224,12 @@ const Creative = memo(function Creative() {
     const liveApiTourism = useLiveApi({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         systemInstruction: 'You are an enthusiastic virtual tour guide. You see what the user sees through their camera. Describe landmarks, answer questions, and provide historical facts about what is visible.',
-        onError: (err) => toast.error('Tourism API Error', { description: err.message }),
+        onInputTranscription: (text) => console.log('🎤 USER:', text),
+        onOutputTranscription: (text) => console.log('🤖 AI:', text),
+        onError: (err) => {
+            console.error('Tourism API Error:', err);
+            toast.error('Tourism API Error', { description: err.message });
+        },
     });
 
     const videoIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -305,6 +310,7 @@ const Creative = memo(function Creative() {
     // Live Tourism camera handlers
     const startTourismCamera = async () => {
         try {
+            await liveApiTourism.resumeAudio();
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: "environment" },
                 audio: true
