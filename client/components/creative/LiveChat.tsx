@@ -35,13 +35,6 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
     const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
     const [isMuted, setIsMuted] = useState(false);
 
-    const [debugLogs, setDebugLogs] = useState<string[]>([]);
-
-    const addDebugLog = useCallback((msg: string) => {
-        setDebugLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 20));
-        console.log(`[LiveChat Debug] ${msg}`);
-    }, []);
-
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -60,8 +53,6 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
         currentVoice,
     } = useLiveApi({
         systemInstruction: 'You are a helpful assistant. Respond naturally and conversationally in the same language as the user. Keep responses concise but helpful.',
-        onConnect: () => addDebugLog('Connected callback fired'),
-        onDisconnect: (reason) => addDebugLog(`Disconnected: ${reason}`),
         onTextResponse: (text) => {
             // Accumulate assistant response
             setMessages(prev => {
@@ -72,21 +63,11 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
                 return [...prev, { role: 'assistant', content: text }];
             });
         },
-        onInputTranscription: (text) => {
-            addDebugLog(`User input: ${text.substring(0, 20)}...`);
-        },
-        onOutputTranscription: (text) => {
-            addDebugLog(`AI output: ${text.substring(0, 20)}...`);
-        },
         onError: (err) => {
-            addDebugLog(`Error: ${err.message}`);
+            console.error('Live Chat Error:', err);
             toast.error('Live Chat Error', { description: err.message });
         },
-        onInterrupted: () => {
-            addDebugLog('Interrupted');
-        },
         onGoAway: (timeLeft) => {
-            addDebugLog(`GoAway: ${timeLeft}`);
             toast.warning('Session ending soon', { description: `Time remaining: ${timeLeft}` });
         },
     });
@@ -428,21 +409,6 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
                 </div>
             )}
 
-            {/* Debug Logs Overlay */}
-            <div className="absolute bottom-4 left-4 z-50">
-                <button
-                    onClick={() => console.log(debugLogs)}
-                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors mb-1"
-                >
-                    Debug Logs
-                </button>
-                <div className="w-64 max-h-40 overflow-y-auto bg-black/80 text-green-400 font-mono text-[10px] p-2 rounded pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
-                    {debugLogs.length === 0 && <span className="text-gray-500">No logs yet...</span>}
-                    {debugLogs.map((log, i) => (
-                        <div key={i} className="whitespace-nowrap">{log}</div>
-                    ))}
-                </div>
-            </div>
         </div>
     );
 });

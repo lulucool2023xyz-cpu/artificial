@@ -53,6 +53,7 @@ export interface UseLiveApiReturn {
     startRecording: () => Promise<void>;
     stopRecording: () => void;
     sendMessage: (text: string) => void;
+    sendVideoFrame: (data: string, mimeType?: string) => void;
     sendToolResponse: (id: string, name: string, response: Record<string, unknown>) => void;
     sendAudioStreamEnd: () => void;
 
@@ -373,6 +374,21 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
     }, []);
 
     /**
+     * Send video frame
+     */
+    const sendVideoFrame = useCallback((data: string, mimeType = 'image/jpeg') => {
+        if (!clientRef.current?.isReady()) {
+            return;
+        }
+        clientRef.current.sendRealtimeInput({
+            video: {
+                data,
+                mimeType,
+            },
+        });
+    }, []);
+
+    /**
      * Send tool/function response
      */
     const sendToolResponse = useCallback(
@@ -417,6 +433,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
         startRecording,
         stopRecording,
         sendMessage,
+        sendVideoFrame,
         sendToolResponse,
         sendAudioStreamEnd,
         setVoice,
