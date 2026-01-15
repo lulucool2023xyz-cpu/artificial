@@ -21,7 +21,7 @@ interface UseLiveAPIReturn {
     clientId: string | null;
     connect: () => void;
     disconnect: () => void;
-    startSession: () => void;
+    startSession: (config?: { systemInstruction?: string }) => void;
     endSession: () => void;
     sendAudio: (audioData: string, mimeType?: string) => void;
     sendVideo: (videoData: string, mimeType?: string) => void;

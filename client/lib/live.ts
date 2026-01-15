@@ -109,8 +109,23 @@ export class LiveApiClient {
 
         this.connectionState = 'setup_pending';
 
+        let sysInstr: { parts: { text: string }[] } | undefined;
+
+        if (customConfig?.systemInstruction) {
+            if (typeof customConfig.systemInstruction === 'string') {
+                sysInstr = { parts: [{ text: customConfig.systemInstruction }] };
+            } else {
+                sysInstr = customConfig.systemInstruction as { parts: { text: string }[] };
+            }
+        } else if (this.config.systemInstruction) {
+            sysInstr = { parts: [{ text: this.config.systemInstruction }] };
+        } else {
+            sysInstr = { parts: [{ text: "You are a helpful assistant." }] };
+        }
+
         const setupConfig: LiveApiSetupConfig = {
             model: customConfig?.model || this.config.model || 'gemini-2.5-flash-native-audio-preview-12-2025',
+            systemInstruction: sysInstr,
             generationConfig: {
                 responseModalities: ['AUDIO'],
                 speechConfig: {
