@@ -1,7 +1,10 @@
 /**
  * useLiveApi Hook
  * React hook for Live API real-time communication with Gemini
- * Supports audio streaming, transcription, and session management
+ * 
+ * Audio Format Requirements (per Gemini Live API docs):
+ * - Input: 16-bit PCM, 16kHz, mono
+ * - Output: 16-bit PCM, 24kHz, mono
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -70,6 +73,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
     const audioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const isRecordingRef = useRef(false); // Ref to track recording state for audio processing
 
     // Initialize audio player
     useEffect(() => {
@@ -89,71 +93,102 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
      */
     const connect = useCallback(async () => {
         if (clientRef.current) {
-            console.warn('[useLiveApi] Already connected');
+            console.warn('[useLiveApi] Already connected or connecting');
             return;
         }
 
-        try {
-            // Initialize audio player first (requires user interaction)
-            await audioPlayerRef.current?.init();
+        console.log('[useLiveApi] Connecting...');
 
+        try {
+            // Initialize audio player (requires user interaction for iOS/Safari)
+            await audioPlayerRef.current?.init();
+            console.log('[useLiveApi] Audio player initialized');
+
+            // Create Live API client
             clientRef.current = createLiveApiClient({
                 model: options.model || 'gemini-2.5-flash-native-audio-preview-12-2025',
                 voice: currentVoice,
                 systemInstruction: options.systemInstruction,
-                onConnect: () => setConnectionState('connected'),
-                onSetupComplete: () => setConnectionState('ready'),
+
+                onConnect: () => {
+                    console.log('[useLiveApi] Connected to gateway');
+                    setConnectionState('connected');
+                },
+
+                onSetupComplete: () => {
+                    console.log('[useLiveApi] ✅ Ready for audio/text input');
+                    setConnectionState('ready');
+                },
+
                 onAudioResponse: (data) => {
+                    // Queue audio for playback (24kHz PCM from Gemini)
                     audioPlayerRef.current?.queueAudio(data);
                 },
+
                 onTextResponse: (text) => {
                     setTranscript((prev) => prev + text);
                     options.onTextResponse?.(text);
                 },
+
                 onInputTranscription: (text) => {
                     setInputTranscript(text);
                     options.onInputTranscription?.(text);
                 },
+
                 onOutputTranscription: (text) => {
                     setOutputTranscript((prev) => prev + text);
                     options.onOutputTranscription?.(text);
                 },
+
                 onToolCall: options.onToolCall,
+
                 onInterrupted: () => {
-                    // Stop audio playback when interrupted
+                    // Stop playback immediately when user interrupts
                     audioPlayerRef.current?.stop();
                     options.onInterrupted?.();
                 },
+
                 onGoAway: options.onGoAway,
+
                 onTurnComplete: () => {
-                    // AI finished speaking
+                    // AI finished its turn
+                    console.log('[useLiveApi] Turn complete');
                 },
+
                 onGenerationComplete: () => {
-                    // Generation complete
+                    console.log('[useLiveApi] Generation complete');
                 },
+
                 onError: (error) => {
+                    console.error('[useLiveApi] Error:', error);
                     setConnectionState('error');
                     options.onError?.(error);
                 },
+
                 onDisconnect: () => {
+                    console.log('[useLiveApi] Disconnected');
                     setConnectionState('disconnected');
                     clientRef.current = null;
                 },
             });
 
             setConnectionState('connecting');
+
+            // Connect to backend gateway
             await clientRef.current.connect();
 
-            // Setup session after connection with transcription enabled
+            // Setup session with Gemini
             clientRef.current.setupSession({
                 inputAudioTranscription: options.enableTranscription !== false ? {} : undefined,
                 outputAudioTranscription: options.enableTranscription !== false ? {} : undefined,
                 thinkingConfig: options.thinkingConfig,
                 realtimeInputConfig: options.realtimeInputConfig,
             });
+
         } catch (error) {
             console.error('[useLiveApi] Connection failed:', error);
             setConnectionState('error');
+            clientRef.current = null;
             options.onError?.({
                 code: 'CONNECTION_ERROR',
                 message: error instanceof Error ? error.message : 'Failed to connect',
@@ -162,22 +197,12 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
     }, [currentVoice, options]);
 
     /**
-     * Disconnect from Live API
-     */
-    const disconnect = useCallback(() => {
-        stopRecordingInternal();
-        clientRef.current?.disconnect();
-        clientRef.current = null;
-        setConnectionState('disconnected');
-        setTranscript('');
-        setInputTranscript('');
-        setOutputTranscript('');
-    }, []);
-
-    /**
-     * Internal stop recording
+     * Stop recording - internal implementation
      */
     const stopRecordingInternal = useCallback(() => {
+        console.log('[useLiveApi] Stopping recording...');
+        isRecordingRef.current = false;
+
         if (processorRef.current) {
             processorRef.current.disconnect();
             processorRef.current = null;
@@ -188,7 +213,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
             streamRef.current = null;
         }
 
-        if (audioContextRef.current) {
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
             audioContextRef.current.close();
             audioContextRef.current = null;
         }
@@ -197,27 +222,48 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
     }, []);
 
     /**
+     * Disconnect from Live API
+     */
+    const disconnect = useCallback(() => {
+        console.log('[useLiveApi] Disconnecting...');
+        stopRecordingInternal();
+        clientRef.current?.disconnect();
+        clientRef.current = null;
+        setConnectionState('disconnected');
+        setTranscript('');
+        setInputTranscript('');
+        setOutputTranscript('');
+    }, [stopRecordingInternal]);
+
+    /**
      * Start recording audio from microphone
+     * 
+     * Captures audio at 16kHz, converts to 16-bit PCM, base64 encodes, and streams to Gemini
      */
     const startRecording = useCallback(async () => {
         if (!clientRef.current?.isReady()) {
-            console.warn('[useLiveApi] Not ready to record');
+            console.warn('[useLiveApi] Cannot record - not ready');
             return;
         }
 
+        console.log('[useLiveApi] Starting recording...');
+
         try {
+            // Request microphone access with specific constraints
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
-                    sampleRate: AUDIO_INPUT_CONFIG.sampleRate,
-                    channelCount: AUDIO_INPUT_CONFIG.channels,
+                    sampleRate: AUDIO_INPUT_CONFIG.sampleRate, // 16kHz
+                    channelCount: AUDIO_INPUT_CONFIG.channels, // 1 (mono)
                     echoCancellation: true,
                     noiseSuppression: true,
+                    autoGainControl: true,
                 },
             });
 
             streamRef.current = stream;
+            console.log('[useLiveApi] Microphone access granted');
 
-            // Create audio context for processing
+            // Create audio context at 16kHz (Gemini requirement)
             audioContextRef.current = new AudioContext({
                 sampleRate: AUDIO_INPUT_CONFIG.sampleRate,
             });
@@ -225,14 +271,18 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
             const source = audioContextRef.current.createMediaStreamSource(stream);
 
             // Create script processor for raw PCM access
+            // Buffer size 4096 gives ~256ms chunks at 16kHz
             processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
 
             processorRef.current.onaudioprocess = (event) => {
-                if (!isRecording || !clientRef.current?.isReady()) return;
+                // Check if still recording and client is ready
+                if (!isRecordingRef.current || !clientRef.current?.isReady()) {
+                    return;
+                }
 
                 const inputBuffer = event.inputBuffer.getChannelData(0);
 
-                // Convert Float32 to Int16
+                // Convert Float32 [-1, 1] to Int16 [-32768, 32767]
                 const int16Array = new Int16Array(inputBuffer.length);
                 for (let i = 0; i < inputBuffer.length; i++) {
                     const s = Math.max(-1, Math.min(1, inputBuffer[i]));
@@ -242,25 +292,33 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                 // Convert to base64
                 const bytes = new Uint8Array(int16Array.buffer);
                 let binary = '';
-                bytes.forEach((b) => (binary += String.fromCharCode(b)));
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
                 const base64 = btoa(binary);
 
-                // Send to server
+                // Send to Gemini via backend
                 clientRef.current?.sendRealtimeInput({
                     audio: {
                         data: base64,
-                        mimeType: AUDIO_INPUT_CONFIG.mimeType,
+                        mimeType: AUDIO_INPUT_CONFIG.mimeType, // audio/pcm;rate=16000
                     },
                 });
             };
 
+            // Connect audio graph
             source.connect(processorRef.current);
             processorRef.current.connect(audioContextRef.current.destination);
 
+            // Update state
+            isRecordingRef.current = true;
             setIsRecording(true);
             setTranscript('');
             setInputTranscript('');
             setOutputTranscript('');
+
+            console.log('[useLiveApi] ✅ Recording started (16kHz PCM)');
+
         } catch (error) {
             console.error('[useLiveApi] Failed to start recording:', error);
             options.onError?.({
@@ -268,19 +326,19 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                 message: error instanceof Error ? error.message : 'Failed to access microphone',
             });
         }
-    }, [isRecording, options]);
+    }, [options]);
 
     /**
-     * Stop recording
+     * Stop recording and send audio stream end signal
      */
     const stopRecording = useCallback(() => {
-        // Send audio stream end to flush any cached audio
+        // Send audio stream end to flush any cached audio in Gemini
         clientRef.current?.sendAudioStreamEnd();
         stopRecordingInternal();
     }, [stopRecordingInternal]);
 
     /**
-     * Send audio stream end signal
+     * Send audio stream end signal (for pausing mic without stopping)
      */
     const sendAudioStreamEnd = useCallback(() => {
         clientRef.current?.sendAudioStreamEnd();
@@ -291,31 +349,29 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
      */
     const sendMessage = useCallback((text: string) => {
         if (!clientRef.current?.isReady()) {
-            console.warn('[useLiveApi] Not ready to send');
+            console.warn('[useLiveApi] Cannot send message - not ready');
             return;
         }
 
+        console.log('[useLiveApi] Sending text message:', text);
         clientRef.current.sendTextMessage(text);
         setTranscript('');
         setOutputTranscript('');
     }, []);
 
     /**
-     * Send tool response
+     * Send tool/function response
      */
     const sendToolResponse = useCallback(
         (id: string, name: string, response: Record<string, unknown>) => {
             if (!clientRef.current?.isReady()) {
-                console.warn('[useLiveApi] Not ready to send tool response');
+                console.warn('[useLiveApi] Cannot send tool response - not ready');
                 return;
             }
 
             clientRef.current.sendToolResponse([
                 {
-                    functionResponse: {
-                        name,
-                        response,
-                    },
+                    functionResponse: { name, response },
                 } as any,
             ]);
         },
@@ -323,7 +379,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
     );
 
     /**
-     * Set voice
+     * Set voice for next session
      */
     const setVoice = useCallback((voice: LiveApiVoice) => {
         setCurrentVoice(voice);

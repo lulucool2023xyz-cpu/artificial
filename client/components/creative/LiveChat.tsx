@@ -1,6 +1,6 @@
 /**
  * LiveChat Component
- * Real-time voice chat using Live API
+ * Real-time voice chat using Gemini Live API
  */
 
 import { memo, useState, useCallback, useEffect, useRef } from 'react';
@@ -17,7 +17,8 @@ import {
     AlertCircle,
     MessageSquare,
     Radio,
-    Waves
+    Waves,
+    RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLiveApi } from '@/hooks/useLiveApi';
@@ -41,6 +42,8 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
         isRecording,
         isPlaying,
         transcript,
+        inputTranscript,
+        outputTranscript,
         connect,
         disconnect,
         startRecording,
@@ -49,7 +52,7 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
         setVoice,
         currentVoice,
     } = useLiveApi({
-        systemInstruction: 'You are a helpful assistant. Respond naturally and conversationally in the same language as the user.',
+        systemInstruction: 'You are a helpful assistant. Respond naturally and conversationally in the same language as the user. Keep responses concise but helpful.',
         onTextResponse: (text) => {
             // Accumulate assistant response
             setMessages(prev => {
@@ -60,20 +63,41 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
                 return [...prev, { role: 'assistant', content: text }];
             });
         },
-        onError: (err) => toast.error('Live Chat Error', { description: err.message }),
+        onInputTranscription: (text) => {
+            // Update user's speech transcription
+            console.log('[LiveChat] Input transcription:', text);
+        },
+        onOutputTranscription: (text) => {
+            // Update AI's speech transcription
+            console.log('[LiveChat] Output transcription:', text);
+        },
+        onError: (err) => {
+            console.error('[LiveChat] Error:', err);
+            toast.error('Live Chat Error', { description: err.message });
+        },
+        onInterrupted: () => {
+            console.log('[LiveChat] Interrupted by user');
+        },
+        onGoAway: (timeLeft) => {
+            toast.warning('Session ending soon', { description: `Time remaining: ${timeLeft}` });
+        },
     });
 
     // Auto-scroll to bottom when messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, transcript]);
+    }, [messages, transcript, inputTranscript, outputTranscript]);
 
     const handleConnect = useCallback(async () => {
         try {
+            console.log('[LiveChat] Connecting...');
             await connect();
             toast.success('Connected to Live Chat');
         } catch (error) {
-            toast.error('Failed to connect');
+            console.error('[LiveChat] Connection failed:', error);
+            toast.error('Failed to connect', {
+                description: error instanceof Error ? error.message : 'Unknown error'
+            });
         }
     }, [connect]);
 
@@ -86,13 +110,14 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
     const handleToggleRecording = useCallback(async () => {
         if (isRecording) {
             stopRecording();
-            if (transcript.trim()) {
-                setMessages(prev => [...prev, { role: 'user', content: transcript }]);
+            // Add user's transcribed speech to messages
+            if (inputTranscript.trim()) {
+                setMessages(prev => [...prev, { role: 'user', content: inputTranscript }]);
             }
         } else {
             await startRecording();
         }
-    }, [isRecording, startRecording, stopRecording, transcript]);
+    }, [isRecording, startRecording, stopRecording, inputTranscript]);
 
     const handleSendText = useCallback(() => {
         if (!textInput.trim()) return;
@@ -106,6 +131,18 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
 
     const isConnected = connectionState === 'connected' || connectionState === 'ready' || connectionState === 'setup_pending';
     const isReady = connectionState === 'ready';
+
+    // Connection state indicator color
+    const getStateColor = () => {
+        switch (connectionState) {
+            case 'ready': return 'bg-green-500';
+            case 'connected':
+            case 'setup_pending': return 'bg-yellow-500';
+            case 'connecting': return 'bg-blue-500';
+            case 'error': return 'bg-red-500';
+            default: return 'bg-gray-400';
+        }
+    };
 
     return (
         <div className={cn("flex flex-col h-full", className)}>
@@ -126,8 +163,8 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
                             <div className="flex items-center gap-2">
                                 <span className={cn(
                                     "w-2 h-2 rounded-full",
-                                    isReady ? "bg-green-500 animate-pulse" :
-                                        isConnected ? "bg-yellow-500" : "bg-gray-400"
+                                    getStateColor(),
+                                    isReady && "animate-pulse"
                                 )} />
                                 <p className="text-sm text-muted-foreground capitalize">
                                     {connectionState.replace('_', ' ')}
@@ -221,7 +258,7 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
 
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                {messages.length === 0 && !transcript && (
+                {messages.length === 0 && !transcript && !inputTranscript && !outputTranscript && (
                     <div className="flex flex-col items-center justify-center h-full text-center">
                         <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
                             <MessageSquare className="w-8 h-8 text-muted-foreground" />
@@ -254,22 +291,34 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
                     </motion.div>
                 ))}
 
-                {/* Live transcript */}
-                {transcript && (
+                {/* Live input transcription (what user is saying) */}
+                {inputTranscript && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className="max-w-[85%] ml-auto p-4 rounded-2xl rounded-br-sm bg-primary/50 text-primary-foreground"
                     >
-                        <p className="text-sm whitespace-pre-wrap">{transcript}</p>
+                        <p className="text-sm whitespace-pre-wrap">{inputTranscript}</p>
                         <span className="inline-block w-2 h-4 bg-primary-foreground animate-pulse ml-1" />
+                    </motion.div>
+                )}
+
+                {/* Live output transcription (what AI is saying) */}
+                {outputTranscript && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="max-w-[85%] p-4 rounded-2xl rounded-bl-sm bg-secondary/80 text-foreground"
+                    >
+                        <p className="text-sm whitespace-pre-wrap">{outputTranscript}</p>
+                        {isPlaying && <span className="inline-block w-2 h-4 bg-foreground animate-pulse ml-1" />}
                     </motion.div>
                 )}
 
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
+            {/* Input Area - Only show when ready */}
             {isReady && (
                 <div className="p-4 sm:p-6 border-t border-border">
                     {/* Recording indicator */}
@@ -282,7 +331,7 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
                                 className="flex items-center justify-center gap-3 mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30"
                             >
                                 <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                                <span className="text-sm text-red-500 font-medium">Listening...</span>
+                                <span className="text-sm text-red-500 font-medium">Listening... (16kHz PCM)</span>
                                 <Waves className="w-5 h-5 text-red-500 animate-pulse" />
                             </motion.div>
                         )}
@@ -298,7 +347,7 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
                                 className="flex items-center justify-center gap-3 mb-4 p-3 rounded-xl bg-green-500/10 border border-green-500/30"
                             >
                                 <Volume2 className="w-5 h-5 text-green-500 animate-pulse" />
-                                <span className="text-sm text-green-500 font-medium">AI Speaking...</span>
+                                <span className="text-sm text-green-500 font-medium">AI Speaking... (24kHz PCM)</span>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -362,8 +411,9 @@ export const LiveChat = memo(function LiveChat({ className }: LiveChatProps) {
                         <p className="text-sm text-red-500">Connection error. Please try reconnecting.</p>
                         <button
                             onClick={handleConnect}
-                            className="ml-auto px-4 py-2 rounded-lg bg-red-500 text-white text-sm hover:opacity-90"
+                            className="ml-auto px-4 py-2 rounded-lg bg-red-500 text-white text-sm hover:opacity-90 flex items-center gap-2"
                         >
+                            <RefreshCw className="w-4 h-4" />
                             Retry
                         </button>
                     </div>
