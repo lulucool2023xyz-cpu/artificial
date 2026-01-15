@@ -306,9 +306,14 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
                 });
             };
 
-            // Connect audio graph
+            // Connect audio graph - DO NOT connect to destination to avoid echo!
+            // ScriptProcessor needs to be connected to work, so we use a silent gain node
+            const silentGain = audioContextRef.current.createGain();
+            silentGain.gain.value = 0; // Mute - no playback
+            silentGain.connect(audioContextRef.current.destination);
+
             source.connect(processorRef.current);
-            processorRef.current.connect(audioContextRef.current.destination);
+            processorRef.current.connect(silentGain);
 
             // Update state
             isRecordingRef.current = true;
