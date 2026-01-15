@@ -50,7 +50,7 @@ export interface UseLiveApiReturn {
     // Actions
     connect: () => Promise<void>;
     disconnect: () => void;
-    startRecording: () => Promise<void>;
+    startRecording: (stream?: MediaStream) => Promise<void>;
     stopRecording: () => void;
     sendMessage: (text: string) => void;
     sendVideoFrame: (data: string, mimeType?: string) => void;
@@ -77,6 +77,7 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
     const audioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const isExternalStreamRef = useRef(false);
     const isRecordingRef = useRef(false); // Ref to track recording state for audio processing
 
     // Initialize audio player
@@ -215,7 +216,9 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
         }
 
         if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
+            if (!isExternalStreamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
             streamRef.current = null;
         }
 
@@ -246,25 +249,32 @@ export function useLiveApi(options: UseLiveApiOptions = {}): UseLiveApiReturn {
      * 
      * Captures audio at 16kHz, converts to 16-bit PCM, base64 encodes, and streams to Gemini
      */
-    const startRecording = useCallback(async () => {
+    const startRecording = useCallback(async (existingStream?: MediaStream) => {
         if (!clientRef.current?.isReady()) {
             console.warn('[useLiveApi] Cannot record - not ready');
             return;
         }
 
-        console.log('[useLiveApi] Starting recording...');
+        console.log('[useLiveApi] Starting recording...', existingStream ? '(external stream)' : '(mic request)');
 
         try {
-            // Request microphone access with specific constraints
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    sampleRate: AUDIO_INPUT_CONFIG.sampleRate, // 16kHz
-                    channelCount: AUDIO_INPUT_CONFIG.channels, // 1 (mono)
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                },
-            });
+            let stream = existingStream;
+
+            if (stream) {
+                isExternalStreamRef.current = true;
+            } else {
+                isExternalStreamRef.current = false;
+                // Request microphone access with specific constraints
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: AUDIO_INPUT_CONFIG.sampleRate, // 16kHz
+                        channelCount: AUDIO_INPUT_CONFIG.channels, // 1 (mono)
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    },
+                });
+            }
 
             streamRef.current = stream;
             console.log('[useLiveApi] Microphone access granted');

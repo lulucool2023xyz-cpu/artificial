@@ -251,7 +251,9 @@ const Creative = memo(function Creative() {
     // Start streaming when ready
     useEffect(() => {
         if (studio === 'tourism' && liveApiTourism.connectionState === 'ready' && cameraActive && tourismVideoRef.current) {
-            liveApiTourism.startRecording();
+            if (tourismStreamRef.current) {
+                liveApiTourism.startRecording(tourismStreamRef.current);
+            }
 
             // Start video loop (1 FPS)
             videoIntervalRef.current = setInterval(() => {
