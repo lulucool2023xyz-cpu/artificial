@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useRef } from "react";
+import { memo, useState, useEffect, useRef, useCallback } from "react";
 import { ChatMessage, ChatMessageProps } from "./ChatMessage";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { ChatLoadingIndicator } from "./ChatLoadingIndicator";
@@ -33,32 +33,32 @@ export const ChatCanvas = memo(function ChatCanvas() {
     }
   }, [messages, isLoading, showScrollButton]);
 
-  // Handle scroll to detect if user scrolled up
-  const handleScroll = () => {
+  // Handle scroll to detect if user scrolled up - memoized to prevent recreation
+  const handleScroll = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
       const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
       setShowScrollButton(!isNearBottom);
     }
-  };
+  }, []);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
-  const handlePromptSelect = (prompt: string) => {
+  const handlePromptSelect = useCallback((prompt: string) => {
     // TODO: Implement prompt selection logic
     console.log("Selected prompt:", prompt);
     // This will trigger message sending
     setError(null);
-  };
+  }, []);
 
-  const handleCopy = (content: string) => {
+  const handleCopy = useCallback((content: string) => {
     navigator.clipboard.writeText(content);
     // TODO: Show toast notification
-  };
+  }, []);
 
-  const handleRegenerate = async (id: string) => {
+  const handleRegenerate = useCallback(async (id: string) => {
     // TODO: Implement regenerate logic
     console.log("Regenerate message:", id);
     setError(null);
@@ -71,30 +71,30 @@ export const ChatCanvas = memo(function ChatCanvas() {
     setTimeout(() => {
       setIsLoading(false);
     }, 1000);
-  };
+  }, [setIsLoading]);
 
-  const handleLike = (id: string) => {
+  const handleLike = useCallback((id: string) => {
     // TODO: Implement like logic
     console.log("Like message:", id);
     toast({
       description: "Thanks for your feedback!",
       duration: 2000,
     });
-  };
+  }, []);
 
-  const handleDislike = (id: string) => {
+  const handleDislike = useCallback((id: string) => {
     // TODO: Implement dislike logic
     console.log("Dislike message:", id);
     toast({
       description: "Thanks for your feedback. We'll improve!",
       duration: 2000,
     });
-  };
+  }, []);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     setError(null);
     // TODO: Implement retry logic
-  };
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col bg-background overflow-hidden transition-colors duration-300 relative">

@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useEffect } from "react";
+import { memo, useState, useRef, useEffect, useMemo } from "react";
 import { useTheme } from "next-themes";
 import {
   Paperclip,
@@ -69,6 +69,14 @@ export const ChatInputBar = memo(function ChatInputBar() {
   const attachmentRef = useRef<HTMLDivElement>(null);
 
   const isDeepThinking = mode === "deep";
+
+  // Memoize wave bars to prevent recreation on every render
+  const waveBars = useMemo(() => {
+    return Array.from({ length: 15 }, (_, i) => ({
+      id: i,
+      delay: i * 0.05
+    }));
+  }, []);
 
   // Auto-expand textarea
   useEffect(() => {
@@ -548,13 +556,13 @@ export const ChatInputBar = memo(function ChatInputBar() {
               <div className="flex-1 bg-red-500/10 border-2 border-red-500/50 rounded-xl px-5 py-4 flex items-center justify-center gap-3">
                 {/* Audio Wave Bars */}
                 <div className="flex items-center gap-1 h-8">
-                  {[...Array(15)].map((_, i) => (
+                  {waveBars.map((bar) => (
                     <div
-                      key={i}
+                      key={bar.id}
                       className="w-1 bg-red-500 rounded-full"
                       style={{
-                        height: `${12 + Math.sin(Date.now() / 200 + i) * 10 + Math.random() * 8}px`,
-                        animation: `audioWave 0.5s ease-in-out ${i * 0.05}s infinite alternate`,
+                        height: '20px',
+                        animation: `audioWave 0.5s ease-in-out ${bar.delay}s infinite alternate`,
                       }}
                     />
                   ))}

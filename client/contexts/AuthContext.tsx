@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from "react";
 import { handleError, AppError } from "@/lib/errorHandler";
 import {
   authApi,
@@ -42,22 +42,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshSessionRef = useRef<(() => Promise<boolean>) | null>(null);
 
-  // Schedule token refresh before expiry
-  const scheduleTokenRefresh = useCallback((expiresAt: number) => {
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-    }
-
-    const refreshTime = expiresAt - Date.now() - TOKEN_EXPIRY_BUFFER;
-    if (refreshTime > 0) {
-      refreshTimerRef.current = setTimeout(() => {
-        refreshSession();
-      }, refreshTime);
-    }
-  }, []);
-
-  // Refresh session with refresh token
+  // Refresh session with refresh token - use ref to avoid circular dependency
   const refreshSession = useCallback(async (): Promise<boolean> => {
     try {
       const refreshToken = getRefreshToken();
@@ -69,7 +56,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { access_token, refresh_token, expires_at } = response.session;
         storeAuthTokens(access_token, refresh_token, expires_at);
         setAccessToken(access_token);
-        scheduleTokenRefresh(expires_at * 1000); // Convert to ms
+        
+        // Schedule next refresh using ref to avoid dependency
+        const expiresAtMs = expires_at * 1000;
+        const refreshTime = expiresAtMs - Date.now() - TOKEN_EXPIRY_BUFFER;
+        if (refreshTime > 0 && refreshTimerRef.current) {
+          clearTimeout(refreshTimerRef.current);
+          refreshTimerRef.current = setTimeout(() => {
+            refreshSessionRef.current?.();
+          }, refreshTime);
+        }
         return true;
       }
     } catch (error) {
@@ -84,7 +80,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout();
     }
     return false;
-  }, [scheduleTokenRefresh]);
+  }, []);
+
+  // Store refreshSession in ref for use in scheduleTokenRefresh
+  refreshSessionRef.current = refreshSession;
+
+  // Schedule token refresh before expiry
+  const scheduleTokenRefresh = useCallback((expiresAt: number) => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
+    const refreshTime = expiresAt - Date.now() - TOKEN_EXPIRY_BUFFER;
+    if (refreshTime > 0) {
+      refreshTimerRef.current = setTimeout(() => {
+        refreshSessionRef.current?.();
+      }, refreshTime);
+    }
+  }, []);
 
   // Logout function - clears state immediately, calls backend in background
   const logout = useCallback(() => {
@@ -161,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSession]);
 
   // Login with email and password
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
 
     try {
@@ -217,10 +230,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [scheduleTokenRefresh]);
 
   // Register new user
-  const signup = async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signup = useCallback(async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
 
     try {
@@ -267,10 +280,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [scheduleTokenRefresh]);
 
   // Social login via OAuth redirect
-  const socialLogin = async (
+  const socialLogin = useCallback(async (
     provider: "google" | "facebook" | "github"
   ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
@@ -291,10 +304,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Handle OAuth callback - exchange code for session
-  const handleOAuthCallback = async (code: string): Promise<{ success: boolean; error?: string }> => {
+  const handleOAuthCallback = useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
 
     try {
@@ -327,23 +340,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [scheduleTokenRefresh]);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(
+    () => ({
+      isAuthenticated,
+      user,
+      accessToken,
+      login,
+      signup,
+      socialLogin,
+      handleOAuthCallback,
+      logout,
+      isLoading,
+      refreshSession,
+    }),
+    [isAuthenticated, user, accessToken, isLoading, login, signup, socialLogin, handleOAuthCallback, logout, refreshSession]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        user,
-        accessToken,
-        login,
-        signup,
-        socialLogin,
-        handleOAuthCallback,
-        logout,
-        isLoading,
-        refreshSession,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

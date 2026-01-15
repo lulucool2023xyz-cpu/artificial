@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from "react";
 import { ChatMessageProps } from "@/components/chat/ChatMessage";
 
 interface ChatContextType {
@@ -15,24 +15,28 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessageProps[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const addMessage = (message: ChatMessageProps) => {
+  const addMessage = useCallback((message: ChatMessageProps) => {
     setMessages((prev) => [...prev, message]);
-  };
+  }, []);
 
-  const clearMessages = () => {
+  const clearMessages = useCallback(() => {
     setMessages([]);
-  };
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(
+    () => ({
+      messages,
+      addMessage,
+      clearMessages,
+      isLoading,
+      setIsLoading,
+    }),
+    [messages, isLoading, addMessage, clearMessages]
+  );
 
   return (
-    <ChatContext.Provider
-      value={{
-        messages,
-        addMessage,
-        clearMessages,
-        isLoading,
-        setIsLoading,
-      }}
-    >
+    <ChatContext.Provider value={contextValue}>
       {children}
     </ChatContext.Provider>
   );

@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
     Dialog,
@@ -34,6 +34,14 @@ export const TTSModal = memo(function TTSModal({
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+
+    // Memoize waveform bars to prevent recreation on every render
+    const waveformBars = useMemo(() => {
+        return Array.from({ length: 50 }, (_, i) => ({
+            id: i,
+            height: 10 + Math.random() * 20
+        }));
+    }, []);
 
     const handleGenerate = async () => {
         if (!text.trim()) {
@@ -206,11 +214,11 @@ export const TTSModal = memo(function TTSModal({
 
                                 {/* Waveform placeholder */}
                                 <div className="h-12 bg-muted/30 rounded-lg flex items-center justify-center gap-0.5 mb-3">
-                                    {[...Array(50)].map((_, i) => (
+                                    {waveformBars.map((bar) => (
                                         <div
-                                            key={i}
+                                            key={bar.id}
                                             className="w-1 bg-orange-500 rounded-full"
-                                            style={{ height: `${10 + Math.random() * 20}px` }}
+                                            style={{ height: `${bar.height}px` }}
                                         />
                                     ))}
                                 </div>
