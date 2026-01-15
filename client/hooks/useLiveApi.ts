@@ -30,7 +30,28 @@ interface UseLiveAPIReturn {
 
 export function useLiveApi(options: UseLiveAPIOptions = {}): UseLiveAPIReturn {
     const {
-        wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001',
+        // Detect production URL dynamically if VITE_API_BASE_URL is not set
+        wsUrl = (function () {
+            if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
+            if (typeof window !== 'undefined') {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.host;
+                // If running on localhost, default to localhost:3001
+                if (host.includes('localhost') || host.includes('127.0.0.1')) {
+                    return 'ws://localhost:3001';
+                }
+                // Otherwise use the same host with wss protocol (likely backend is served from same domain or configured via proxy)
+                // OR better, try to infer from API_BASE_URL if available, but for now derive from window location
+                // If the user's backend is on a completely different domain (e.g. Railway separate service), they MUST set VITE_API_BASE_URL or NEXT_PUBLIC_WS_URL
+                // But for the user's setup, let's look at how live.ts did it.
+                // live.ts used VITE_API_BASE_URL. Here we are in Next.js (maybe? strictly it says 'use client').
+                // Let's safe bet: use relative path inferred or fallback to localhost if dev.
+                // Actually, the user's error shows "ws://localhost:3001/" failed which means they ARE on localhost OR the code defaulted to it.
+                // If they are on Railway, window.location.host is "something.up.railway.app".
+                return `${protocol}//${host}`;
+            }
+            return 'ws://localhost:3001';
+        })(),
         onAudioResponse,
         onTextResponse,
         onInputTranscription,

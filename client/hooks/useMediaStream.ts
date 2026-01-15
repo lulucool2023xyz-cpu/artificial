@@ -122,13 +122,15 @@ export function useMediaStream(options: UseMediaStreamOptions = { video: true, a
             };
 
             sourceRef.current.connect(processorRef.current);
-            processorRef.current.connect(audioContextRef.current.destination); // Need connection for chrome to play
-
-            // Mute output to prevent feedback
+            // Mute output to prevent feedback (only connect via gain node)
             const gainNode = audioContextRef.current.createGain();
             gainNode.gain.value = 0;
             processorRef.current.connect(gainNode);
             gainNode.connect(audioContextRef.current.destination);
+
+            // NOTE: We REMOVED the direct connection `processorRef.current.connect(audioContextRef.current.destination)`
+            // which was causing the user to hear their own voice (echo/callback).
+            // The ScriptProcessorNode still runs as long as it's connected to destination (even with 0 gain).
 
         } catch (e) {
             console.error('Error starting audio capture:', e);
