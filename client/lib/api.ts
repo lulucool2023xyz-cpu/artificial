@@ -97,7 +97,7 @@ export async function apiCall<T>(
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `API Error: ${response.status}`);
+        throw new Error(errorData.message || `Terjadi kendala saat menghubungi server (${response.status})`);
     }
 
     return response.json();
@@ -1319,6 +1319,307 @@ export const emailVerificationApi = {
         return apiCall<ResendVerificationResponse>('/api/v2/auth/resend-verification', {
             method: 'POST',
             body: JSON.stringify(request),
+        });
+    },
+};
+
+// ============================================
+// OPENROUTER API (Premium AI Models)
+// ============================================
+
+export interface OpenRouterMessage {
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content: string | OpenRouterContentPart[];
+    name?: string;
+    tool_call_id?: string;
+    tool_calls?: OpenRouterToolCall[];
+}
+
+export interface OpenRouterContentPart {
+    type: 'text' | 'image_url';
+    text?: string;
+    image_url?: {
+        url: string;
+        detail?: 'auto' | 'low' | 'high';
+    };
+}
+
+export interface OpenRouterToolCall {
+    id: string;
+    type: 'function';
+    function: {
+        name: string;
+        arguments: string;
+    };
+}
+
+export interface OpenRouterToolDefinition {
+    type: 'function';
+    function: {
+        name: string;
+        description?: string;
+        parameters: Record<string, unknown>;
+    };
+}
+
+export interface OpenRouterChatRequest {
+    model: string;
+    messages: OpenRouterMessage[];
+    temperature?: number;
+    max_tokens?: number;
+    stream?: boolean;
+    tools?: OpenRouterToolDefinition[];
+    tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+    top_p?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+}
+
+export interface OpenRouterChatResponse {
+    id: string;
+    model: string;
+    message: string;
+    finish_reason: string;
+    usage: {
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+    };
+    tool_calls?: OpenRouterToolCall[];
+}
+
+export interface OpenRouterStreamChunk {
+    text?: string;
+    done?: boolean;
+    finish_reason?: string;
+    tool_calls?: OpenRouterToolCall[];
+    error?: boolean;
+    message?: string;
+    usage?: {
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+    };
+}
+
+export interface OpenRouterModelInfo {
+    id: string;
+    name: string;
+    description?: string;
+    context_length: number;
+    pricing: {
+        prompt: number;
+        completion: number;
+    };
+    capabilities?: {
+        supportsVision: boolean;
+        supportsAudio: boolean;
+        supportsFunctionCalling: boolean;
+        supportsStreaming: boolean;
+    };
+}
+
+export interface OpenRouterModelsResponse {
+    models: OpenRouterModelInfo[];
+    premiumModels: string[];
+    defaultModel: string;
+    totalCount: number;
+}
+
+export interface OpenRouterFunctionCallRequest {
+    model: string;
+    messages: OpenRouterMessage[];
+    tools: OpenRouterToolDefinition[];
+    tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+    temperature?: number;
+    max_tokens?: number;
+}
+
+export interface OpenRouterSubmitFunctionResultsRequest {
+    model: string;
+    messages: OpenRouterMessage[];
+    functionResults: Array<{
+        tool_call_id: string;
+        output: string;
+    }>;
+}
+
+/**
+ * Check if a model ID is an OpenRouter model
+ */
+export function isOpenRouterModel(modelId: string): boolean {
+    return modelId.includes('/');
+}
+
+export const openRouterApi = {
+    /**
+     * List available OpenRouter models
+     */
+    listModels: async (category?: string): Promise<OpenRouterModelsResponse> => {
+        const params = category ? `?category=${category}` : '';
+        return apiCall<OpenRouterModelsResponse>(`/api/v2/openrouter/models${params}`, {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Get model info
+     */
+    getModel: async (modelId: string): Promise<OpenRouterModelInfo> => {
+        return apiCall<OpenRouterModelInfo>(`/api/v2/openrouter/models/${encodeURIComponent(modelId)}`, {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Non-streaming chat completion
+     */
+    chat: async (request: OpenRouterChatRequest): Promise<OpenRouterChatResponse> => {
+        return apiCall<OpenRouterChatResponse>('/api/v2/openrouter/chat/completions', {
+            method: 'POST',
+            body: JSON.stringify({
+                ...request,
+                stream: false,
+            }),
+        });
+    },
+
+    /**
+     * Streaming chat completion via SSE
+     */
+    streamChat: async function* (
+        request: OpenRouterChatRequest
+    ): AsyncGenerator<OpenRouterStreamChunk, void, unknown> {
+        const url = `${API_BASE_URL}/api/v2/openrouter/chat/stream`;
+        const token = getAccessToken();
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+                ...request,
+                stream: true,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Terjadi kendala saat menghubungi server (${response.status})`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+            throw new Error('No response body');
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
+
+                    const data = trimmedLine.slice(6);
+
+                    if (data === '[DONE]') {
+                        yield { done: true };
+                        return;
+                    }
+
+                    try {
+                        const raw = JSON.parse(data);
+
+                        // Transform raw OpenRouter format to our simplified format
+                        // Raw format: { choices: [{ delta: { content: "..." }, finish_reason: null }] }
+                        if (raw.choices && raw.choices.length > 0) {
+                            const choice = raw.choices[0];
+                            const delta = choice.delta || {};
+                            const chunk: OpenRouterStreamChunk = {
+                                text: delta.content || undefined,
+                                done: choice.finish_reason === 'stop' || choice.finish_reason === 'length',
+                                finish_reason: choice.finish_reason || undefined,
+                                tool_calls: delta.tool_calls || undefined,
+                                usage: raw.usage || undefined,
+                            };
+
+                            if (chunk.text || chunk.done || chunk.tool_calls) {
+                                yield chunk;
+                            }
+
+                            if (chunk.done) {
+                                return;
+                            }
+                        } else if (raw.error) {
+                            // Handle error from the backend
+                            yield { error: true, message: raw.error.message || 'OpenRouter error' };
+                            return;
+                        }
+                    } catch {
+                        // Skip invalid JSON
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    },
+
+    /**
+     * Invoke function calling
+     */
+    invokeFunctionCalling: async (request: OpenRouterFunctionCallRequest): Promise<OpenRouterChatResponse> => {
+        return apiCall<OpenRouterChatResponse>('/api/v2/openrouter/tools/invoke', {
+            method: 'POST',
+            body: JSON.stringify(request),
+        });
+    },
+
+    /**
+     * Submit function results back to continue the conversation
+     */
+    submitFunctionResults: async (request: OpenRouterSubmitFunctionResultsRequest): Promise<OpenRouterChatResponse> => {
+        return apiCall<OpenRouterChatResponse>('/api/v2/openrouter/tools/submit', {
+            method: 'POST',
+            body: JSON.stringify(request),
+        });
+    },
+
+    /**
+     * Get built-in function definitions
+     */
+    getBuiltinFunctions: async (): Promise<{ functions: OpenRouterToolDefinition[] }> => {
+        return apiCall<{ functions: OpenRouterToolDefinition[] }>('/api/v2/openrouter/tools/builtin', {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Get recommended models by use case
+     */
+    getRecommended: async (useCase: 'chat' | 'vision' | 'audio' | 'coding' | 'reasoning'): Promise<string[]> => {
+        return apiCall<string[]>(`/api/v2/openrouter/models/recommended/${useCase}`, {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Health check
+     */
+    healthCheck: async (): Promise<{ status: string; provider: string; model: string }> => {
+        return apiCall<{ status: string; provider: string; model: string }>('/api/v2/openrouter/health', {
+            method: 'GET',
         });
     },
 };

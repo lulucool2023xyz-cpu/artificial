@@ -11,7 +11,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from 'next-themes';
 import { MorphingNavigation, type MorphingNavigationLink } from '@/components/ui/MorphingNavigation';
 import { ToggleTheme } from '@/components/ui/ToggleTheme';
-import { chatApi, modelsApi, ChatContent, ChatPart, ChatTool, ThinkingConfig, GeminiModel } from '@/lib/api';
+import { chatApi, modelsApi, openRouterApi, isOpenRouterModel, ChatContent, ChatPart, ChatTool, ThinkingConfig, GeminiModel, OpenRouterMessage } from '@/lib/api';
 import { VoiceLiveModal } from './VoiceLiveModal';
 import { SidebarDock } from './SidebarDock';
 import { ModelSelectorPopup } from './ModelSelectorPopup';
@@ -620,75 +620,6 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       // Simplified system prompt for faster response
       const systemPrompt = `Anda adalah OrenaX Agent, asisten AI yang dikembangkan oleh Arief Fajar, Reza Arrofi, dan Alif Ikhwan dari SMK Marhas Margahayu. Jawab dengan sopan dan informatif dalam Bahasa Indonesia.`;
 
-      // Build tools array
-      const tools: ChatTool[] = [];
-      if (googleSearchEnabled) {
-        // Google Search tool uses empty object - dynamicRetrievalConfig is not valid
-        tools.push({
-          googleSearch: {}
-        });
-        console.log('[Tools] Google Search enabled');
-      }
-
-      // Build thinking config based on model type
-      let thinkingConfig: ThinkingConfig | undefined;
-      const modelInfo = availableModels.find(m => m.name === selectedModel);
-      if (thinkingModeEnabled && modelInfo?.supportsThinking) {
-        if (modelInfo.thinkingType === 'level') {
-          // Gemini 3 models use thinkingLevel ('low' or 'high')
-          thinkingConfig = {
-            thinkingLevel: thinkingBudget > 8192 ? 'high' : 'low',
-            includeThoughts: showThoughts
-          };
-          console.log('[Thinking] Using thinkingLevel:', thinkingConfig);
-        } else {
-          // Gemini 2.5 models use thinkingBudget (token count)
-          thinkingConfig = {
-            thinkingBudget: thinkingBudget,
-            includeThoughts: showThoughts
-          };
-          console.log('[Thinking] Using thinkingBudget:', thinkingConfig);
-        }
-      }
-
-      // Prepare contents for Gemini API format
-      const contents: ChatContent[] = [];
-
-      for (const msg of newMessages) {
-        const parts: ChatPart[] = [];
-
-        // Add text
-        if (msg.text) {
-          parts.push({ text: msg.text });
-        }
-
-        // Add images as inlineData
-        if (msg.files && msg.files.length > 0) {
-          for (const fileObj of msg.files) {
-            if (fileObj.type.startsWith('image/')) {
-              // Compress image before sending (reduces 413 errors)
-              const compressedFile = await compressImage(fileObj.file);
-              const base64 = await convertFileToBase64(compressedFile);
-              // Remove data:image/xxx;base64, prefix
-              const base64Data = base64.replace(/^data:[^;]+;base64,/, '');
-              parts.push({
-                inlineData: {
-                  mimeType: fileObj.type,
-                  data: base64Data
-                }
-              });
-            }
-          }
-        }
-
-        if (parts.length > 0) {
-          contents.push({
-            role: msg.type === 'user' ? 'user' : 'model',
-            parts
-          });
-        }
-      }
-
       // Create initial bot message
       const botMessageId = Date.now() + 1;
       const botMessage = {
@@ -705,66 +636,187 @@ export default function AIChatbot({ initialView = 'chat' }: AIChatbotProps) {
       let accumulatedThoughts: string[] = [];
       let accumulatedGroundingMetadata: any = null;
 
-      // Stream response from backend
-      try {
-        for await (const chunk of chatApi.streamChat({
-          contents,
-          model: selectedModel,
-          systemInstruction: systemPrompt,
-          generationConfig: {
-            temperature: mode === 'fast' ? 0.5 : mode === 'balance' ? 0.8 : 0.9,
-            maxOutputTokens: mode === 'fast' ? 1000 : mode === 'balance' ? 4000 : 8000,
-          },
-          ...(tools.length > 0 ? { tools } : {}),
-          ...(thinkingConfig ? { thinkingConfig } : {}),
-        })) {
-          if (chunk.error) {
-            throw new Error(chunk.message || 'Streaming error');
-          }
+      // ==========================================
+      // OPENROUTER PATH
+      // ==========================================
+      if (isOpenRouterModel(selectedModel)) {
+        console.log('[Chat] Using OpenRouter model:', selectedModel);
 
-          // Handle thought chunks - update UI immediately when thoughts arrive
-          if (chunk.thought) {
-            accumulatedThoughts.push(chunk.thought);
-            // Update UI immediately when thoughts arrive (not just on text)
-            requestAnimationFrame(() => {
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === botMessageId
-                    ? { ...msg, thoughts: [...accumulatedThoughts] }
-                    : msg
-                )
-              );
+        // Convert messages to OpenRouter format
+        const orMessages: OpenRouterMessage[] = [
+          { role: 'system', content: systemPrompt },
+        ];
+
+        for (const msg of newMessages) {
+          if (msg.files && msg.files.length > 0) {
+            // Multimodal message with images
+            const contentParts: any[] = [];
+            if (msg.text) {
+              contentParts.push({ type: 'text', text: msg.text });
+            }
+            for (const fileObj of msg.files) {
+              if (fileObj.type.startsWith('image/')) {
+                const compressedFile = await compressImage(fileObj.file);
+                const base64 = await convertFileToBase64(compressedFile);
+                contentParts.push({
+                  type: 'image_url',
+                  image_url: { url: base64, detail: 'auto' }
+                });
+              }
+            }
+            orMessages.push({
+              role: msg.type === 'user' ? 'user' : 'assistant',
+              content: contentParts,
             });
-          }
-
-          // Capture grounding metadata from Google Search
-          if (chunk.groundingMetadata) {
-            accumulatedGroundingMetadata = chunk.groundingMetadata;
-          }
-
-          // Handle text chunks
-          if (chunk.text) {
-            accumulatedText += chunk.text;
-
-            // Use requestAnimationFrame for smoother updates
-            requestAnimationFrame(() => {
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === botMessageId
-                    ? { ...msg, text: accumulatedText, thoughts: [...accumulatedThoughts] }
-                    : msg
-                )
-              );
+          } else if (msg.text) {
+            orMessages.push({
+              role: msg.type === 'user' ? 'user' : 'assistant',
+              content: msg.text,
             });
-          }
-
-          if (chunk.done) {
-            break;
           }
         }
-      } catch (streamError) {
-        console.error('Streaming error:', streamError);
-        throw streamError;
+
+        // Stream from OpenRouter
+        try {
+          for await (const chunk of openRouterApi.streamChat({
+            model: selectedModel,
+            messages: orMessages,
+            temperature: mode === 'fast' ? 0.5 : mode === 'balance' ? 0.8 : 0.9,
+            max_tokens: mode === 'fast' ? 1000 : mode === 'balance' ? 4000 : 8000,
+          })) {
+            if (chunk.error) {
+              throw new Error(chunk.message || 'Streaming error');
+            }
+
+            if (chunk.text) {
+              accumulatedText += chunk.text;
+              requestAnimationFrame(() => {
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.id === botMessageId
+                      ? { ...msg, text: accumulatedText }
+                      : msg
+                  )
+                );
+              });
+            }
+
+            if (chunk.done) break;
+          }
+        } catch (streamError) {
+          console.error('[OpenRouter] Streaming error:', streamError);
+          throw streamError;
+        }
+
+        // ==========================================
+        // GEMINI PATH (original)
+        // ==========================================
+      } else {
+        // Build tools array
+        const tools: ChatTool[] = [];
+        if (googleSearchEnabled) {
+          tools.push({ googleSearch: {} });
+          console.log('[Tools] Google Search enabled');
+        }
+
+        // Build thinking config based on model type
+        let thinkingConfig: ThinkingConfig | undefined;
+        const modelInfo = availableModels.find(m => m.name === selectedModel);
+        if (thinkingModeEnabled && modelInfo?.supportsThinking) {
+          if (modelInfo.thinkingType === 'level') {
+            thinkingConfig = {
+              thinkingLevel: thinkingBudget > 8192 ? 'high' : 'low',
+              includeThoughts: showThoughts
+            };
+            console.log('[Thinking] Using thinkingLevel:', thinkingConfig);
+          } else {
+            thinkingConfig = {
+              thinkingBudget: thinkingBudget,
+              includeThoughts: showThoughts
+            };
+            console.log('[Thinking] Using thinkingBudget:', thinkingConfig);
+          }
+        }
+
+        // Prepare contents for Gemini API format
+        const contents: ChatContent[] = [];
+        for (const msg of newMessages) {
+          const parts: ChatPart[] = [];
+          if (msg.text) {
+            parts.push({ text: msg.text });
+          }
+          if (msg.files && msg.files.length > 0) {
+            for (const fileObj of msg.files) {
+              if (fileObj.type.startsWith('image/')) {
+                const compressedFile = await compressImage(fileObj.file);
+                const base64 = await convertFileToBase64(compressedFile);
+                const base64Data = base64.replace(/^data:[^;]+;base64,/, '');
+                parts.push({
+                  inlineData: {
+                    mimeType: fileObj.type,
+                    data: base64Data
+                  }
+                });
+              }
+            }
+          }
+          if (parts.length > 0) {
+            contents.push({
+              role: msg.type === 'user' ? 'user' : 'model',
+              parts
+            });
+          }
+        }
+
+        // Stream response from Gemini backend
+        try {
+          for await (const chunk of chatApi.streamChat({
+            contents,
+            model: selectedModel,
+            systemInstruction: systemPrompt,
+            generationConfig: {
+              temperature: mode === 'fast' ? 0.5 : mode === 'balance' ? 0.8 : 0.9,
+              maxOutputTokens: mode === 'fast' ? 1000 : mode === 'balance' ? 4000 : 8000,
+            },
+            ...(tools.length > 0 ? { tools } : {}),
+            ...(thinkingConfig ? { thinkingConfig } : {}),
+          })) {
+            if (chunk.error) {
+              throw new Error(chunk.message || 'Streaming error');
+            }
+            if (chunk.thought) {
+              accumulatedThoughts.push(chunk.thought);
+              requestAnimationFrame(() => {
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.id === botMessageId
+                      ? { ...msg, thoughts: [...accumulatedThoughts] }
+                      : msg
+                  )
+                );
+              });
+            }
+            if (chunk.groundingMetadata) {
+              accumulatedGroundingMetadata = chunk.groundingMetadata;
+            }
+            if (chunk.text) {
+              accumulatedText += chunk.text;
+              requestAnimationFrame(() => {
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.id === botMessageId
+                      ? { ...msg, text: accumulatedText, thoughts: [...accumulatedThoughts] }
+                      : msg
+                  )
+                );
+              });
+            }
+            if (chunk.done) break;
+          }
+        } catch (streamError) {
+          console.error('Streaming error:', streamError);
+          throw streamError;
+        }
       }
 
       // Update final message with grounding metadata

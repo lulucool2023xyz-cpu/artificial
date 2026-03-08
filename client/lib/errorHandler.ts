@@ -42,15 +42,15 @@ export function logError(error: Error | AppError, context?: ErrorContext): void 
     `🔴 Error: ${error.name} - ${new Date().toLocaleTimeString()}`
   );
   console.error('Message:', error.message);
-  
+
   if (errorContext) {
     console.error('Context:', errorContext);
   }
-  
+
   if (error.stack) {
     console.error('Stack:', error.stack);
   }
-  
+
   console.groupEnd();
 
   // In production, send to error tracking service (e.g., Sentry)
@@ -60,13 +60,29 @@ export function logError(error: Error | AppError, context?: ErrorContext): void 
 }
 
 /**
+ * Friendly greeting messages pool for randomization
+ */
+const FRIENDLY_GREETINGS = [
+  'Halo teman-teman SMPN 4 Margahayu! 👋',
+  'Hey sobat SMPN 4 Margahayu! ✨',
+  'Hi teman-teman! 🌟',
+  'Halo gaes! 👋',
+  'Hai teman-teman kece! 💫',
+];
+
+function getRandomGreeting(): string {
+  return FRIENDLY_GREETINGS[Math.floor(Math.random() * FRIENDLY_GREETINGS.length)];
+}
+
+/**
  * Handle error and show user-friendly toast notification
+ * Technical details are only logged to console, never shown to users
  */
 export function handleError(
   error: Error | AppError | unknown,
   context?: ErrorContext
 ): void {
-  let errorMessage = 'An unexpected error occurred';
+  let errorMessage = 'Oops, ada yang kurang beres nih! 😅 Tenang, coba refresh halaman ya!';
   let technicalMessage = '';
 
   if (error instanceof AppError) {
@@ -78,16 +94,16 @@ export function handleError(
     errorMessage = getUserFriendlyMessage(error);
     logError(error, context);
   } else if (typeof error === 'string') {
-    errorMessage = error;
+    errorMessage = `${getRandomGreeting()} Ada sedikit gangguan nih, coba lagi ya! 😊`;
     console.error('🔴 Error:', error);
   } else {
     console.error('🔴 Unknown error:', error);
   }
 
-  // Show toast notification
+  // Show toast notification with friendly title
   toast({
     variant: "destructive",
-    title: "Error",
+    title: "Pemberitahuan",
     description: errorMessage,
     duration: 5000,
   });
@@ -95,46 +111,62 @@ export function handleError(
 
 /**
  * Convert technical errors to user-friendly messages
+ * These messages are warm and friendly for SMPN 4 Margahayu students
+ * Important: Technical details are NEVER exposed to users
  */
 export function getUserFriendlyMessage(error: Error): string {
   const message = error.message.toLowerCase();
+  const greeting = getRandomGreeting();
 
   // Network errors
-  if (message.includes('network') || message.includes('fetch failed')) {
-    return 'Network error. Please check your internet connection.';
+  if (message.includes('network') || message.includes('fetch failed') || message.includes('err_connection')) {
+    return `${greeting} Koneksi internet lagi gangguan nih, coba cek WiFi kamu dan coba lagi ya! 📶`;
   }
   if (message.includes('timeout')) {
-    return 'Request timed out. Please try again.';
+    return `${greeting} Waduh agak lama nih prosesnya, sabar ya! Coba lagi dalam beberapa detik 🕐`;
   }
   if (message.includes('chunklloaderror') || message.includes('loading chunk')) {
-    return 'Failed to load content. Please refresh the page.';
+    return `${greeting} Halaman perlu di-refresh nih! Klik refresh atau tekan F5 ya 🔄`;
   }
 
   // Authentication errors
   if (message.includes('unauthorized') || message.includes('401')) {
-    return 'You need to log in to access this feature.';
+    return `${greeting} Yuk login dulu biar bisa akses fitur keren ini! 🔐`;
   }
   if (message.includes('forbidden') || message.includes('403')) {
-    return 'You don\'t have permission to access this.';
+    return `${greeting} Fitur ini belum bisa diakses nih, mungkin perlu upgrade akun dulu ya! 🔒`;
   }
 
   // Not found errors
   if (message.includes('not found') || message.includes('404')) {
-    return 'The requested resource was not found.';
+    return `${greeting} Halaman yang dicari nggak ketemu nih, coba balik ke halaman utama ya! 🔍`;
   }
 
   // Server errors
-  if (message.includes('500') || message.includes('internal server')) {
-    return 'Server error. Please try again later.';
+  if (message.includes('500') || message.includes('internal server') || message.includes('server error')) {
+    return `${greeting} Servernya lagi istirahat sebentar! 😴 Tunggu beberapa menit lalu coba lagi ya!`;
   }
 
-  // Validation errors
-  if (message.includes('validation') || message.includes('invalid')) {
-    return 'Invalid input. Please check your data and try again.';
+  // Rate limit / API errors (hide API key details!)
+  if (message.includes('rate limit') || message.includes('too many') || message.includes('429')) {
+    return `${greeting} Lagi rame banget nih! 🎉 Sabar ya, coba lagi beberapa menit lagi!`;
+  }
+  if (message.includes('api key') || message.includes('api_key') || message.includes('quota') || message.includes('billing')) {
+    return `${greeting} Fitur ini lagi kami maintenance dulu ya! 🔧 Nanti balik lagi kok!`;
   }
 
-  // Default message
-  return 'Something went wrong. Please try again.';
+  // Bad request / Validation errors
+  if (message.includes('validation') || message.includes('invalid') || message.includes('400')) {
+    return `${greeting} Hmm, ada yang kurang tepat nih inputnya. Coba cek lagi ya! ✏️`;
+  }
+
+  // Service unavailable
+  if (message.includes('503') || message.includes('unavailable')) {
+    return `${greeting} Layanannya lagi di-update nih! 🚀 Bentar lagi selesai kok, sabar ya!`;
+  }
+
+  // Default message - never show technical details
+  return `${greeting} Ada sedikit gangguan, tapi tenang aja! 😊 Coba refresh atau coba lagi nanti ya!`;
 }
 
 /**
